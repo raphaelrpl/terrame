@@ -1,4 +1,4 @@
-#!/bin/bash -1
+#!/bin/bash -l
 # 
 ## It enables to run terrame unittest on UNIX environments.
 ## **Remember to export some variables before**
@@ -13,7 +13,7 @@
 # COMMIT - Pull Request Commit Hash used to notify GitHub
 
 # GitHub Status Name
-GITHUB_CONTEXT="Functional test of package base"
+GITHUB_CONTEXT="Functional test of package $1"
 # GitHub Commit hash
 COMMIT=$2
 # GitHub Status URL
@@ -28,7 +28,14 @@ export LD_LIBRARY_PATH=$TME_PATH
 $TERRAME_GIT_DIR/build/scripts/linux/terrame-ci-notify.sh $COMMIT "$GITHUB_CONTEXT" "pending" "$TARGET_URL" "Running tests."
 
 terrame -version
-terrame -color -test test.lua 2> /dev/null
+
+# Extra commands if package is terralib
+TERRAME_COMMANDS=""
+if [ "$1" == "terralib" ]; then
+  TERRAME_COMMANDS="-package terralib"
+fi
+
+terrame -color $TERRAME_COMMANDS -test test.lua 2> /dev/null
 # Retrieving TerraME exit code
 RESULT=$?
 
