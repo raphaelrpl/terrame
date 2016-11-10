@@ -28,13 +28,13 @@
 ## TERRAME_GIT_DIR - Path to TerraME git directory
 #
 ## Usage
-# ./terrame-ci-doc.sh PACKAGE COMMIT
+# ./terrame-ci-check.sh PACKAGE COMMIT
 # 
 # PACKAGE - Represents which package will be tested
 # COMMIT - Pull Request Commit Hash used to notify GitHub
 
 # GitHub Status Name
-GITHUB_CONTEXT="Documentation of package $1"
+GITHUB_CONTEXT="Code analysis of package $1"
 GITHUB_STATUS="pending"
 GITHUB_DESCRIPTION="Running."
 TARGET_URL="$BUILD_URL/consoleFull"
@@ -46,8 +46,11 @@ $TERRAME_GIT_DIR/build/scripts/linux/terrame-ci-notify.sh $COMMIT "$GITHUB_CONTE
 # Exporting terrame vars
 . $TERRAME_GIT_DIR/build/scripts/linux/utils/environment.sh "$TERRAME_PATH"
 
+TERRAME_COMMANDS=""
 # Extra commands if package is terralib
-. $TERRAME_GIT_DIR/build/scripts/linux/utils/package.sh "$1"
+if [ "$PACKAGE" != "base" ]; then
+  TERRAME_COMMANDS="-package $1"
+fi
 
 # Execute TerraME doc generation
 terrame -color $TERRAME_COMMANDS -check

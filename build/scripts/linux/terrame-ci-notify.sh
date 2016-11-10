@@ -22,7 +22,7 @@
 
 set +x # It forces to do not display anything among this script execution.
 #
-## It notifies GitHub Status platform using api v3
+## It notifies GitHub Status platform using api v3. You must export $TERRAME_TOKEN before in order to execute properly
 # usage: ./send.sh COMMIT_HASH STATUS_CONTEXT STATUS JOB_URL STATUS_DESCRIPTION
 
 # Github initial status
