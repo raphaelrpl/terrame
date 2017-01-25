@@ -2,7 +2,7 @@
 -- There is an initial rain in the highest cells.
 -- The Neighborhood of a Cell is composed by its Moore neighbors that
 -- have lower height.
--- Each cell then sends its water equally to all neighbors. 
+-- Each cell then sends its water equally to all neighbors.
 -- @image runoff.bmp
 
 cell = Cell{
@@ -32,12 +32,10 @@ cell = Cell{
 
 cs = CellularSpace{
 	file = filePath("cabecadeboi.shp"),
-	instance = cell
+	instance = cell,
+	as = {height = "height_"},
+	xy = {"Col", "Lin"}
 }
-
-forEachCell(cs, function(cell)
-	cell.height = cell.height_
-end)
 
 cs:createNeighborhood{
 	strategy = "mxn",

@@ -42,7 +42,7 @@
 					<dl class="function">
 						<%for _, filepath in ipairs(doc.files) do%>
 							<%if doc.files[filepath].type == "model" then%>
-								<dt><a name="<%=doc.files[filepath].doc[1].name%>"><h2><%=doc.files[filepath].doc[1].name%></h2></dt>
+								<dt><h2><a name="<%=doc.files[filepath].doc[1].name%>" href= <%="../../lua/"..doc.files[filepath].doc[1].name..".lua"%>><%=doc.files[filepath].doc[1].name%></a></h2></dt>
 									<%func = doc.files[filepath].doc[1]%>
 									<% if func.image then %>
 										<% loc = "../../images/"..func.image %>
@@ -50,13 +50,23 @@
 									<%end%>
 									<%= httpLink(doc.files[filepath].doc[1].description)%>
 									<% if func.arg then %>
-										<h3>Arguments</h3>
+										<p><h3>Arguments</h3>
 										<ul><span class="arg">
 										<%for i = 1, #func.arg do
 											local arg_desc = func.arg[func.arg[i]] or ""
 											local arg_name
 											arg_name = func.arg[i]%>
 										    <li><strong><%=arg_name%></strong>: <%= arg_desc%></li> 
+										<%end%>
+										</ul>
+									<%end%>
+									<% if func.output and #func.output > 0 then %>
+										<h3>Output</h3>
+										<ul><span class="arg">
+										<%for p = 1, #func.output do%>
+											<li>
+											<strong><%=func.output[p]%></strong>: <%=luadoc.link_description(func.output[func.output[p]] or "", doc, module_doc, file_doc, from, nil, func.name, doc_report)%>
+											</li>
 										<%end%>
 										</ul>
 									<%end%>

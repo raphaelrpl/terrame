@@ -151,6 +151,11 @@ return{
 			mandatoryTableArgument(mtable, "ddd", "string")
 		end
 		unitTest:assertError(error_func, mandatoryArgumentMsg("ddd", "string"))
+
+		error_func = function()
+			mandatoryTableArgument(mtable, "bbb", {"string", "boolean"})
+		end
+		unitTest:assertError(error_func, incompatibleTypeMsg("bbb", "string or boolean", 3))
 	end,
 	namedArgumentsMsg = function(unitTest)
 		unitTest:assertEquals(namedArgumentsMsg(), "Arguments must be named.")
@@ -168,6 +173,11 @@ return{
 			optionalTableArgument(mtable, "bbb", "string")
 		end
 		unitTest:assertError(error_func, incompatibleTypeMsg("bbb", "string", 3))
+
+		error_func = function()
+			optionalTableArgument(mtable, "bbb", {"string", "boolean"})
+		end
+		unitTest:assertError(error_func, incompatibleTypeMsg("bbb", "string or boolean", 3))
 	end,
 	positiveArgument = function(unitTest)
 		local error_func = function()
@@ -218,8 +228,9 @@ return{
 		unitTest:assertError(error_func, resourceNotFoundMsg("file", "/usr/local/file.txt"))
 	end,
 	resourceNotFoundMsg = function(unitTest)
-		unitTest:assertEquals(resourceNotFoundMsg("aaa", "bbb"), "Resource 'bbb' not found for argument 'aaa'.")
-		unitTest:assertEquals(resourceNotFoundMsg(2, "bbb"), "Resource 'bbb' not found for argument '#2'.")
+		unitTest:assertEquals(resourceNotFoundMsg("aaa", "bbb"), "Resource 'bbb' was not found for argument 'aaa'.")
+		unitTest:assertEquals(resourceNotFoundMsg(2, "bbb"), "Resource 'bbb' was not found for argument '#2'.")
+		unitTest:assertEquals(resourceNotFoundMsg(2, File("bbb")), "File '"..File("bbb").."' was not found for argument '#2'.")
 	end,
 	strictWarning = function(unitTest)
 		local error_func = function()
@@ -236,6 +247,16 @@ return{
 
 		unitTest:assertEquals(suggestion("aaaab", t), "aaaaa")
 		unitTest:assertNil(suggestion("ddddd", t))
+	end,
+	suggestionMsg = function(unitTest)
+		local t = {
+			aaaaa = true,
+			bbbbb = true,
+			ccccc = true
+		}
+
+		unitTest:assertEquals(suggestionMsg(suggestion("aaaab", t)), " Do you mean 'aaaaa'?")
+		unitTest:assertEquals(suggestionMsg(), "")
 	end,
 	switchInvalidArgument = function(unitTest)
 		local t = {
@@ -293,6 +314,14 @@ return{
 			verifyUnnecessaryArguments({[1] = "aaa"}, {"aabc", "aacd", "aaab"})
 		end
 		unitTest:assertError(error_func, "Arguments should have only string names, got number.")
+
+		local args = {x = 1, y = 2, a = 0}
+		error_func = function()
+			verifyUnnecessaryArguments(args, {"x", "y", "z"})
+		end
+		unitTest:assertError(error_func, unnecessaryArgumentMsg("a"))
+		unitTest:assertEquals(getn(args), 2)
+		unitTest:assertNil(args.a)
 	end,
 	verifyNamedTable = function(unitTest)
 		local error_func = function()

@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------------------
 -- TerraME - a software platform for multiple scale spatially-explicit dynamic modeling.
--- Copyright (C) 2001-2016 INPE and TerraLAB/UFOP -- www.terrame.org
+-- Copyright (C) 2001-2017 INPE and TerraLAB/UFOP -- www.terrame.org
 
 -- This code is part of the TerraME framework.
 -- This framework is free software; you can redistribute it and/or
@@ -32,7 +32,7 @@ return{
 		local attrFileNonString = function()
 			Project{file = 123}
 		end
-		unitTest:assertError(attrFileNonString, incompatibleTypeMsg("file", "string", 123))
+		unitTest:assertError(attrFileNonString, incompatibleTypeMsg("file", "File", 123))
 
 		attrFileNonString = function()
 			Project{file = "abc", author = "No author"}
@@ -48,11 +48,6 @@ return{
 			Project{file = "myproj.tview", clean = 2}
 		end
 		unitTest:assertError(attrCreateNonBool, incompatibleTypeMsg("clean", "boolean", 2))
-
-		local descriptionCreateNonString = function()
-			Project{file = "myproj.tview", description = 2}
-		end
-		unitTest:assertError(descriptionCreateNonString, incompatibleTypeMsg("description", "string", 2))
 
 		local attrTitleNonString = function()
 			Project{file = "myproj.tview", title = 2}
@@ -72,7 +67,7 @@ return{
 		local layerShouldBeString = function()
 			Project{file = "myproj.tview", cean = true}
 		end
-		unitTest:assertError(layerShouldBeString, incompatibleTypeMsg("cean", "string", true))
+		unitTest:assertError(layerShouldBeString, incompatibleTypeMsg("cean", "File", true))
 
 		local notFile = function()
 			Project{file = "myproj.tview", cean = "true.abc"}

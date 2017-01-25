@@ -1,5 +1,5 @@
 # TerraME - a software platform for multiple scale spatially-explicit dynamic modeling.
-# Copyright (C) 2001-2016 INPE and TerraLAB/UFOP -- www.terrame.org
+# Copyright (C) 2001-2017 INPE and TerraLAB/UFOP -- www.terrame.org
 #
 # This code is part of the TerraME framework.
 # This framework is free software; you can redistribute it and/or
@@ -21,8 +21,8 @@
 #
 
 # Main configurations
-set (CMAKE_INSTALL_PREFIX "$ENV{_TERRALIB_INSTALL_PATH}" CACHE PATH "Where to install TerraLib?" FORCE)
-set (CMAKE_PREFIX_PATH "$ENV{_TERRALIB_3RDPARTY_DIR}" CACHE PATH "Where are the dependencies of TerraLib?" FORCE)
+set(CMAKE_INSTALL_PREFIX "$ENV{_TERRALIB_INSTALL_PATH}" CACHE PATH "Where to install TerraLib?" FORCE)
+set(CMAKE_PREFIX_PATH "$ENV{_TERRALIB_3RDPARTY_DIR}" CACHE PATH "Where are the dependencies of TerraLib?" FORCE)
 
 set(SWIG_EXECUTABLE "$ENV{_TERRALIB_3RDPARTY_DIR}/../swigwin/swig.exe" CACHE FILEPATH "Where are the SWIG?" FORCE)
 set(TERRALIB_DIR_VAR_NAME "TME_PATH" CACHE STRING "Name of an environment variable with the base installation path of TerraLib")
@@ -67,3 +67,4 @@ set(TERRALIB_MOD_QT_PLUGINS_ADDRESSGEOCODING OFF CACHE BOOL "Build Address Geoco
 set(TERRALIB_MOD_EDIT_QT_ENABLED OFF CACHE BOOL "Build Edit Qt module?" FORCE)
 set(TERRALIB_MOD_QT_PLUGINS_EDIT_ENABLED OFF CACHE BOOL "Build Edit Qt plugin?" FORCE)
 set(TERRALIB_QHELP_ENABLED OFF CACHE BOOL "QHelp?" FORCE)
+set(TERRALIB_MOD_WS_CORE_ENABLED OFF CACHE BOOL "Build WS Core module?" FORCE)

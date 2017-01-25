@@ -20,9 +20,9 @@ local reserved = {
 }
 
 local base = {
-	"Agent", "Automaton", "Cell", "CellularSpace", "Chart", "Choice",
-	"Clock", "Environment", "Event", "Flow", "Group", "InternetSender",
-	"Jump", "LogFile", "Mandatory", "Map", "Model", "Neighborhood",
+	"Agent", "Automaton", "Cell", "CellularSpace", "Chart", "Choice", "Clock", 
+	"DataFrame", "Directory","Environment", "Event", "File", "Flow", "Group", "InternetSender",
+	"Jump", "Log", "Mandatory", "Map", "Model", "Neighborhood",
 	"Random", "SocialNetwork", "Society", "State", "TextScreen",
 	"Timer", "Trajectory", "UnitTest", "VisualTable"
 }

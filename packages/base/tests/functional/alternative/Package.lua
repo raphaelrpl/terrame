@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------------------
 -- TerraME - a software platform for multiple scale spatially-explicit dynamic modeling.
--- Copyright (C) 2001-2016 INPE and TerraLAB/UFOP -- www.terrame.org
+-- Copyright (C) 2001-2017 INPE and TerraLAB/UFOP -- www.terrame.org
 
 -- This code is part of the TerraME framework.
 -- This framework is free software; you can redistribute it and/or
@@ -25,22 +25,37 @@
 return{
 	filePath = function(unitTest)
 		local error_func = function()
-			filePath("mriver_lin.shp")
+			filePath("mriver.shp")
 		end
-		unitTest:assertError(error_func, "File 'base/data/mriver_lin.shp' does not exist in package 'base'. Do you mean 'River_lin.shp'?", 2)
+		unitTest:assertError(error_func, "File 'data/mriver.shp' does not exist in package 'base'. Do you mean 'river.shp'?", 2)
 
 		local tlInfo = packageInfo("terralib")
 		local baseInfo = packageInfo()
 		local s = sessionInfo().separator
 
-		os.execute("cp "..tlInfo.data..s.."amazonia.lua "..baseInfo.data)
+		os.execute("cp "..tlInfo.data.."amazonia.lua "..baseInfo.data)
 
 		error_func = function()
 			filePath("amazonia.tview")
 		end
-		unitTest:assertError(error_func, "File 'base/data/amazonia.tview' does not exist in package 'base'. Please run 'terrame -package base -project' to create it.", 2)
+		unitTest:assertError(error_func, "File 'data/amazonia.tview' does not exist in package 'base'. Please run 'terrame -package base -project amazonia' to create it.", 2)
 
-		rmFile(baseInfo.data..s.."amazonia.lua")
+		error_func = function()
+			filePath("test"..s.."mriver_lin.shp")
+		end
+		unitTest:assertError(error_func, "File 'data/test/mriver_lin.shp' does not exist in package 'base'.")
+
+		error_func = function()
+			filePath("error"..s.."csv-error.csv")
+		end
+		unitTest:assertError(error_func, "Directory '"..baseInfo.data.."error/' does not exist.")
+
+		error_func = function()
+			filePath("test"..s.."braz.gdal")
+		end
+		unitTest:assertError(error_func, "File 'data/test/braz.gdal' does not exist in package 'base'. Do you mean 'brazil.gal'?")
+
+		File(baseInfo.data.."amazonia.lua"):deleteIfExists()
 	end,
 	filesByExtension = function(unitTest)
 		local error_func = function()
@@ -52,7 +67,7 @@ return{
 			filesByExtension(2)
 		end
 		unitTest:assertError(error_func, incompatibleTypeMsg(1, "string", 2))
-	
+
 		error_func = function()
 			filesByExtension("base")
 		end
@@ -101,7 +116,7 @@ return{
 			packageInfo(2)
 		end
 		unitTest:assertError(error_func, incompatibleTypeMsg(1, "string", 2))
-	
+
 		error_func = function()
 			packageInfo("asdfgh")
 		end

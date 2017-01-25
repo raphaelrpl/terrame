@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------------------
 -- TerraME - a software platform for multiple scale spatially-explicit dynamic modeling.
--- Copyright (C) 2001-2016 INPE and TerraLAB/UFOP -- www.terrame.org
+-- Copyright (C) 2001-2017 INPE and TerraLAB/UFOP -- www.terrame.org
 
 -- This code is part of the TerraME framework.
 -- This framework is free software; you can redistribute it and/or
@@ -63,7 +63,7 @@ return{
 			Cell{id = 2.3}
 		end
 		unitTest:assertError(error_func, incompatibleTypeMsg("id", "string", 2.3))
-	
+
 	end,
 	addNeighborhood = function(unitTest)
 		local cell = Cell{x = 1, y = 1}
@@ -104,13 +104,18 @@ return{
 		local error_func = function()
 			c:getAgent()
 		end
-		unitTest:assertError(error_func, "Placement 'placement' does not exist. Use Environment:createPlacement first.")
+		unitTest:assertError(error_func, "The Cell does not have a default placement. Please call Environment:createPlacement() first.")
+
+		error_func = function()
+			c:getAgent("abc123")
+		end
+		unitTest:assertError(error_func, "Placement 'abc123' does not exist. Please call Environment:createPlacement() first.")
 
 		error_func = function()
 			c:getAgent("friends")
 		end
 		unitTest:assertError(error_func, "Placement 'friends' should be a Group, got number.")
-	end,			
+	end,
 	getAgents = function(unitTest)
 		local c = Cell{}
 		c.friends = 2
@@ -118,7 +123,13 @@ return{
 		local error_func = function()
 			c:getAgents()
 		end
-		unitTest:assertError(error_func, "Placement 'placement' does not exist. Use Environment:createPlacement first.")
+		unitTest:assertError(error_func, "The Cell does not have a default placement. Please call Environment:createPlacement() first.")
+
+		error_func = function()
+			c:getAgent("abc123")
+		end
+		unitTest:assertError(error_func, "Placement 'abc123' does not exist. Please call Environment:createPlacement() first.")
+
 
 		error_func = function()
 			c:getAgents("friends")
@@ -142,7 +153,7 @@ return{
 		local error_func = function()
 			c:isEmpty()
 		end
-		unitTest:assertError(error_func, "Placement 'placement' does not exist. Use Environment:createPlacement first.")
+		unitTest:assertError(error_func, "The Cell does not have a default placement. Please call Environment:createPlacement() first.")
 
 		error_func = function()
 			c:isEmpty("friends")

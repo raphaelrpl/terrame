@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------------------
 -- TerraME - a software platform for multiple scale spatially-explicit dynamic modeling.
--- Copyright (C) 2001-2016 INPE and TerraLAB/UFOP -- www.terrame.org
+-- Copyright (C) 2001-2017 INPE and TerraLAB/UFOP -- www.terrame.org
 
 -- This code is part of the TerraME framework.
 -- This framework is free software; you can redistribute it and/or
@@ -51,7 +51,7 @@ return{
 					end
 					if agent.cont == MAX_COUNT then agent.cont = 0 end
 					return false
-				end, 
+				end,
 				target = "seco"
 			}
 		}
@@ -110,7 +110,12 @@ return{
 		error_func = function()
 			env:add{}
 		end
-		unitTest:assertError(error_func, incompatibleTypeMsg(1, "Agent, Automaton, Cell, CellularSpace, Environment, Group, Society, Timer or Trajectory", {}))
+		unitTest:assertError(error_func, mandatoryArgumentMsg("action"))
+
+		error_func = function()
+			env:add(unitTest)
+		end
+		unitTest:assertError(error_func, incompatibleTypeMsg(1, "Agent, Automaton, Cell, CellularSpace, Environment, Group, Society, Timer or Trajectory", unitTest))
 	end,
 	createPlacement = function(unitTest)
 		local ag1 = Agent{}
@@ -176,7 +181,7 @@ return{
 			env:createPlacement()
 		end
 		unitTest:assertError(error_func, "Placements is still not implemented for groups.")
-	
+
 		env = Environment{sc1}
 
 		error_func = function()

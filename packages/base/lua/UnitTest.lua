@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------------------
 -- TerraME - a software platform for multiple scale spatially-explicit dynamic modeling.
--- Copyright (C) 2001-2016 INPE and TerraLAB/UFOP -- www.terrame.org
+-- Copyright (C) 2001-2017 INPE and TerraLAB/UFOP -- www.terrame.org
 
 -- This code is part of the TerraME framework.
 -- This framework is free software; you can redistribute it and/or
@@ -22,6 +22,38 @@
 --
 -------------------------------------------------------------------------------------------
 
+local function simplifyPath(value)
+	value = _Gtme.makePathCompatibleToAllOS(value)
+
+	if value:match("\n") then
+		local tempstr = ""
+
+		for line in value:gmatch("(.-)\n") do
+			local first = string.find(line, "/")
+			local last = string.find(line, "/[^/]*$")
+
+			if not first or first == last then
+				tempstr = tempstr..line.."\n"
+			else
+				tempstr = tempstr..string.sub(line, 1, first - 1).."/"..string.sub(line, last + 1).."\n"
+			end
+		end
+
+		return tempstr
+	end
+
+	local first = string.find(value, "/")
+	local last = string.find(value, "/[^/]*$")
+
+	if not first or first == last then return value end
+
+	if string.sub(value, first - 1, first - 1) == ":" then -- remove "C:", "D:", ...
+		first = first - 2 -- SKIP
+	end
+
+	return string.sub(value, 1, first - 1).."/"..string.sub(value, last + 1)
+end
+
 UnitTest_ = {
 	type_ = "UnitTest",
 	success = 0,
@@ -30,7 +62,6 @@ UnitTest_ = {
 	wrong_file = 0,
 	last_error = "",
 	count_last = 0,
-	delayed_time = 0,
 	--- Check if a given value is true. In any other case (number, string, false, or nil)
 	-- it generates an error.
 	-- @arg value Any value.
@@ -56,16 +87,25 @@ UnitTest_ = {
 	-- @arg tol A number indicating a maximum error tolerance. This argument is optional and can
 	-- be used with numbers or strings. When using string, the tolerance is measured according
 	-- to the Utils:levenshtein() distance. The default tolerance is zero.
+	-- @arg ignorePath A boolean to ignore path between /'s, when comparing two strings. It
+	-- automatically converts a string such as "directory/sub1/sub2/file" into "directory/file".
+	-- This argument is optional and can be used only with strings. The default value is false.
 	-- @usage unitTest = UnitTest{}
 	-- unitTest:assertEquals(3, 3)
 	-- unitTest:assertEquals(2, 2.1, 0.2)
-	assertEquals = function (self, v1, v2, tol)
+	-- unitTest:assertEquals("string [terralib/data/biomassa-manaus.asc]", "string [terralib/biomassa-manaus.asc]", 0, true)
+	assertEquals = function(self, v1, v2, tol, ignorePath)
 		self.test = self.test + 1
 
 		if v1 == nil then
 			mandatoryArgumentError(1)
 		elseif v2 == nil then
 			mandatoryArgumentError(2)
+		end
+
+		if type(v1) == type(v2) and belong(type(v1), {"File", "Directory"}) then
+			v1 = tostring(v1)
+			v2 = tostring(v2)
 		end
 
 		if tol ~= nil and type(v1) ~= "number" and type(v1) ~= "string" then
@@ -75,11 +115,14 @@ UnitTest_ = {
 		if tol == nil then tol = 0 end
 		mandatoryArgument(3, "number", tol)
 
+		if ignorePath == nil then ignorePath = false end
+		mandatoryArgument(4, "boolean", ignorePath)
+
 		if type(v1) == "number" and type(v2) == "number" then
 			local dist = math.abs(v1 - v2)
 			if dist <= tol or v1 == v2 then
 				self.success = self.success + 1
-			else 
+			else
 				self.fail = self.fail + 1
 				local msg = "Values should be equal, but got '"..v1.."' and '"..v2.."'. "..
 					"The maximum difference is "..tol..", but got "..dist.."."
@@ -87,16 +130,17 @@ UnitTest_ = {
 				self:printError(msg)
 			end
 		elseif type(v1) == "string" and type(v2) == "string" then
+			if ignorePath then
+				v1 = simplifyPath(v1)
+			end
+
 			local dist = levenshtein(v1, v2)
 			if dist <= tol then
 				self.success = self.success + 1
-			else 
+			else
 				self.fail = self.fail + 1
 				local msg = "Values should be equal, but got \n'"..v1.."' and \n'"..v2.."'."
-
-				if tol > 0 then
-					msg = msg.."\nThe maximum tolerance is "..tol..", but got "..dist.."." -- SKIP
-				end
+					.." The maximum tolerance is "..tol..", but got "..dist.."."
 
 				self:printError(msg)
 			end
@@ -120,13 +164,19 @@ UnitTest_ = {
 	-- between the error produced by the error function and the expected error message.
 	-- This argument might be necessary in error messages that include information that can change
 	-- from machine to machine, such as an username. The default value is zero (no discrepance).
+	-- @arg ignorePath A boolean to ignore path between /'s, when comparing two strings. It
+	-- automatically converts a string such as "directory/sub1/sub2/file" into "directory/file".
+	-- This argument is optional and can be used only with strings. The default value is false.
 	-- @usage unitTest = UnitTest{}
 	-- error_func = function() verify(2 > 3, "wrong operator") end
 	-- unitTest:assertError(error_func, "wrong operator")
-	assertError = function(self, my_function, error_message, max_error)
+	assertError = function(self, my_function, error_message, max_error, ignorePath)
 		mandatoryArgument(1, "function", my_function)
 		mandatoryArgument(2, "string", error_message)
 		optionalArgument(3, "number", max_error)
+
+		if ignorePath == nil then ignorePath = false end
+		mandatoryArgument(4, "boolean", ignorePath)
 
 		local found_error = false
 		xpcall(my_function, function(err)
@@ -150,8 +200,8 @@ UnitTest_ = {
 				return
 			end
 
-			shortError = string.gsub(shortError,":[0-9]*: ", "")
-			shortError = string.gsub(shortError,"%s+[0-9]+:", "")
+			shortError = string.gsub(shortError,":[0-9]*: ", "", 1)
+			shortError = string.gsub(shortError,"%s+[0-9]+:", "", 1)
 
 			local start = shortError:sub(1, 7)
 
@@ -160,6 +210,10 @@ UnitTest_ = {
 			end
 
 			shortError = shortError:sub(8, shortError:len())
+
+			if ignorePath then
+				shortError = simplifyPath(shortError)
+			end
 
 			local distance = levenshtein(error_message, shortError)
 
@@ -190,28 +244,33 @@ UnitTest_ = {
 	--- Check if a given file exists and remove it. Repeating: The file is removed when calling
 	-- this assert. If the file is a directory or does not exist then it shows an error.
 	-- @arg fname A string with a file name.
+	-- @arg tol An optional number indicating a maximum number of characters that can be different.
+	-- The tolerance is applied to each line of the files. The default tolerance is zero.
 	-- @usage -- DONTRUN
 	-- unitTest = UnitTest{}
 	-- os.execute("touch file.txt") -- create a file (only works in Linux and Mac)
 	-- unitTest:assertFile("file.txt")
-	assertFile = function(self, fname)
+	assertFile = function(self, fname, tol)
+		if not tol then tol = 0 end
+
 		self.test = self.test + 1
 
 		mandatoryArgument(1, "string", fname)
+		mandatoryArgument(2, "number", tol)
 
-		if isDir(fname) then
+		if isDirectory(fname) then
 			self.fail = self.fail + 1
 			self:printError("It is not possible to use a directory as #1 for assertFile().")
 			return
-		elseif not isFile(fname) then
+		elseif not File(fname):exists() then
 			self.fail = self.fail + 1
 			self:printError(resourceNotFoundMsg(1, fname))
 			return
 		end
 
 		if not self.log then
-			rmFile(fname)
-			customError("It is not possible to use assertFile without a log directory location in a configuration file for the tests.")
+			File(fname):deleteIfExists()
+			customError("It is not possible to use assertFile without a 'log' directory.")
 		end
 
 		if not self.logs then self.logs = 0 end
@@ -224,52 +283,87 @@ UnitTest_ = {
 		if self.tlogs[fname] then
 			self.fail = self.fail + 1
 			self:printError("Log file '"..fname.."' is used in more than one assert.")
-			rmFile(fname)
+			File(fname):deleteIfExists()
 			return
 		end
 
 		self.tlogs[fname] = true
 
 		if not self.tmpdir then
-			self.tmpdir = tmpDir(".terrametmp_XXXXX") -- SKIP
+			self.tmpdir = Directory{tmp = true} -- SKIP
 		end
 
 		os.execute("cp \""..fname.."\" \""..self.tmpdir.."\"")
-		rmFile(fname)
+		File(fname):deleteIfExists()
 
-		if isFile(fname) then
+		if File(fname):exists() then
 			self.fail = self.fail + 1 -- SKIP
 			self:printError("Could not remove file '"..fname.."'.")
 			return
 		end
 
 		local s = sessionInfo().separator
-		local pkg = sessionInfo().package
-		local oldLog = packageInfo(pkg).path..s.."log"..s..self.log..s..fname
+		local oldLog = self.log..s..fname
 
-		if not isFile(oldLog) then
+		if not File(oldLog):exists() then
 			if not self.created_logs then -- SKIP
 				self.created_logs = 0 -- SKIP
 			end
 
 			self.created_logs = self.created_logs + 1 -- SKIP
-			_Gtme.printError("Creating '".._Gtme.makePathCompatibleToAllOS("log"..s..self.log..s..fname).."'.")
+			_Gtme.printError("Creating '".._Gtme.makePathCompatibleToAllOS("log"..s..sessionInfo().system..s..fname).."'.")
 			os.execute("cp \""..self.tmpdir..s..fname.."\" \""..oldLog.."\"") -- SKIP
 			self.test = self.test + 1 -- SKIP
 			self.success = self.success + 1 -- SKIP
 		else
-			local result = runCommand("diff \""..self.tmpdir..s..fname.."\" \""..oldLog.."\"")
+			oldLog = File(oldLog)
+			local newLog = File(self.tmpdir..s..fname)
 
-			if #result == 0 then
-				self.success = self.success + 1
-			else
-				_Gtme.printError("Files \n  '".._Gtme.makePathCompatibleToAllOS(oldLog).."'\nand\n  '"..self.tmpdir..s..fname.."'\nare different.")
-				forEachElement(result, function(_, value)
-					_Gtme.printError(value)
-				end)
+			local line = 1
+			local removeCR = function(str)
+				if not str then return nil end
+
+				if string.byte(string.sub(str, string.len(str))) == 13 then
+					return string.sub(str, 1, string.len(str) - 1)
+				end
+
+				return str
+			end
+
+			local oldStr = removeCR(oldLog:read())
+			local newStr = removeCR(newLog:read())
+
+			while oldStr and newStr do
+				local dist = levenshtein(oldStr, newStr)
+
+				if dist > tol then
+					_Gtme.printError("Error: In file '"..fname.."', strings do not match (line "..line.."):")
+					_Gtme.printError("Log file: '"..oldStr.."'")
+					_Gtme.printError("Test: '"..newStr.."'")
+					_Gtme.printError("There are "..dist.." characters different. The maximum tolerance is "..tol..".")
+
+					self.fail = self.fail + 1 -- SKIP
+					return false
+				end
+
+				line = line + 1 -- SKIP
+				oldStr = removeCR(oldLog:read())
+				newStr = removeCR(newLog:read())
+			end
+
+			if oldStr or newStr then
+				if not oldStr then oldStr = "<end of file>" end
+				if not newStr then newStr = "<end of file>" end
+
+				_Gtme.printError("Error: Strings do not match (line "..line.."):")
+				_Gtme.printError("Log file: '"..oldStr.."'")
+				_Gtme.printError("Test: '"..newStr.."'")
 
 				self.fail = self.fail + 1 -- SKIP
+				return false
 			end
+
+			self.success = self.success + 1
 		end
 	end,
 	--- Check if a given value is nil. Otherwise it generates an error.
@@ -324,8 +418,10 @@ UnitTest_ = {
 		verify(tolerance >= 0 and tolerance <= 1, "Argument #3 should be between 0 and 1, got "..tolerance..".")
 
 		local s = sessionInfo().separator
+
 		if not self.log then
-			customError("It is not possible to use assertSnapshot without a log directory location in a configuration file for the tests.")
+			File(file):deleteIfExists()
+			customError("It is not possible to use assertSnapshot without a 'log' directory.")
 		end
 
 		if not self.logs then
@@ -347,15 +443,13 @@ UnitTest_ = {
 		self.tlogs[file] = true
 
 		if not self.tmpdir then
-			self.tmpdir = tmpDir(".terrametmp_XXXXX") -- SKIP
+			self.tmpdir = Directory{tmp = true} -- SKIP
 		end
 
-		local newImage = self.tmpdir..s..file
+		local newImage = self.tmpdir..file
+		local oldImage = self.log..file
 
-		local pkg = sessionInfo().package
-		local oldImage = packageInfo(pkg).path..s.."log"..s..self.log..s..file
-
-		if not isFile(oldImage) then
+		if not File(oldImage):exists() then
 			observer:save(oldImage) -- SKIP
 
 			if not self.created_logs then -- SKIP
@@ -363,7 +457,7 @@ UnitTest_ = {
 			end
 
 			self.created_logs = self.created_logs + 1 -- SKIP
-			_Gtme.printError("Creating '".._Gtme.makePathCompatibleToAllOS("log"..s..self.log..s..file).."'.")
+			_Gtme.printError("Creating '".._Gtme.makePathCompatibleToAllOS("log"..s..sessionInfo().system..s..file).."'.")
 			self.test = self.test + 1 -- SKIP
 			self.success = self.success + 1 -- SKIP
 		else
@@ -374,14 +468,11 @@ UnitTest_ = {
 
 			if merror <= tolerance then
 				self.success = self.success + 1
-			elseif tolerance > 0 then
-				local message = "Files \n  '".._Gtme.makePathCompatibleToAllOS("log"..s..self.log..s..file)
-					.."'\nand\n  '"..newImage.."'\nare different." -- SKIP
-					.."\nThe maximum tolerance is "..tolerance..", but got "..merror.."." -- SKIP
-				self:printError(message)
-				self.fail = self.fail + 1 -- SKIP
 			else
-				self:printError("Files \n  '".._Gtme.makePathCompatibleToAllOS("log"..s..self.log..s..file).."'\nand\n  '"..newImage.."'\nare different.")
+				local message = "Files \n  '".._Gtme.makePathCompatibleToAllOS("log"..s..sessionInfo().system..s..file)
+					.."'\nand\n  '"..newImage.."'\nare different." -- SKIP
+					.." The maximum tolerance is "..tolerance..", but got "..merror.."." -- SKIP
+				self:printError(message)
 				self.fail = self.fail + 1 -- SKIP
 			end
 		end
@@ -407,21 +498,6 @@ UnitTest_ = {
 			self:printError("Test should be "..mtype.." got "..type(value)..".")
 		end
 	end,
-	--- Clear the screen, removing all the visualization objects.
-	-- Whenever there is any visualization object, it might sleep the tests for some time before
-	-- removing them. The sleeping time is the value of a variable named sleep
-	-- in the configuration file for the tests, or zero if it does not exist. 
-	-- This function is automatically called after executing each test and each example
-	-- of the package.
-	-- @usage unitTest = UnitTest{}
-	-- unitTest:clear()
-	clear = function(self)
-		if #_Gtme.createdObservers > 0 then
-			delay(self.sleep)
-			clean()
-			self.delayed_time = self.delayed_time + self.sleep
-		end
-	end,
 	--- Internal function to print error messages along the tests.
 	-- @arg msg A string with the error message.
 	-- @usage -- DONTRUN
@@ -431,7 +507,7 @@ UnitTest_ = {
 		local level = 1
 		local info = debug.getinfo(level)
 		local infoSource = _Gtme.makePathCompatibleToAllOS(info.source)
-		while not string.match(infoSource, "/tests/") do
+		while debug.getinfo(level + 1) and not string.match(infoSource, "/tests/") do
 			level = level + 1
 			info = debug.getinfo(level)
 			infoSource = _Gtme.makePathCompatibleToAllOS(info.source)
@@ -472,15 +548,13 @@ local metaTableUnitTest_ = {
 	__index = UnitTest_
 }
 
---- Type for testing packages. All its arguments (but sleep) are necessary only when the tests
+--- Type for testing packages. All its arguments are necessary only when the tests
 -- work with database access.
 -- @arg data.source Name of the data source. See CellularSpace.
 -- @arg data.host Name of the host. See CellularSpace.
 -- @arg data.port Number of the port. See CellularSpace.
 -- @arg data.password A password. See CellularSpace.
 -- @arg data.user A user name. See CellularSpace.
--- @arg data.sleep A number indicating the amount of time to sleep every time there is a UnitTest:clear() in
--- the tests as well as in the end of each test that creates some visualization object.
 -- @usage unitTest = UnitTest{}
 function UnitTest(data)
 	setmetatable(data, metaTableUnitTest_)

@@ -77,7 +77,7 @@ return{
 			unitTest:assert(cell.x > 7)
 			unitTest:assert(cell.y > 5)
 			unitTest:assert(cell.y <= orderMemory)
-			orderMemory = cell.y 
+			orderMemory = cell.y
 		end)
 		unitTest:assertEquals(8, cont)
 
@@ -156,10 +156,11 @@ return{
 			target = cs1,
 			select = function() return true end
 		}
-		unitTest:assertEquals(tostring(tr1), [[cells   vector of size 200
-cObj_   userdata
+		unitTest:assertEquals(tostring(tr1), [[cObj_   userdata
+cells   vector of size 200
 load    function
 parent  CellularSpace
+random  boolean [false]
 select  function
 xyz     function
 ]])
@@ -250,7 +251,7 @@ xyz     function
 
 		unitTest:assertEquals(100, #it)
 	end,
-	rebuild = function(unitTest) 
+	rebuild = function(unitTest)
 		local cs = CellularSpace{xdim = 5}
 
 		forEachCell(cs, function(cell)
@@ -299,6 +300,25 @@ xyz     function
 		end)
 
 		unitTest:assertEquals(#tr, 10)
+
+		tr = Trajectory{
+			target = cs,
+			random = true
+		}
+
+		unitTest:assertEquals(#tr, 25)
+
+		tr:rebuild()
+		unitTest:assertEquals(#tr, 25)
+		unitTest:assertEquals(tr.cells[2].value, 11)
+
+		tr:rebuild()
+		unitTest:assertEquals(#tr, 25)
+		unitTest:assertEquals(tr.cells[2].value, 14)
+
+		tr:rebuild()
+		unitTest:assertEquals(#tr, 25)
+		unitTest:assertEquals(tr.cells[2].value, 20)
 	end,
 	sort = function(unitTest)
 		local cs = CellularSpace{xdim = 10}
@@ -328,6 +348,6 @@ xyz     function
 			cont = cont + 1
 		end)
 		unitTest:assertEquals(100, cont)
-	end	
+	end
 }
 

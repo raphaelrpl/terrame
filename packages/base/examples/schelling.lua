@@ -29,12 +29,10 @@ agent = Agent{
 		end
 	end,
 	isUnhappy = function(agent)
-		local mycell = agent:getCell()
 		local likeme = 0
 
-		forEachNeighbor(mycell, function(_, neigh)
-			local other = neigh:getAgent()
-			if other and other.color == agent.color then
+		forEachNeighborAgent(agent, function(other)
+			if other.color == agent.color then
 				likeme = likeme + 1
 			end
 		end)
@@ -62,7 +60,7 @@ society = Society {
 	quantity = NAGTS * NDIM * NDIM,
 	unhappy_agents = function(self)
 		if not self.ua then
-			self.ua = Group { 
+			self.ua = Group {
 				target = self,
 				select = function(agent)
 					return agent:isUnhappy()
@@ -112,7 +110,7 @@ timer = Timer{
 			myagent:move(mycell)
 		else
 			return false
-		end 
+		end
 	end},
 	Event{action = map},
 	Event{action = chart}

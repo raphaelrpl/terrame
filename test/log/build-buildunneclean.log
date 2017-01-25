@@ -3,16 +3,16 @@ Parsing configuration file 'config/all.lua'
 
 Testing package 'buildunneclean'
 Loading configuration file 'config/all.lua'
-Using log directory 'log/mac'
+Using log directory '/Applications/terrame.app/Contents/MacOS/packages/buildunneclean/log/mac/'
 Loading package 'buildunneclean'
 Looking for overwritten variables
 Looking for documented functions
 Looking for package functions
 Looking for lines of source code
+'tests/unnec4.txt' is not a directory neither a .lua file and will be ignored.
+'tests/alternative/unnec5.txt' is not a directory neither a .lua file and will be ignored.
 'tests/alternative/abc/unnec6.txt' is not a directory neither a .lua file and will be ignored.
 Directory 'tests/alternative/abc' is empty.
-'tests/alternative/unnec5.txt' is not a directory neither a .lua file and will be ignored.
-'tests/unnec4.txt' is not a directory neither a .lua file and will be ignored.
 Testing tests/Tube.lua
 Testing Tube
 Checking if all asserts were executed
@@ -29,7 +29,7 @@ Checking lines of source code
 Checking Tube.lua
 Checking Utils.lua
 Testing examples
-Test file 'unnec2.txt' does not have a valid extension
+Test file 'unnec2.txt' does not have a valid extension.
 Testing ipd
 Checking logs
 
@@ -47,6 +47,7 @@ All 3 tested functions exist in the source code of the package.
 No tested function creates or updates any global variable.
 No function prints any text on the screen.
 No assertError() calls have error messages pointing to internal files.
+No file was created along the tests.
 All 2 functions of the package were tested.
 All lines from the source code were executed.
 All 1 examples were successfully executed.
@@ -56,7 +57,7 @@ Summing up, 4 problems were found during the tests.
 Creating documentation of package 'buildunneclean'
 Building documentation for package 'buildunneclean'
 Loading package 'buildunneclean'
-Test file 'unnec2.txt' does not have a valid extension
+Test file 'unnec2.txt' does not have a valid extension.
 Package 'buildunneclean' has no data
 Package 'buildunneclean' has no fonts
 Parsing lua files
@@ -83,8 +84,6 @@ Building and checking HTML files
 Building doc/index.html
 Building doc/files/Utils.html
 Building doc/files/examples.html
-Building doc/files/data.html
-Building doc/files/font.html
 Building doc/files/models.html
 Checking images
 Checking data.lua
@@ -97,14 +96,15 @@ Checking Utils.lua
 Checking if all Models are documented
 
 Documentation report for package 'buildunneclean':
-Documentation was built in 0.67 seconds.
-5 HTML files were created.
+Documentation was built in 0.06 seconds.
+4 HTML files were created.
 All files are documented.
 All fields of 'description.lua' are correct.
 No problems were found in the documentation of data.
 No problems were found in the documentation of fonts.
 All source code lines starting with --- are valid.
 The single Model is correctly documented.
+All projects were successfully processed.
 All 1 global functions of the package are documented.
 All functions of each file are declared only once.
 All descriptions end with a correct character.
@@ -136,6 +136,8 @@ File 'buildunneclean/tests/alternative/unnec5.txt' is unnecessary and will be ig
 File 'buildunneclean/tests/unnec4.txt' is unnecessary and will be ignored.
 Checking fonts
 Looking for hidden files
+File 'buildunneclean/.hidden' is unnecessary and will be ignored.
+File 'buildunneclean/lua/.hidden2' is unnecessary and will be ignored.
 Cleaning package
 Removing 'log' directory
 Checking Models

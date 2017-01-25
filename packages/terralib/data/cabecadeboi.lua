@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------------------
 -- TerraME - a software platform for multiple scale spatially-explicit dynamic modeling.
--- Copyright (C) 2001-2016 INPE and TerraLAB/UFOP -- www.terrame.org
+-- Copyright (C) 2001-2017 INPE and TerraLAB/UFOP -- www.terrame.org
 
 -- This code is part of the TerraME framework.
 -- This framework is free software; you can redistribute it and/or
@@ -40,7 +40,7 @@ local project = Project{
 cl = Layer{
 	project = project,
 	clean = true,
-	file = "mycells.shp",
+	file = "cabecadeboi.shp",
 	input = "box",
 	name = "cells",
 	resolution = 200,
@@ -48,15 +48,13 @@ cl = Layer{
 
 cl:fill{
 	operation = "average",
-	clean = true,
 	layer = "altimetria",
-	output = "mycells-avg",
 	attribute = "height"
 }
 
 cs = CellularSpace{
 	project = project,
-	layer = "mycells-avg"
+	layer = "cells"
 }
 
 Map{
@@ -67,10 +65,4 @@ Map{
 	color = "RdPu",
 	slices = 7
 }
-
---[[
-if isFile(projName)          then rmFile(projName)          end
-if isFile("mycells.shp")     then rmFile("mycells.shp")     end
-if isFile("mycells-avg.shp") then rmFile("mycells-avg.shp") end
---]]
 

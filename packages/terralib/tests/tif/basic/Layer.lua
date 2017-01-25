@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------------------
 -- TerraME - a software platform for multiple scale spatially-explicit dynamic modeling.
--- Copyright (C) 2001-2016 INPE and TerraLAB/UFOP -- www.terrame.org
+-- Copyright (C) 2001-2017 INPE and TerraLAB/UFOP -- www.terrame.org
 
 -- This code is part of the TerraME framework.
 -- This framework is free software; you can redistribute it and/or
@@ -32,21 +32,18 @@ return {
 		}
 
 		local layerName1 = "Prodes"
-
 		Layer{
 			project = proj,
 			name = layerName1,
 			file = filePath("PRODES_5KM.tif", "terralib")
-		}	
-		
+		}
+
 		local filePath1 = "prodes_cells_tif_basic.shp"
-		
-		if isFile(filePath1) then
-			rmFile(filePath1)
-		end
-		
+
+		File(filePath1):deleteIfExists()
+
 		local clName1 = "Prodes_Cells"
-		
+
 		local cl1 = Layer{
 			project = proj,
 			source = "shp",
@@ -54,12 +51,12 @@ return {
 			name = clName1,
 			resolution = 60e3,
 			file = filePath1
-		}	
-		
+		}
+
 		unitTest:assertEquals(clName1, cl1.name)
 		unitTest:assertEquals(cl1.source, "shp")
-		unitTest:assertEquals(cl1.file, _Gtme.makePathCompatibleToAllOS(currentDir().."/"..filePath1))			
-		
+		unitTest:assertEquals(cl1.file, currentDir()..filePath1)
+
 		-- #1152
 		-- local host = "localhost"
 		-- local port = "5432"
@@ -68,7 +65,7 @@ return {
 		-- local database = "postgis_22_sample"
 		-- local encoding = "CP1252"
 		-- local tableName = "prodes_pg_cells"
-		
+
 		-- local pgData = {
 			-- type = "POSTGIS",
 			-- host = host,
@@ -78,14 +75,14 @@ return {
 			-- database = database,
 			-- table = tableName,
 			-- encoding = encoding
-			
-		-- }		
-		
+
+		-- }
+
 		-- -- USED ONLY TO TESTS
 		-- local tl = TerraLib{}
 		-- tl:dropPgTable(pgData)
-		-- local clName2 = "ProdesPg"	
-		
+		-- local clName2 = "ProdesPg"
+
 		-- local layer2 = Layer{
 			-- project = proj,
 			-- source = "postgis",
@@ -95,50 +92,79 @@ return {
 			-- user = user,
 			-- password = password,
 			-- database = database,
-			-- table = tableName			
-		-- }				
-		
+			-- table = tableName
+		-- }
+
 		-- END
 		-- tl:dropPgTable(pgData)
-		
-		if isFile(filePath1) then
-			rmFile(filePath1)
-		end				
-		
-		if isFile(projName) then
-			rmFile(projName)
-		end		
+
+		File(filePath1):deleteIfExists()
+		File(projName):deleteIfExists()
+	end,
+	__len = function(unitTest)
+		local projName = "layer_tiff_basic.tview"
+
+		local customWarningBkp = customWarning
+		customWarning = function(msg)
+			return msg
+		end
+
+		local proj = Project{
+			file = projName,
+			prodes = filePath("test/prodes_polyc_10k.tif", "terralib"),
+			clean = true
+		}
+
+		customWarning = customWarningBkp
+
+		unitTest:assertEquals(#proj.prodes, 20020)
+
+		proj.file:delete()
 	end,
 	fill = function(unitTest)
-		local projName = "cellular_layer_fill_tiff.tview"
+		local projName = "layer_fill_tif.tview"
+
+		File(projName):deleteIfExists()
 
 		local proj = Project{
 			file = projName,
 			clean = true
 		}
 
-		local layerName1 = "limitepa"
-		Layer{
+		local customWarningBkp = customWarning
+		customWarning = function(msg)
+			return msg
+		end
+
+		local layerName1 = "limiteitaituba"
+		local l1 = Layer{
 			project = proj,
 			name = layerName1,
-			file = filePath("limitePA_polyc_pol.shp", "terralib")
+			file = filePath("Setores_Censitarios_2000_pol.shp", "terralib")
 		}
 
 		local prodes = "prodes"
 		Layer{
 			project = proj,
 			name = prodes,
-			file = filePath("prodes_polyc_10k.tif", "terralib")	
+			file = filePath("Desmatamento_2000.tif", "terralib"),
+			srid = l1.srid
 		}
-		
-		local clName1 = "cells"
-		
+
+		local altimetria = "altimetria"
+		Layer{
+			project = proj,
+			name = altimetria,
+			file = filePath("altimetria.tif", "terralib"),
+			srid = l1.srid
+		}
+
+		local clName1 = "CellsTif"
+
 		local shapes = {}
-		
+
 		local shp1 = clName1..".shp"
-		if isFile(shp1) then
-			rmFile(shp1)
-		end
+		File(shp1):deleteIfExists()
 		table.insert(shapes, shp1)
 
 		local cl = Layer{
@@ -146,10 +172,9 @@ return {
 			source = "shp",
 			input = layerName1,
 			name = clName1,
-			resolution = 20000,
+			resolution = 10000,
 			file = clName1..".shp"
 		}
-
 
 		-- MODE
 
@@ -161,25 +186,25 @@ return {
 
 		local cs = CellularSpace{
 			project = proj,
-			layer = cl.name 
+			layer = cl.name
 		}
 
 		local count = 0
 		forEachCell(cs, function(cell)
 			unitTest:assertType(cell.prod_mode, "string")
-			if not belong(cell.prod_mode, {"0", "49", "169", "253", "254"}) then
-				-- print(cell.prod_mode)
+			if not belong(cell.prod_mode, {"7", "87", "167", "255"}) then
+				print(cell.prod_mode)
 				count = count + 1
 			end
 		end)
 
-		unitTest:assertEquals(count, 163)
+		unitTest:assertEquals(count, 0)
 
 		local map = Map{
 			target = cs,
 			select = "prod_mode",
-			value = {"0", "49", "169", "253", "254"},
-			color = {"red", "green", "blue", "orange", "purple"}
+			value = {"7", "87", "167", "255"},
+			color = {"red", "green", "blue", "orange"}
 		}
 
 		unitTest:assertSnapshot(map, "tiff-mode.png")
@@ -189,25 +214,27 @@ return {
 		cl:fill{
 			operation = "minimum",
 			attribute = "prod_min",
-			layer = prodes
+			layer = altimetria
 		}
 
 		cs = CellularSpace{
 			project = proj,
-			layer = cl.name 
+			layer = cl.name
 		}
 
 		forEachCell(cs, function(cell)
 			unitTest:assertType(cell.prod_min, "number")
 			unitTest:assert(cell.prod_min >= 0)
-			unitTest:assert(cell.prod_min <= 254)
+			unitTest:assert(cell.prod_min <= 185)
 		end)
 
 		map = Map{
 			target = cs,
 			select = "prod_min",
-			value = {0, 49, 169, 253, 254},
-			color = {"red", "green", "blue", "orange", "purple"}
+			min = 0,
+			max = 255,
+			color = "RdPu",
+			slices = 10
 		}
 
 		unitTest:assertSnapshot(map, "tiff-min.png")
@@ -217,25 +244,27 @@ return {
 		cl:fill{
 			operation = "maximum",
 			attribute = "prod_max",
-			layer = prodes
+			layer = altimetria
 		}
 
 		cs = CellularSpace{
 			project = proj,
-			layer = cl.name 
+			layer = cl.name
 		}
 
 		forEachCell(cs, function(cell)
 			unitTest:assertType(cell.prod_max, "number")
-			unitTest:assert(cell.prod_max >= 0)
-			unitTest:assert(cell.prod_max <= 254)
+			unitTest:assert(cell.prod_max >= 7)
+			unitTest:assert(cell.prod_max <= 255)
 		end)
 
 		map = Map{
 			target = cs,
 			select = "prod_max",
-			value = {0, 49, 169, 253, 254},
-			color = {"red", "green", "blue", "orange", "purple"}
+			min = 0,
+			max = 255,
+			color = "RdPu",
+			slices = 10
 		}
 
 		unitTest:assertSnapshot(map, "tiff-max.png")
@@ -245,12 +274,12 @@ return {
 		cl:fill{
 			operation = "sum",
 			attribute = "prod_sum",
-			layer = prodes
+			layer = altimetria
 		}
 
 		cs = CellularSpace{
 			project = proj,
-			layer = cl.name 
+			layer = cl.name
 		}
 
 		forEachCell(cs, function(cell)
@@ -262,9 +291,9 @@ return {
 			target = cs,
 			select = "prod_sum",
 			min = 0,
-			max = 2300,
+			max = 24000,
 			color = "RdPu",
-			slices = 8
+			slices = 10
 		}
 
 		unitTest:assertSnapshot(map, "tiff-sum.png")
@@ -279,21 +308,21 @@ return {
 
 		cs = CellularSpace{
 			project = proj,
-			layer = cl.name 
+			layer = cl.name
 		}
 
-		local cov = {0, 49, 169, 253, 254}
+		local cov = {7, 87, 167, 255}
 
 		forEachCell(cs, function(cell)
 			local sum = 0
 
 			for i = 1, #cov do
-				unitTest:assertType(cell["cov_"..cov[i]],   "number")
+				unitTest:assertType(cell["cov_"..cov[i]], "number")
 				sum = sum + cell["cov_"..cov[i]]
 			end
 
 			--unitTest:assert(math.abs(sum - 100) < 0.001) -- SKIP
-			
+
 			--if math.abs(sum - 100) > 0.001 then
 			--	print(sum)
 			--end
@@ -313,29 +342,6 @@ return {
 		end
 
 		-- AVERAGE
-
-		Layer{
-			project = proj,
-			name = "box",
-			file = filePath("elevation_box.shp", "terralib")
-		}
-
-		Layer{
-			project = proj,
-			name = "altimetria",
-			file = filePath("elevation.tif", "terralib")
-		}
-
-		if isFile("mycells.shp") then rmFile("mycells.shp") end
-		table.insert(shapes, "mycells.shp")
-		
-		cl = Layer{
-			project = proj,
-			file = "mycells.shp",
-			input = "box",
-			name = "cells_elev",
-			resolution = 200,
-		}
 
 		cl:fill{
 			operation = "average",
@@ -384,46 +390,68 @@ return {
 		unitTest:assertSnapshot(map, "tiff-std.png")
 
 		forEachElement(shapes, function(_, value)
-			rmFile(value)
+			File(value):delete()
 		end)
 
-		unitTest:assertFile(projName)
+		-- unitTest:assertFile(projName) -- SKIP #1242
+		File(projName):delete() -- #1242
+
+		customWarning = customWarningBkp
 	end,
 	representation = function(unitTest)
-		local projName = "cellular_layer_fill_tiff_repr.tview"
+		local projName = "layer_fill_tiff_repr.tview"
 
 		local proj = Project{
 			file = projName,
 			clean = true
 		}
 
+		local customWarningBkp = customWarning
+		customWarning = function(msg)
+			return msg
+		end
+
 		local prodes = "prodes"
 		local l = Layer{
 			project = proj,
 			name = prodes,
-			file = filePath("prodes_polyc_10k.tif", "terralib")	
+			file = filePath("test/prodes_polyc_10k.tif", "terralib")
 		}
 
 		unitTest:assertEquals(l:representation(), "raster")
-		
-		unitTest:assertFile(projName)
+
+		-- unitTest:assertFile(projName) -- SKIP #1242
+		File(projName):delete() -- #1242
+
+		customWarning = customWarningBkp
 	end,
 	bands = function(unitTest)
-		local projName = "cellular_layer_fill_tiff_repr.tview"
+		local projName = "layer_tif_bands.tview"
+
+		File(projName):deleteIfExists()
 
 		local proj = Project{
 			file = projName,
 			clean = true
 		}
 
+		local customWarningBkp = customWarning
+		customWarning = function(msg)
+			return msg
+		end
+
 		local prodes = "prodes"
 		local l = Layer{
 			project = proj,
 			name = prodes,
-			file = filePath("prodes_polyc_10k.tif", "terralib")	
+			file = filePath("test/prodes_polyc_10k.tif", "terralib")
 		}
 
-		unitTest:assertEquals(l:bands(), 4)
+		unitTest:assertEquals(l:bands(), 1)
+
+		File(projName):delete()
+
+		customWarning = customWarningBkp
 	end,
 	projection = function(unitTest)
 		local projName = "tif_basic.tview"
@@ -434,18 +462,17 @@ return {
 		}
 
 		local layerName1 = "Prodes"
-
 		local layer = Layer{
 			project = proj,
 			name = layerName1,
-			file = filePath("PRODES_5KM.tif", "terralib")
+			file = filePath("PRODES_5KM.tif", "terralib"),
+			srid = 100017
 		}
-		
-		unitTest:assertEquals(layer:projection(), "SAD69 / UTM zone 21S - old 29191. SRID: 100017.0. PROJ4: +proj=utm +zone=21 +south +ellps=aust_SA +towgs84=-57,1,-41,0,0,0,0 +units=m +no_defs ")
-		
-		rmFile(proj.file)
+		unitTest:assertEquals(layer:projection(), "'SAD69 / UTM zone 21S - old 29191', with SRID: 100017.0 (PROJ4: '+proj=utm +zone=21 +south +ellps=aust_SA +towgs84=-57,1,-41,0,0,0,0 +units=m +no_defs ').")
+
+		proj.file:delete()
 	end,
-	properties = function(unitTest)
+	attributes = function(unitTest)
 		local projName = "tif_basic.tview"
 
 		local proj = Project{
@@ -454,18 +481,54 @@ return {
 		}
 
 		local layerName1 = "Prodes"
-
 		local layer = Layer{
 			project = proj,
 			name = layerName1,
 			file = filePath("PRODES_5KM.tif", "terralib")
 		}
-		
-		local props = layer:properties()
-		
+
+		local props = layer:attributes()
+
 		unitTest:assertNil(props)
-		
-		rmFile(proj.file)	
+
+		proj.file:delete()
+	end,
+	dummy = function(unitTest)
+		local projName = "layer_tif_bands.tview"
+
+		File(projName):deleteIfExists()
+
+		local proj = Project{
+			file = projName,
+			clean = true
+		}
+
+		local customWarningBkp = customWarning
+		customWarning = function(msg)
+			return msg
+		end
+
+		local prodes = "prodes"
+		local l = Layer{
+			project = proj,
+			name = prodes,
+			file = filePath("test/prodes_polyc_10k.tif", "terralib")
+		}
+
+		unitTest:assertEquals(l:dummy(0), 255.0)
+
+		local portos = "Portos"
+		l = Layer{
+			project = proj,
+			name = portos,
+			file = filePath("PORTOS_AMZ_pt.shp", "terralib")
+		}
+
+		unitTest:assertNil(l:dummy(0))
+
+		File(projName):delete()
+
+		customWarning = customWarningBkp
 	end
 }
 

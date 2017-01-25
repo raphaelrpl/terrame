@@ -1,6 +1,7 @@
 Building package 'noexamples'
 
 Testing package 'noexamples'
+Creating log directory in '/Applications/terrame.app/Contents/MacOS/packages/noexamples/log/mac/'.
 Loading package 'noexamples'
 Looking for overwritten variables
 Looking for documented functions
@@ -17,7 +18,7 @@ The package has no examples
 Skipping logs check
 
 Functional test report for package 'noexamples':
-Tests were executed in 0.2 seconds.
+Tests were executed in 0.04 seconds.
 No print() calls were found when loading the package.
 No variable is overwritten when loading the package.
 There are no invalid files or directories in directory 'tests'.
@@ -29,6 +30,7 @@ All 1 tested functions exist in the source code of the package.
 No tested function creates or updates any global variable.
 No function prints any text on the screen.
 No assertError() calls have error messages pointing to internal files.
+No file was created along the tests.
 All 1 functions of the package were tested.
 No lines from the source code were verified.
 The package has no examples.
@@ -58,8 +60,6 @@ Error: Field 'date2' of 'description.lua' is unnecessary.
 Building and checking HTML files
 Building doc/index.html
 Building doc/files/single.html
-Building doc/files/data.html
-Building doc/files/font.html
 Checking images
 Checking data.lua
 Checking models
@@ -70,14 +70,15 @@ Checking single.lua
 Checking if all Models are documented
 
 Documentation report for package 'noexamples':
-Documentation was built in 0.76 seconds.
-4 HTML files were created.
+Documentation was built in 0.02 seconds.
+2 HTML files were created.
 All files are documented.
 One problem was found in 'description.lua'.
 No problems were found in the documentation of data.
 No problems were found in the documentation of fonts.
 All source code lines starting with --- are valid.
 There are no Models in the package.
+All projects were successfully processed.
 All 1 global functions of the package are documented.
 All functions of each file are declared only once.
 All descriptions end with a correct character.
@@ -111,10 +112,10 @@ Creating file 'noexamples_0.1.zip'
 Package 'noexamples' successfully zipped
 
 Build report for package 'noexamples':
-Package was built in 2.64 seconds.
+Package was built in 0.24 seconds.
 Build created file 'noexamples_0.1.zip'.
-Temporary files are saved in .terrame_noexamples_KXaVZ
-MD5 sum for the package is 42808fce012eef591ef91892a9d146a9
+Temporary files are saved in .terrame_noexamples_54PM9
+MD5 sum for the package is c4fdf18689337943fa715c5a51add34d
 The package does not have a license file.
 2 errors were found in the documentation.
 There are no unnecessary files in the package.

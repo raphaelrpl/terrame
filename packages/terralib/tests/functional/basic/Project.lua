@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------------------
 -- TerraME - a software platform for multiple scale spatially-explicit dynamic modeling.
--- Copyright (C) 2001-2016 INPE and TerraLAB/UFOP -- www.terrame.org
+-- Copyright (C) 2001-2017 INPE and TerraLAB/UFOP -- www.terrame.org
 
 -- This code is part of the TerraME framework.
 -- This framework is free software; you can redistribute it and/or
@@ -24,51 +24,51 @@
 
 return {
 	Project = function(unitTest)
+		local file = File("amazonia.tview")
+
 		local proj1 = Project{
-			file = "amazonia",
+			file = tostring(file),
 			clean = true,
 			author = "Avancini",
 			title = "The Amazonia"
 		}
-		
+
 		unitTest:assertType(proj1, "Project")
-		unitTest:assertEquals(proj1.file, "amazonia.tview")
-		
+		unitTest:assertEquals(proj1.file, file)
+
 		local proj2 = Project{
-			file = "amazonia"
-		}		
+			file = tostring(file)
+		}
 
 		unitTest:assertEquals(proj1.author, proj2.author)
 		unitTest:assertEquals(proj1.title, proj2.title)
 		unitTest:assertEquals(proj1.file, proj2.file)
 
 		local proj3 = Project{
-			file = "amazonia.tview"
+			file = file:name()
 		}
 
 		unitTest:assertEquals(proj1.author, proj3.author)
 		unitTest:assertEquals(proj1.title, proj3.title)
-		unitTest:assertEquals(proj1.file, proj3.file)
+		unitTest:assertEquals(proj3.file, File("amazonia.tview"))
 
 		local proj3clean = Project{
-			file = "amazonia.tview",
+			file = file:name(),
 			clean = true
 		}
 
 		unitTest:assertEquals(proj1.author, proj3clean.author)
 		unitTest:assertEquals(proj1.title, proj3clean.title)
-		unitTest:assertEquals(proj1.file, proj3clean.file)
+		unitTest:assertEquals(proj3clean.file, File("amazonia.tview"))
+		-- unitTest:assertFile(file:name(true)) -- SKIP #TODO(#1242)
 
-		unitTest:assertFile("amazonia.tview")
+		file:deleteIfExists()
 
-		local proj4Name = "notitlenoauthor.tview"
-
-		if isFile(proj4Name) then
-			rmFile(proj4Name)
-		end
+		file = File("notitlenoauthor.tview")
+		file:deleteIfExists()
 
 		local proj4 = Project{
-			file = proj4Name
+			file = file:name(true)
 		}
 
 		unitTest:assertEquals(proj4.title, "No title")
@@ -77,8 +77,13 @@ return {
 		unitTest:assertType(proj4.layers, "table")
 		unitTest:assertEquals(getn(proj4.layers), 0)
 
+		file:deleteIfExists()
+
+		file = File("emas.tview")
+		file:deleteIfExists()
+
 		local proj5 = Project{
-			file = "emas.tview",
+			file = file:name(true),
 			clean = true,
 			author = "Almeida, R.",
 			title = "Emas database",
@@ -90,26 +95,31 @@ return {
 
 		unitTest:assertType(proj5.firebreak, "Layer")
 		unitTest:assertType(proj5.cover, "Layer")
+
 		unitTest:assertType(proj5.river, "Layer")
 		unitTest:assertType(proj5.limit, "Layer")
+		-- unitTest:assertFile(file:name(true)) -- SKIP #TODO(#1242)
+
+		file:deleteIfExists()
 	end,
 	__tostring = function(unitTest)
+		local file = File("tostring.tview")
 		local proj1 = Project{
-			file = "tostring",
+			file = file:name(),
 			clean = true,
 			author = "Avancini",
 			title = "The Amazonia"
 		}
-		
-		unitTest:assertEquals(tostring(proj1), [[author       string [Avancini]
-clean        boolean [true]
-description  string []
-file         string [tostring.tview]
-layers       vector of size 0
-terralib     TerraLib
-title        string [The Amazonia]
+
+		unitTest:assertEquals(tostring(proj1), [[author    string [Avancini]
+clean     boolean [true]
+file      File
+layers    vector of size 0
+terralib  TerraLib
+title     string [The Amazonia]
 ]])
 
-		unitTest:assertFile("tostring.tview")
+		-- unitTest:assertFile("tostring.tview") -- SKIP #TODO(#1242)
+		file:deleteIfExists()
 	end
 }

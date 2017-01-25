@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------------------
 -- TerraME - a software platform for multiple scale spatially-explicit dynamic modeling.
--- Copyright (C) 2001-2016 INPE and TerraLAB/UFOP -- www.terrame.org
+-- Copyright (C) 2001-2017 INPE and TerraLAB/UFOP -- www.terrame.org
 
 -- This code is part of the TerraME framework.
 -- This framework is free software; you can redistribute it and/or
@@ -149,6 +149,31 @@ return{
 			Choice{min = 1, step = 3}
 		end
 		unitTest:assertError(error_func, "Attribute 'step' requires 'max' and 'min'.")
+
+		error_func = function()
+			Choice{min = 1, slices = 4}
+		end
+		unitTest:assertError(error_func, "Attribute 'slices' requires 'max' and 'min'.")
+
+		error_func = function()
+			Choice{min = 1, max = 4, step = 1, slices = 4}
+		end
+		unitTest:assertError(error_func, "It is not possible to use arguments 'step' and 'slices' at the same time.")
+
+		error_func = function()
+			Choice{min = 2, max = 20, slices = "abc"}
+		end
+		unitTest:assertError(error_func, incompatibleTypeMsg("slices", "number", "abc"))
+
+		error_func = function()
+			Choice{min = 2, max = 20, slices = 1}
+		end
+		unitTest:assertError(error_func, "Argument 'slices' (1) should be greater than two.")
+
+		error_func = function()
+			Choice{min = 2, max = 20, slices = 2.5}
+		end
+		unitTest:assertError(error_func, "Invalid 'slices' value (2.5). It could be 2 or 3.")
 	end
 }
 

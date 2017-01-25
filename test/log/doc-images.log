@@ -3,6 +3,7 @@ Loading package 'images'
 Parsing 'data.lua'
 Processing lua files
 Checking directory 'data'
+Checking properties of data files
 Package 'images' has no fonts
 Parsing lua files
 Parsing lua/Tube.lua
@@ -35,7 +36,6 @@ Building doc/index.html
 Building doc/files/Utils.html
 Building doc/files/examples.html
 Building doc/files/data.html
-Building doc/files/font.html
 Building doc/files/models.html
 Checking images
 Checking data.lua
@@ -53,7 +53,7 @@ Checking Utils.lua
 Checking if all Models are documented
 
 Documentation report for package 'images':
-Documentation was built in 1.18 seconds.
+Documentation was built in 0.28 seconds.
 5 HTML files were created.
 All files are documented.
 All fields of 'description.lua' are correct.
@@ -61,6 +61,7 @@ No problems were found in the documentation of data.
 No problems were found in the documentation of fonts.
 All source code lines starting with --- are valid.
 All 2 Models are correctly documented.
+All projects were successfully processed.
 All 1 global functions of the package are documented.
 All functions of each file are declared only once.
 All descriptions end with a correct character.

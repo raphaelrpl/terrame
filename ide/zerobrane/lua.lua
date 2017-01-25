@@ -256,7 +256,7 @@ return {
 
     [[assert collectgarbage dofile error getfenv getmetatable ipairs load loadfile loadstring
       module next pairs pcall print rawequal rawget rawlen rawset require
-      select setfenv setmetatable tonumber tostring type unpack xpcall]],
+      setfenv setmetatable tonumber tostring type unpack xpcall]],
 
     [[bit32.arshift bit32.band bit32.bnot bit32.bor bit32.btest bit32.bxor bit32.extract
       bit32.lrotate bit32.lshift bit32.replace bit32.rrotate bit32.rshift
@@ -276,11 +276,11 @@ return {
       string.byte string.char string.dump string.find string.format string.gmatch string.gsub string.len
       string.lower string.match string.rep string.reverse string.sub string.upper
       byte find format gmatch gsub len lower match rep reverse sub upper
-      Agent Automaton Cell CellularSpace Chart Choice Clock Environment Event Flow
-      Group InternetSender Jump Layer LogFile Mandatory Map Model Neighborhood Project Random SocialNetwork Society
-      State TextScreen Timer Trajectory UnitTest VisualTable  
+      Agent Automaton Cell CellularSpace Chart Choice Clock Directory Environment Event File Flow
+      Group InternetSender Jump Layer Log Mandatory Map Model Neighborhood Project Random SocialNetwork Society
+      State TextScreen Timer Trajectory UnitTest VisualTable 
       forEachAgent forEachCell forEachCellPair forEachConnection forEachElement forEachNeighbor forEachNeighborhood 
-      forEachFile forEachOrderedElement forEachSocialNetwork import
+      forEachFile forEachDirectory forEachOrderedElement forEachSocialNetwork import
       createNeighboorhood createSocialNetwork createPlacement
       greaterByCoord greaterByAttribute integrate
       table.concat table.insert table.maxn table.pack table.remove table.sort table.unpack]]

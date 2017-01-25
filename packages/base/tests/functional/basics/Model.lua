@@ -101,8 +101,8 @@ subwater         Choice
 ]])
 
 		unitTest:assertEquals(tostring(t), [[block            named table of size 6
-checkZero        boolean [false]
 cObj_            userdata
+checkZero        boolean [false]
 filter           function
 finalTime        number [10]
 flow             number [20]
@@ -117,6 +117,7 @@ soilCap          number [4]
 soilInf          number [5]
 subwater         number [4]
 timer            Timer
+title            function
 type_            string [Tube]
 water            number [200]
 ]])
@@ -202,6 +203,19 @@ water            number [200]
 
 		unitTest:assertEquals(t.water, 0)
 	end,
+	isRandom = function(unitTest)
+		unitTest:assert(not Tube:isRandom())
+
+		local RandomModel = Model{
+			init = function(model)
+				model.t2 = Timer{}
+			end,
+			random = true,
+			finalTime = 10
+		}
+
+		unitTest:assert(RandomModel:isRandom())
+	end,
 	run = function(unitTest)
 		local t = Tube{block = {level = 2}, filter = function() end}
 
@@ -249,6 +263,33 @@ water            number [200]
 	end,
 	configure = function(unitTest)
 		unitTest:assert(true)
+	end,
+	title = function(unitTest)
+		local MyTube = Model{
+			initialWater = 200,
+			sun = Choice{min = 0, default = 10},
+			finalTime = 100,
+			init = function(model)
+				model.timer = Timer{
+					Event{action = function() end}
+				}
+			end
+		}
+
+		local scenario0 = MyTube{}
+		unitTest:assertEquals("Default", scenario0:title())
+
+		local scenario1 = MyTube{initialWater = 100}
+		unitTest:assertEquals("Initial Water = 100", scenario1:title())
+
+		local scenario2 = MyTube{initialWater = 100, sun = 5}
+		unitTest:assertEquals("Initial Water = 100, Sun = 5", scenario2:title())
+
+		local scenario3 = MyTube{initialWater = 100, sun = 10}
+		unitTest:assertEquals("Initial Water = 100", scenario3:title())
+
+		local scenario4 = MyTube{initialWater = 100, finalTime = 50}
+		unitTest:assertEquals("Initial Water = 100", scenario4:title())
 	end
 }
 

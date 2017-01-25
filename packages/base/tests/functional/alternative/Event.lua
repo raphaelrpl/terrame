@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------------------
 -- TerraME - a software platform for multiple scale spatially-explicit dynamic modeling.
--- Copyright (C) 2001-2016 INPE and TerraLAB/UFOP -- www.terrame.org
+-- Copyright (C) 2001-2017 INPE and TerraLAB/UFOP -- www.terrame.org
 
 -- This code is part of the TerraME framework.
 -- This framework is free software; you can redistribute it and/or
@@ -89,9 +89,9 @@ return{
 		unitTest:assertError(error_func, "Argument 'message' is deprecated, use 'action' instead.")
 
 		error_func = function()
-			event = Event{myaction = function() end}
+			event = Event{action = function() end, myperiod = function() end}
 		end
-		unitTest:assertError(error_func, unnecessaryArgumentMsg("myaction", "action"))
+		unitTest:assertError(error_func, unnecessaryArgumentMsg("myperiod", "period"))
 
 		error_func = function()
 			event = Event{period = 1, priority = 1, action = function() end}
@@ -139,9 +139,8 @@ return{
 		end
 		unitTest:assertError(error_func, "Incompatible types. Attribute 'execute' from Society should be a function, got number.")
 
-
 		local cs = CellularSpace{
-			xdim = 10,
+			xdim = 3,
 			execute = 2
 		}
 
@@ -149,6 +148,46 @@ return{
 			Event{action = cs}
 		end
 		unitTest:assertError(error_func, "Incompatible types. Attribute 'execute' from CellularSpace should be a function, got number.")
+
+		error_func = function()
+			Event{action = cs, priority = "high"}
+		end
+		unitTest:assertError(error_func, defaultValueMsg("priority", -5))
+
+		local cell = Cell{}
+
+		error_func = function()
+			Event{action = cell, priority = "high"}
+		end
+		unitTest:assertError(error_func, defaultValueMsg("priority", -5))
+
+		local agent = Agent{}
+
+		error_func = function()
+			Event{action = agent, priority = "medium"}
+		end
+		unitTest:assertError(error_func, defaultValueMsg("priority", 0))
+
+		soc = Society{instance = Agent{}, quantity = 2}
+
+		error_func = function()
+			Event{action = soc, priority = "medium"}
+		end
+		unitTest:assertError(error_func, defaultValueMsg("priority", 0))
+
+		local group = Group{target = soc}
+
+		error_func = function()
+			Event{action = group, priority = "medium"}
+		end
+		unitTest:assertError(error_func, defaultValueMsg("priority", 0))
+
+		local traj = Trajectory{target = cs}
+
+		error_func = function()
+			Event{action = traj, priority = "medium"}
+		end
+		unitTest:assertError(error_func, defaultValueMsg("priority", 0))
 	end,
 	config = function(unitTest)
 		local event = Event{action = function() end}

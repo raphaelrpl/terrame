@@ -1,6 +1,6 @@
 /************************************************************************************
 TerraME - a software platform for multiple scale spatially-explicit dynamic modeling.
-Copyright (C) 2001-2016 INPE and TerraLAB/UFOP -- www.terrame.org
+Copyright (C) 2001-2017 INPE and TerraLAB/UFOP -- www.terrame.org
 
 This code is part of the TerraME framework.
 This framework is free software; you can redistribute it and/or
@@ -27,6 +27,7 @@ of this software and its documentation.
 #include <QFontDatabase>
 #include <QMessageBox>
 #include <QProcess>
+#include <QLoggingCategory>
 
 #include "Downloader.h"
 #include "blackBoard.h"
@@ -185,13 +186,7 @@ int cpp_informations(lua_State *L)
 
 int cpp_version(lua_State *L)
 {
-	std::string v(to_string(TERRAME_VERSION_MAJOR));
-	v.append(".");
-	v.append(to_string(TERRAME_VERSION_MINOR));
-	v.append(".");
-	v.append(to_string(TERRAME_VERSION_PATCH));
-
-	lua_pushstring(L, v.c_str());
+	lua_pushstring(L, TERRAME_VERSION_STRING);
 
 	return 1;
 }
@@ -286,6 +281,19 @@ int cpp_putenv(lua_State* L)
 	return 0;
 }
 
+int cpp_getOsName(lua_State* L)
+{
+	#ifdef _WIN64
+		lua_pushstring(L, "WINDOWS");
+	#elif __APPLE__
+		lua_pushstring(L, "MAC");
+	#elif __linux__
+		lua_pushstring(L, "LINUX");
+	#endif
+
+	return 1;
+}
+
 extern ExecutionModes execModes;
 
 int main(int argc, char *argv[])
@@ -295,6 +303,8 @@ int main(int argc, char *argv[])
 	GOOGLE_PROTOBUF_VERIFY_VERSION;
 
 	Q_INIT_RESOURCE(observerResource);
+
+	QLoggingCategory::setFilterRules("qt.network.ssl.warning=false");
 
 	TME_PATH = "TME_PATH";
 
@@ -385,6 +395,9 @@ int main(int argc, char *argv[])
 
 	lua_pushcfunction(L, cpp_putenv);
 	lua_setglobal(L, "cpp_putenv");
+
+	lua_pushcfunction(L, cpp_getOsName);
+	lua_setglobal(L, "cpp_getOsName");
 
 	// Execute the lua files
 	if (argc < 2)

@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------------------
 -- TerraME - a software platform for multiple scale spatially-explicit dynamic modeling.
--- Copyright (C) 2001-2016 INPE and TerraLAB/UFOP -- www.terrame.org
+-- Copyright (C) 2001-2017 INPE and TerraLAB/UFOP -- www.terrame.org
 
 -- This code is part of the TerraME framework.
 -- This framework is free software; you can redistribute it and/or
@@ -26,11 +26,16 @@ Timer_ = {
 	type_ = "Timer",
 	--- Add a new Event to the timer. If the Event has a start time less than the current
 	-- simulation time then add() will prompt a warning (but the Event will be added).
-	-- @arg event An Event.
+	-- @arg event An Event or table.
+	-- When adding a table, this function converts the table into an Event.
 	-- @usage timer = Timer{}
 	--
 	-- timer:add(Event{action = function() end})
 	add = function(self, event)
+		if type(event) == "table" then
+			event = Event(event)
+		end
+
 		mandatoryArgument(1, "Event", event)
 
 		if event.time < self.time then
@@ -247,9 +252,9 @@ Timer_ = {
 				local floor = math.floor(ev.time)
 				local ceil = math.ceil(ev.time)
 
-				if math.abs(ev.time - floor) < self.round then
+				if math.abs(ev.time - floor) < sessionInfo().round then
 					ev.time = floor
-				elseif math.abs(ev.time - ceil) < self.round then
+				elseif math.abs(ev.time - ceil) < sessionInfo().round then
 					ev.time = ceil
 				end
 				self:add(ev)
@@ -284,13 +289,6 @@ metaTableTimer_ = {
 -- in the order they were declared, but the arguments of Event (start, priority, and period)
 -- can change this order. Once a Timer has a given simulation time, it ensures that all the
 -- Events before that time were already executed. See Timer:run() for more details.
--- @arg data.round A number to work with Events that have period less than one. It rounds
--- the execution time of an Event that is going to be scheduled to be executed to
--- a time in the future if the difference between such time and the closest integer number
--- is less then the value of this argument. For example, an Event that starts in time one
--- and has period 0.1 might execute in time 1.999999999, as we are working with real numbers.
--- Round is then useful to make sure that such Event will be executed in time exactly two.
--- The default value is 0.00001 (1e-5).
 -- @arg data.... A set of Events.
 -- @output cObj_ A pointer to a C++ representation of the Timer. Never use this object.
 -- @output events An ordered vector with the Events.
@@ -319,22 +317,23 @@ function Timer(data)
 
 	local cObj = TeTimer()
 
-	data.events = {}
-	data.time = -math.huge
+	local mdata = {
+		events = {},
+		time = -math.huge,
+	}
 
-	setmetatable(data, metaTableTimer_)
+	setmetatable(mdata, metaTableTimer_)
 
 	forEachOrderedElement(data, function(idx, value, mtype)
 		if mtype == "Event" then
-			data:add(value)
-		elseif not belong(idx, {"events", "time"}) then
+			mdata:add(value)
+		else
 			incompatibleTypeError(idx, "Event", value)
 		end
 	end)
- 
-	defaultTableValue(data, "round", 1e-5)
-	data.cObj_ = cObj
-	cObj:setReference(data)
-	return data
+
+	mdata.cObj_ = cObj
+	cObj:setReference(mdata)
+	return mdata
 end
 

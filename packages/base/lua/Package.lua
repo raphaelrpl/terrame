@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------------------
 -- TerraME - a software platform for multiple scale spatially-explicit dynamic modeling.
--- Copyright (C) 2001-2016 INPE and TerraLAB/UFOP -- www.terrame.org
+-- Copyright (C) 2001-2017 INPE and TerraLAB/UFOP -- www.terrame.org
 
 -- This code is part of the TerraME framework.
 -- This framework is free software; you can redistribute it and/or
@@ -24,41 +24,45 @@
 
 --@header Functions to work with packages in TerraME.
 
---- Return the path to a file of a given package. The file must be inside the directory data
--- within the package.
+--- Return a File storing the full path of a file within a given package.
+-- The file must be inside the directory data of package.
 -- @arg filename A string with the name of the file.
--- @arg package A string with the name of the package. As default, it uses paciage base.
--- @usage cs = CellularSpace{file = filePath("simple.map")}
+-- @arg package A string with the name of the package. As default, it uses base package.
+-- @usage cs = CellularSpace{file = filePath("simple.pgm")}
 function filePath(filename, package)
 	if package == nil then package = "base" end
 
-	local s = sessionInfo().separator
-	local file = packageInfo(package).data..s..filename
-	if isFile(file) or isDir(file) then
+	filename = _Gtme.makePathCompatibleToAllOS(filename)
+
+	local data = packageInfo(package).data
+	local file = File(data..filename)
+
+	if file:exists() then
 		return file
 	else
-		local msg = "File '"..package..s.."data"..s..filename.."' does not exist in package '"..package.."'."
+		local msg = "File 'data/"..filename.."' does not exist in package '"..package.."'."
 
-		if string.endswith(filename, ".tview") then
-			local luafile = string.sub(filename, 1, -6).."lua"
+		if file:extension() == "tview" then
+			local _, name = file:split()
+			local luafile = File(packageInfo(package).data..name..".lua")
 
-			if isFile(packageInfo(package).data..s..luafile) then
-				msg = msg.." Please run 'terrame -package "..package.." -project' to create it."
+			if luafile:exists() then
+				msg = msg.." Please run 'terrame -package "..package.." -project "..name.."' to create it."
 				customError(msg)
 			end
 		end
 
-		local suggest = suggestion(filename, dir(packageInfo(package).data))
+		local dir = file:path()
+		local suggest = suggestion(filename, Directory(dir):list())
+		local suggestMsg = suggestionMsg(suggest)
 
-		if suggest then
-			msg = msg.." Do you mean '"..suggest.."'?"
-		end
+		msg = msg..suggestMsg
 
 		customError(msg)
 	end
 end
 
---- Return a table with the files of a package that have a given extension. 
+--- Return a table with the files of a package that have a given extension.
 -- @arg package A string with the name of the package.
 -- @arg extension A string with the extension.
 -- @usage filesByExtension("base", "csv")
@@ -66,12 +70,11 @@ function filesByExtension(package, extension)
 	mandatoryArgument(1, "string", package)
 	mandatoryArgument(2, "string", extension)
 
-	local size = string.len(extension)
 	local result = {}
 
 	forEachFile(packageInfo(package).data, function(file)
-		if string.sub(file, -size) == extension then
-			table.insert(result, string.sub(file, 1, -size - 1))
+		if file:extension() == extension then
+			table.insert(result, file)
 		end
 	end)
 
@@ -99,15 +102,17 @@ function import(package, reload)
 	else
 		local s = sessionInfo().separator
 		local package_path = packageInfo(package).path
+		if not isDirectory(package_path..s.."lua") then return true end
 
 		_Gtme.verifyDepends(package)
+		_Gtme.loadModules(package_path)
 
 		local load_file = package_path..s.."load.lua"
-		local all_files = dir(package_path..s.."lua")
+		local all_files = Directory(package_path..s.."lua"):list()
 		local load_sequence
 
-		if isFile(load_file) then -- SKIP
-			xpcall(function() load_sequence = _Gtme.include(load_file) end, function(err)
+		if File(load_file):exists() then -- SKIP
+			xpcall(function() load_sequence = getLuaFile(load_file) end, function(err)
 				_Gtme.customError("Package '"..package.."' could not be loaded:"..err) -- SKIP
 			end)
 
@@ -117,11 +122,11 @@ function import(package, reload)
 			if load_sequence == nil then -- SKIP
 				_Gtme.printError("Package '"..package.."' could not be loaded.")
 				_Gtme.printError("load.lua should declare table 'files', with the order of the files to be loaded.")
-				os.exit() -- SKIP
+				os.exit(1) -- SKIP
 			elseif type(load_sequence) ~= "table" then
 				_Gtme.printError("Package '"..package.."' could not be loaded.")
 				_Gtme.printError("In load.lua, 'files' should be table, got "..type(load_sequence)..".")
-				os.exit() -- SKIP
+				os.exit(1) -- SKIP
 			end
 		else
 			load_sequence = all_files -- SKIP
@@ -133,9 +138,11 @@ function import(package, reload)
 		end
 
 		if load_sequence then -- SKIP
-			for _, file in ipairs(load_sequence) do
+			forEachOrderedElement(load_sequence, function(_, file)
+				if string.endswith(file, ".tme") then return end
+
 				local mfile = package_path..s.."lua"..s..file
-				if not isFile(mfile) then -- SKIP
+				if not File(mfile):exists() then -- SKIP
 					customWarning("Cannot open "..mfile..". No such file. Please check "..package_path..s.."load.lua.") -- SKIP
 				else
 					local merror
@@ -149,20 +156,21 @@ function import(package, reload)
 
 					count_files[file] = count_files[file] + 1 -- SKIP
 				end
-			end
+			end)
 		end
 
 		for mfile, count in pairs(count_files) do
-			local attr = attributes(package_path..s.."lua"..s..mfile, "mode")
-			if count == 0 and attr ~= "directory" then -- SKIP
-				customWarning("File lua"..s..mfile.." is ignored by load.lua.") -- SKIP
+			if count == 0 and isFile(package_path.."lua"..s..mfile) then -- SKIP
+				if not string.endswith(mfile, ".tme") then -- SKIP
+					customWarning("File lua"..s..mfile.." is ignored by load.lua.") -- SKIP
+				end
 			elseif count > 1 then
 				customWarning("File lua"..s..mfile.." is loaded "..count.." times in load.lua.") -- SKIP
 			end
 		end
 
 		local files = _Gtme.fontFiles(package)
-		forEachElement(files, function(_, file)	
+		forEachElement(files, function(_, file)
 			if not _Gtme.loadedFonts[file] then -- SKIP
 				cpp_loadfont(package_path..s.."font"..s..file) -- SKIP
 				_Gtme.loadedFonts[file] = true -- SKIP
@@ -173,11 +181,11 @@ function import(package, reload)
 			cpp_setdefaultfont() -- SKIP
 		end
 
-		rawset(_G, "font", function(data)	
+		rawset(_G, "font", function(data)
 			_Gtme.fonts[data.name] = data.symbol -- SKIP
 		end)
 
-		if isFile(package_path..s.."font.lua") then -- SKIP
+		if File(package_path..s.."font.lua"):exists() then -- SKIP
 			dofile(package_path..s.."font.lua")
 		end
 
@@ -207,15 +215,17 @@ function getPackage(pname)
 
 	local s = sessionInfo().separator
 	local pname_path = packageInfo(pname).path
+	if not isDirectory(pname_path..s.."lua") then return {} end
 
 	_Gtme.verifyDepends(pname)
+	_Gtme.loadModules(pname_path)
 
 	local load_file = pname_path..s.."load.lua"
-	local all_files = dir(pname_path..s.."lua")
+	local all_files = Directory(pname_path..s.."lua"):list()
 	local load_sequence
 
-	if isFile(load_file) then -- SKIP
-		xpcall(function() load_sequence = _Gtme.include(load_file) end, function(err)
+	if File(load_file):exists() then -- SKIP
+		xpcall(function() load_sequence = getLuaFile(load_file) end, function(err)
 			_Gtme.printError("Package '"..pname.."' could not be loaded.")
 			_Gtme.print(err)
 		end)
@@ -226,11 +236,11 @@ function getPackage(pname)
 		if load_sequence == nil then -- SKIP
 			_Gtme.printError("Package '"..pname.."' could not be loaded.")
 			_Gtme.printError("load.lua should declare table 'files', with the order of the files to be loaded.")
-			os.exit() -- SKIP
+			os.exit(1) -- SKIP
 		elseif type(load_sequence) ~= "table" then
 			_Gtme.printError("Package '"..pname.."' could not be loaded.")
 			_Gtme.printError("In load.lua, 'files' should be table, got "..type(load_sequence)..".")
-			os.exit() -- SKIP
+			os.exit(1) -- SKIP
 		end
 	else
 		load_sequence = all_files -- SKIP
@@ -256,15 +266,15 @@ function getPackage(pname)
 	if load_sequence then -- SKIP
 		for _, file in ipairs(load_sequence) do
 			local mfile = pname_path..s.."lua"..s..file
-			if not isFile(mfile) then -- SKIP
+			if not File(mfile):exists() then -- SKIP
 				_Gtme.printError("Cannot open "..mfile..". No such file.")
 				_Gtme.printError("Please check "..pname_path..s.."load.lua")
-				os.exit() -- SKIP
+				os.exit(1) -- SKIP
 			end
 
 			local lf = loadfile(mfile, 't', result)
 
- 			if lf == nil then
+			if lf == nil then
 				collectgarbage() -- SKIP
 				lf = loadfile(mfile, 't', result) -- SKIP
 
@@ -281,8 +291,7 @@ function getPackage(pname)
 	end
 
 	for mfile, count in pairs(count_files) do
-		local attr = attributes(pname_path.."lua"..s..mfile, "mode")
-		if count == 0 and attr ~= "directory" then -- SKIP
+		if count == 0 and isFile(pname_path.."lua"..s..mfile) then -- SKIP
 			_Gtme.printWarning("File lua"..s..mfile.." is ignored by load.lua.")
 		elseif count > 1 then
 			_Gtme.printWarning("File lua"..s..mfile.." is loaded "..count.." times in load.lua.")
@@ -302,13 +311,13 @@ end
 -- authors & Name of the author(s) of the package.\
 -- contact & E-mail of one or more authors. \
 -- content & A description of the package. \
--- data & The path to the data directory of the package. This attribute is added
+-- data & A Directory with the path to the data directory of the package. This attribute is added
 -- by this function as it does not exist in description.lua.\
 -- date & Date of the current version.\
 -- depends & A comma-separated list of package names which this package depends on.\
 -- license & Name of the package's license. \
 -- package & Name of the package.\
--- path & Folder where the package is stored in the computer.\
+-- path & A Directory with the path where the package is stored in the computer.\
 -- title & Optional title for the HTML documentation of the package.\
 -- url & An optional value with the webpage of the package.\
 -- version & Current version of the package, in the form <number>[.<number>]*.
@@ -325,29 +334,33 @@ function packageInfo(package)
 	mandatoryArgument(1, "string", package)
 
 	local s = sessionInfo().separator
-	local pkgdirectory = sessionInfo().path..s.."packages"..s..package
-	if not isDir(pkgdirectory) then
-		if isDir(package) then
-			pkgdirectory = package -- SKIP
-		else
+	local pkgdirectory = Directory(sessionInfo().path.."packages"..s..package)
+
+	if not pkgdirectory:exists() then
+		pkgdirectory = Directory(sessionInfo().initialDir..package)
+		if not pkgdirectory:exists() then
 			customError("Package '"..package.."' is not installed.")
 		end
 	end
-	
-	local file = pkgdirectory..s.."description.lua"
-	
-	local result 
-	xpcall(function() result = _Gtme.include(file) end, function(err)
-		_Gtme.printError(err)
-		os.exit() -- SKIP
+
+	local file = File(pkgdirectory.."description.lua")
+
+	if not file:exists() then -- SKIP
+		customError("Could not load package '"..package.."'. File 'description.lua' does not exist.") -- SKIP
+	end
+
+	local result
+	xpcall(function() result = getLuaFile(file) end, function(err)
+		_Gtme.printError("Could not load package '"..package.."': "..err)
+		os.exit(1) -- SKIP
 	end)
 
 	if result == nil then
-		customError("Could not read description.lua") -- SKIP
+		customError("Could not load package '"..package.."'. File 'description.lua' is empty.") -- SKIP
 	end
 
 	result.path = pkgdirectory
-	result.data = pkgdirectory..s.."data"
+	result.data = Directory(pkgdirectory.."data")
 
 	if result.depends then
 		local ss = string.gsub(result.depends, "([%w]+ %(%g%g %d[.%d]+%))", function()

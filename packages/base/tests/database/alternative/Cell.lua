@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------------------
 -- TerraME - a software platform for multiple scale spatially-explicit dynamic modeling.
--- Copyright (C) 2001-2016 INPE and TerraLAB/UFOP -- www.terrame.org
+-- Copyright (C) 2001-2017 INPE and TerraLAB/UFOP -- www.terrame.org
 
 -- This code is part of the TerraME framework.
 -- This framework is free software; you can redistribute it and/or
@@ -38,6 +38,11 @@ return{
 			title = title
 		}
 
+		local customWarningBkp = customWarning
+		customWarning = function(msg)
+			return msg
+		end
+
 		local layerName1 = "Brazil"
 
 		terralib.Layer{
@@ -45,16 +50,14 @@ return{
 			name = layerName1,
 			file = filePath("brazilstates.shp", "base")
 		}
-		
+
 		-- SHAPE
-		local testDir = _Gtme.makePathCompatibleToAllOS(currentDir())
+		local testDir = currentDir()
 		local shp1 = "brazil_cells.shp"
-		local filePath1 = testDir.."/"..shp1			
-		
-		if isFile(filePath1) then
-			rmFile(filePath1)
-		end			
-		
+		local filePath1 = testDir..shp1
+
+		File(filePath1):deleteIfExists()
+
 		local clName1 = "Brazil_Cells"
 		terralib.Layer{
 			project = proj,
@@ -63,24 +66,24 @@ return{
 			resolution = 100e3,
 			file = filePath1
 		}
-		
+
 		local cs = CellularSpace{
 			project = projName,
 			layer = clName1
 		}
-		
+
 		local cellWithoutGeom = function()
 			local cell = cs:sample()
 			cell:area()
 		end
 		unitTest:assertError(cellWithoutGeom, "It was not possible to calculate the area. Geometry was not found.")
-		
+
 		-- POSTGIS
 		local clName2 = "Brazil_Cells_PG"
 		local host = "localhost"
 		local port = "5432"
 		local user = "postgres"
-		local password = "postgres"
+		local password = getConfig().password
 		local database = "postgis_22_sample"
 		local encoding = "CP1252"
 		local tName = string.lower(clName2)
@@ -119,17 +122,13 @@ return{
 			local cell = cs:sample()
 			cell:area()
 		end
-		unitTest:assertError(cellWithoutGeom, "It was not possible to calculate the area. Geometry was not found.")	
-		
-		-- END
-		if isFile(projName) then
-			rmFile(projName)
-		end
-		
-		if isFile(filePath1) then
-			rmFile(filePath1)
-		end	
+		unitTest:assertError(cellWithoutGeom, "It was not possible to calculate the area. Geometry was not found.")
 
-		tl:dropPgTable(pgData)		
+		File(projName):deleteIfExists()
+		File(filePath1):deleteIfExists()
+
+		tl:dropPgTable(pgData)
+
+		customWarning = customWarningBkp
 	end
 }

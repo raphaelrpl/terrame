@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------------------
 -- TerraME - a software platform for multiple scale spatially-explicit dynamic modeling.
--- Copyright (C) 2001-2016 INPE and TerraLAB/UFOP -- www.terrame.org
+-- Copyright (C) 2001-2017 INPE and TerraLAB/UFOP -- www.terrame.org
 
 -- This code is part of the TerraME framework.
 -- This framework is free software; you can redistribute it and/or
@@ -26,35 +26,34 @@ return {
 	TerraLib = function(unitTest)
 		local t1 = TerraLib{}
 		local t2 = TerraLib{}
-		
+
 		unitTest:assertEquals(t1, t2)
 	end,
 	getVersion = function(unitTest)
 		local tlib = TerraLib{}
-		unitTest:assertEquals(tlib:getVersion(), "5.1.2")		
+		unitTest:assertEquals(tlib:getVersion(), "5.2.0")
 	end,
 	openProject = function(unitTest)
 		local tl = TerraLib{}
-		local proj = {}
-		proj.file = "myproject.tview"
-		proj.title = "TerraLib Tests"
-		proj.author = "Avancini Rodrigo"
-		
-		if isFile(proj.file) then
-			rmFile(proj.file)
-		end
-		
+		local proj = {
+			file = "myproject.tview",
+			title = "TerraLib Tests",
+			author = "Avancini Rodrigo"
+		}
+
+		File(proj.file):deleteIfExists()
+
 		tl:createProject(proj, {})
-		
+
 		local proj2 = {}
-		
+
 		tl:openProject(proj2, proj.file)
-		
+
 		unitTest:assertEquals(proj2.file, proj.file)
 		unitTest:assertEquals(proj2.title, proj.title)
 		unitTest:assertEquals(proj2.author, proj.author)
-		
-		rmFile(proj.file)
+
+		proj.file:delete()
 	end
 }
 

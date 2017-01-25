@@ -61,7 +61,7 @@ return{
 			build = false
 		}
 		unitTest:assertEquals(0, #g)
-		
+
 		g:filter()
 		unitTest:assertEquals(#nonFooSociety, #g)
 
@@ -111,7 +111,7 @@ return{
 			target = soc1,
 			select = function(ag) return ag.age > 5 end
 		}
-	
+
 		unitTest:assert(#g1 == 2)
 	end,
 	__tostring = function(unitTest)
@@ -128,6 +128,7 @@ return{
 		unitTest:assertEquals(tostring(g1), [[age     function
 agents  vector of size 2
 parent  Society
+random  boolean [false]
 select  function
 ]])
 	end,
@@ -147,7 +148,7 @@ select  function
 		g:add(soc.agents[1])
 		g:add(soc.agents[2])
 		g:add(soc.agents[3])
-	
+
 		unitTest:assertEquals(#g, 3)
 	end,
 	clone = function(unitTest)
@@ -277,6 +278,46 @@ select  function
 
 		unitTest:assertEquals(4, #g)
 		unitTest:assertEquals(5, g.agents[1].age)
+
+		nonFooAgent = Agent{
+			init = function(self)
+				self.age = Random():integer(10)
+			end,
+			execute = function(self)
+				self.age = self.age + 1
+			end
+		}
+
+		nonFooSociety = Society{
+			instance = nonFooAgent,
+			quantity = 20
+		}
+
+		g = Group{
+			target = nonFooSociety,
+			random = true,
+			select = function(ag)
+				return ag.age < 8
+			end
+		}
+
+		unitTest:assertEquals(#g, 16)
+
+		g:rebuild()
+		unitTest:assertEquals(#g, 16)
+		unitTest:assertEquals(4, g.agents[1].age)
+
+		g:rebuild()
+		unitTest:assertEquals(6, g.agents[1].age)
+
+		g:rebuild()
+		unitTest:assertEquals(2, g.agents[1].age)
+
+		g.agents[1]:die()
+
+		g:rebuild()
+		unitTest:assertEquals(#g, 15)
+		unitTest:assertEquals(2, g.agents[1].age)
 	end,
 	sort = function(unitTest)
 		local count = 0

@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------------------
 -- TerraME - a software platform for multiple scale spatially-explicit dynamic modeling.
--- Copyright (C) 2001-2016 INPE and TerraLAB/UFOP -- www.terrame.org
+-- Copyright (C) 2001-2017 INPE and TerraLAB/UFOP -- www.terrame.org
 
 -- This code is part of the TerraME framework.
 -- This framework is free software; you can redistribute it and/or
@@ -29,20 +29,23 @@ return{
 		end
 		unitTest:assertError(attrLayerNonString, incompatibleTypeMsg("name", "string", false))
 
-		if isFile("myproj.tview") then
-			rmFile("myproj.tview")
-		end
+		File("myproj.tview"):deleteIfExists()
 
 		local projNotExists = function()
 			Layer{project = "myproj.tview", name = "cells"}
 		end
-		unitTest:assertError(projNotExists, "Project file '".."myproj.tview".."' does not exist.")
+		unitTest:assertError(projNotExists, "Project file '"..File("myproj.tview").."' does not exist.")
 
-		local projFile = "proj_celllayer.tview"
+		local projFile = File("proj_celllayer.tview")
 
-		local proj = Project{
-			file = projFile,
-			clean = true
+		projFile:deleteIfExists()
+
+		local proj
+
+		proj = Project{
+			file = projFile:name(true),
+			clean = true,
+			deforestation = filePath("Desmatamento_2000.tif", "terralib"),
 		}
 
 		local layerName = "any"
@@ -52,9 +55,19 @@ return{
 				name = layerName
 			}
 		end
-		unitTest:assertError(layerDoesNotExists, "Layer '"..layerName.."' does not exist in the Project '"..projFile.."'.")
+		unitTest:assertError(layerDoesNotExists, "Layer '"..layerName.."' does not exist in Project '"..projFile.."'.")
 
-		unitTest:assertFile("proj_celllayer.tview")
+		layerName = "defirestation"
+		local layerDoesNotExistsSug = function()
+			Layer{
+				project = proj,
+				name = layerName
+			}
+		end
+		unitTest:assertError(layerDoesNotExistsSug, "Layer '"..layerName.."' does not exist in Project '"..projFile.."'. Do you mean 'deforestation'?")
+
+		--unitTest:assertFile(projFile:name(true)) -- SKIP #TODO(#1242)
+		projFile:deleteIfExists()
 
 		local projName = "amazonia2.tview"
 
@@ -84,7 +97,6 @@ return{
 				name = "layer",
 				source = 123
 			}
-
 		end
 		unitTest:assertError(attrSourceNonString, incompatibleTypeMsg("source", "string", 123))
 
@@ -101,14 +113,14 @@ return{
 		Layer{
 			project = proj,
 			name = layerName,
-			file = filePath("sampa.shp", "terralib")
+			file = filePath("test/sampa.shp", "terralib")
 		}
 
 		local layerAlreadyExists = function()
 			Layer{
 				project = proj,
 				name = layerName,
-				file = filePath("sampa.shp", "terralib")
+				file = filePath("test/sampa.shp", "terralib")
 			}
 		end
 		unitTest:assertError(layerAlreadyExists, "Layer '"..layerName.."' already exists in the Project.")
@@ -117,7 +129,7 @@ return{
 			Layer{
 				project = proj,
 				name = layerName,
-				file = filePath("sampa.dbf", "terralib")
+				file = filePath("test/sampa.dbf", "terralib")
 			}
 		end
 		unitTest:assertError(sourceInvalid, "Source 'dbf' is invalid.")
@@ -130,9 +142,9 @@ return{
 				file = layerFile
 			}
 		end
-		unitTest:assertError(fileLayerNonExists, mandatoryArgumentMsg("source"))
+		unitTest:assertError(fileLayerNonExists, "File '"..File("linhares.shp").."' does not exist.")
 
-		local filePath0 = filePath("sampa.shp", "terralib")
+		local filePath0 = filePath("test/sampa.shp", "terralib")
 		local source = "tif"
 		local inconsistentExtension = function()
 			Layer{
@@ -144,10 +156,8 @@ return{
 		end
 		unitTest:assertError(inconsistentExtension, "File '"..filePath0.."' does not match to source '"..source.."'.")
 
-		if isFile(projName) then
-			rmFile(projName)
-		end
-		
+		File(projName):deleteIfExists()
+
 		projName = "amazonia.tview"
 
 		proj = Project{
@@ -173,7 +183,7 @@ return{
 				resolution = 5e4
 			}
 		end
-		unitTest:assertError(attrLayerNonString, incompatibleTypeMsg("name", "string", 123))	
+		unitTest:assertError(attrLayerNonString, incompatibleTypeMsg("name", "string", 123))
 
 		local attrResolutionNonNumber = function()
 			Layer{
@@ -213,7 +223,7 @@ return{
 				resolution = 0.7
 			}
 		end
-		unitTest:assertError(noFilePass, mandatoryArgumentMsg("file"))
+		unitTest:assertError(noFilePass, "At least one of the following arguments must be used: 'file', 'source', or 'database'.")
 
 		attrSourceNonString = function()
 			Layer{
@@ -231,15 +241,13 @@ return{
 		Layer{
 			project = proj,
 			name = layerName1,
-			file = filePath("sampa.shp", "terralib")
+			file = filePath("test/sampa.shp", "terralib")
 		}
-		
+
 		local shp1 = "setores_cells.shp"
-		
-		if isFile(shp1) then
-			rmFile(shp1)
-		end
-		
+
+		File(shp1):deleteIfExists()
+
 		local clName1 = "Setores_Cells"
 
 		Layer{
@@ -270,7 +278,7 @@ return{
 				file = shp1
 			}
 		end
-		unitTest:assertError(cellLayerFileAlreadyExists, "File '"..shp1.."' already exists. Please set clean = true or remove it manually.")
+		unitTest:assertError(cellLayerFileAlreadyExists, "File '"..File(shp1).."' already exists. Please set clean = true or remove it manually.")
 
 		sourceInvalid = function()
 			Layer{
@@ -278,12 +286,12 @@ return{
 				input = layerName1,
 				name = "cells",
 				resolution = 0.7,
-				file = filePath("sampa.dbf", "terralib")
+				file = filePath("test/sampa.dbf", "terralib")
 			}
 		end
 		unitTest:assertError(sourceInvalid, "Source 'dbf' is invalid.")
 
-		local filePath1 = filePath("sampa.shp", "terralib")
+		local filePath1 = filePath("test/sampa.shp", "terralib")
 		source = "tif"
 		inconsistentExtension = function()
 			Layer{
@@ -312,9 +320,9 @@ return{
 		Layer{
 			project = proj,
 			name = "cbers",
-			file = filePath("cbers_rgb342_crop1.tif", "terralib")
+			file = filePath("test/cbers_rgb342_crop1.tif", "terralib")
 		}
-		
+
 		local attrBoxNonBoolean = function()
 			Layer{
 				project = proj,
@@ -326,7 +334,7 @@ return{
 			}
 		end
 		unitTest:assertError(attrBoxNonBoolean, incompatibleTypeMsg("box", "boolean", 123))
-		
+
 		local boxDefaultError = function()
 			Layer{
 				project = proj,
@@ -337,15 +345,56 @@ return{
 				file = "sampabox.shp"
 			}
 		end
-		unitTest:assertError(boxDefaultError, defaultValueMsg("box", false))	
+		unitTest:assertError(boxDefaultError, defaultValueMsg("box", false))
 
-		if isFile(projName) then
-			rmFile(projName)
+		local invalidLayerName = function()
+			Layer{
+				project = proj,
+				name = "My Layer",
+				file = filePath("test/sampa.shp", "terralib")
+			}
 		end
+		unitTest:assertError(invalidLayerName, "Layer name 'My Layer' is not a valid name. Please, revise special characters or spaces from it.")
 
-		if isFile(shp1) then
-			rmFile(shp1)
+		invalidLayerName = function()
+			Layer{
+				project = proj,
+				name = "Samp*a",
+				file = filePath("test/sampa.shp", "terralib")
+			}
 		end
+		unitTest:assertError(invalidLayerName, "Layer name 'Samp*a' is not a valid name. Please, revise special characters or spaces from it.")
+
+		invalidLayerName = function()
+			Layer{
+				project = proj,
+				name = "$ampa",
+				file = filePath("test/sampa.shp", "terralib")
+			}
+		end
+		unitTest:assertError(invalidLayerName, "Layer name '$ampa' is not a valid name. Please, revise special characters or spaces from it.")
+
+		invalidLayerName = function()
+			Layer{
+				project = proj,
+				name = "SãoPaulo",
+				file = filePath("test/sampa.shp", "terralib")
+			}
+		end
+		unitTest:assertError(invalidLayerName, "Layer name 'SãoPaulo' is not a valid name. Please, revise special characters or spaces from it.")
+
+		local invalidSridType = function()
+			Layer{
+				project = proj,
+				name = "SampaSrid",
+				file = filePath("test/sampa.shp", "terralib"),
+				srid = true
+			}
+		end
+		unitTest:assertError(invalidSridType, "Incompatible types. Argument 'srid' expected number, got boolean.")
+
+		File(projName):deleteIfExists()
+		File(shp1):deleteIfExists()
 	end,
 	fill = function(unitTest)
 		local projName = "cellular_layer_fillcells_alternative.tview"
@@ -365,9 +414,7 @@ return{
 		local clName1 = "setores_cells2"
 		local filePath1 = clName1..".shp"
 
-		if isFile(filePath1) then
-			rmFile(filePath1)
-		end
+		File(filePath1):deleteIfExists()
 
 		local cl = Layer{
 			project = proj,
@@ -398,6 +445,7 @@ return{
 		local layerMandatory = function()
 			cl:fill{
 				attribute = "population",
+				output = "abc",
 				operation = "area"
 			}
 		end
@@ -406,11 +454,12 @@ return{
 		local layerNotString = function()
 			cl:fill{
 				attribute = "distRoads",
+				output = "abc",
 				operation = "area",
 				layer = 2
 			}
 		end
-		unitTest:assertError(layerNotString, incompatibleTypeMsg("layer", "string", 2))
+		unitTest:assertError(layerNotString, incompatibleTypeMsg("layer", "Layer", 2))
 
 		local attributeMandatory = function()
 			cl:fill{
@@ -428,6 +477,42 @@ return{
 			}
 		end
 		unitTest:assertError(attributeNotString, incompatibleTypeMsg("attribute", "string", 2))
+
+		local invalidAttribName = function()
+			cl:fill{
+				attribute = "área",
+				operation = "area",
+				layer = "cells"
+			}
+		end
+		unitTest:assertError(invalidAttribName, "Attribute name 'área' is not a valid name. Please, revise special characters or spaces from it.")
+
+		invalidAttribName = function()
+			cl:fill{
+				attribute = "a$ea",
+				operation = "area",
+				layer = "cells"
+			}
+		end
+		unitTest:assertError(invalidAttribName, "Attribute name 'a$ea' is not a valid name. Please, revise special characters or spaces from it.")
+
+		invalidAttribName = function()
+			cl:fill{
+				attribute = "Cell Area",
+				operation = "area",
+				layer = "cells"
+			}
+		end
+		unitTest:assertError(invalidAttribName, "Attribute name 'Cell Area' is not a valid name. Please, revise special characters or spaces from it.")
+
+		invalidAttribName = function()
+			cl:fill{
+				attribute = "Are*s",
+				operation = "area",
+				layer = "cells"
+			}
+		end
+		unitTest:assertError(invalidAttribName, "Attribute name 'Are*s' is not a valid name. Please, revise special characters or spaces from it.")
 
 	--[[ BUG:
 		local attributeDoesNotExist = function()
@@ -447,7 +532,7 @@ return{
 				attribute = "presence"
 			}
 		end
-		unitTest:assertError(layerNotExists, "The layer 'LayerNotExists' does not exist.")
+		unitTest:assertError(layerNotExists, "Layer 'LayerNotExists' does not exist in Project '"..File(projName).."'.")
 
 		local layerNotExistsSug = function()
 			cl:fill{
@@ -456,7 +541,7 @@ return{
 				attribute = "presence"
 			}
 		end
-		unitTest:assertError(layerNotExistsSug, "The layer '"..layerName1.."_' does not exist. Do you mean '"..layerName1.."'?")
+		unitTest:assertError(layerNotExistsSug, "Layer '"..layerName1.."_' does not exist in Project '"..File(projName).."'. Do you mean '"..layerName1.."'?")
 
 		local attrAlreadyExists = function()
 			cl:fill{
@@ -528,24 +613,12 @@ return{
 		end
 		unitTest:assertError(defaultNotNumber, incompatibleTypeMsg("default", "number", false))
 
-		local dummyNotNumber = function()
-			cl:fill{
-				attribute = "attr",
-				operation = "minimum",
-				layer = layerName1,
-				select = "row",
-				dummy = false
-			}
-		end
-		unitTest:assertError(dummyNotNumber, incompatibleTypeMsg("dummy", "number", false))
-
 		local unnecessaryArgument = function()
 			cl:fill{
 				attribute = "attr",
 				operation = "minimum",
 				layer = layerName1,
 				select = "row",
-				dummy = 0,
 				defaut = 3
 			}
 		end
@@ -562,6 +635,17 @@ return{
 		end
 		unitTest:assertError(selectNotExists, "Selected attribute '"..selected.."' does not exist in layer '"..layerName1.."'.")
 
+		selected = "populaco"
+		local selectNotExistsSug = function()
+			cl:fill{
+				attribute = "attr",
+				operation = "minimum",
+				layer = layerName1,
+				select = selected
+			}
+		end
+		unitTest:assertError(selectNotExistsSug, "Selected attribute '"..selected.."' does not exist in layer '"..layerName1.."'. Do you mean 'Populacao'?")
+
 		selectNotString = function()
 			cl:fill{
 				attribute = "attr",
@@ -582,17 +666,6 @@ return{
 			}
 		end
 		unitTest:assertError(defaultNotNumber, incompatibleTypeMsg("default", "number", false))
-
-		dummyNotNumber = function()
-			cl:fill{
-				attribute = "attr",
-				operation = "maximum",
-				layer = layerName1,
-				select = "FID",
-				dummy = false
-			}
-		end
-		unitTest:assertError(dummyNotNumber, incompatibleTypeMsg("dummy", "number", false))
 
 		unnecessaryArgument = function()
 			cl:fill{
@@ -626,17 +699,6 @@ return{
 		end
 		unitTest:assertError(defaultNotNumber, incompatibleTypeMsg("default", "number", false))
 
-		dummyNotNumber = function()
-			cl:fill{
-				attribute = "attr",
-				operation = "coverage",
-				layer = layerName1,
-				select = "FID",
-				dummy = false
-			}
-		end
-		unitTest:assertError(dummyNotNumber, incompatibleTypeMsg("dummy", "number", false))
-
 		unnecessaryArgument = function()
 			cl:fill{
 				attribute = "attr",
@@ -668,17 +730,6 @@ return{
 			}
 		end
 		unitTest:assertError(defaultNotNumber, incompatibleTypeMsg("default", "number", false))
-
-		dummyNotNumber = function()
-			cl:fill{
-				attribute = "attr",
-				operation = "stdev",
-				layer = layerName1,
-				select = "FID",
-				dummy = false
-			}
-		end
-		unitTest:assertError(dummyNotNumber, incompatibleTypeMsg("dummy", "number", false))
 
 		defaultNotNumber = function()
 			cl:fill{
@@ -723,17 +774,6 @@ return{
 		end
 		unitTest:assertError(defaultNotNumber, incompatibleTypeMsg("default", "number", false))
 
-		dummyNotNumber = function()
-			cl:fill{
-				attribute = "attr",
-				operation = "average",
-				layer = layerName1,
-				select = "FID",
-				dummy = false
-			}
-		end
-		unitTest:assertError(dummyNotNumber, incompatibleTypeMsg("dummy", "number", false))
-
 		unnecessaryArgument = function()
 			cl:fill{
 				attribute = "attr",
@@ -777,17 +817,6 @@ return{
 		end
 		unitTest:assertError(defaultNotNumber, incompatibleTypeMsg("default", "number", false))
 
-		dummyNotNumber = function()
-			cl:fill{
-				attribute = "attr",
-				operation = "mode",
-				layer = layerName1,
-				select = "FID",
-				dummy = false
-			}
-		end
-		unitTest:assertError(dummyNotNumber, incompatibleTypeMsg("dummy", "number", false))
-
 		unnecessaryArgument = function()
 			cl:fill{
 				attribute = "attr",
@@ -830,17 +859,6 @@ return{
 			}
 		end
 		unitTest:assertError(defaultNotNumber, incompatibleTypeMsg("default", "number", false))
-
-		dummyNotNumber = function()
-			cl:fill{
-				attribute = "attr",
-				operation = "sum",
-				layer = layerName1,
-				select = "FID",
-				dummy = false
-			}
-		end
-		unitTest:assertError(dummyNotNumber, incompatibleTypeMsg("dummy", "number", false))
 
 		unnecessaryArgument = function()
 			cl:fill{
@@ -861,7 +879,35 @@ return{
 				select = "FID"
 			}
 		end
-		unitTest:assertError(normalizedNameWarning,   "The 'attribute' lenght is more than 10 characters, it was changed to 'max10allow'.")
+		unitTest:assertError(normalizedNameWarning, "The 'attribute' lenght has more than 10 characters. It was truncated to 'max10allow'.")
+
+		local lengthInvalidGeom = function()
+			cl:fill{
+				operation = "length",
+				attribute = "attr",
+				layer = layerName1
+			}
+		end
+		unitTest:assertError(lengthInvalidGeom, "Operation 'length' is not available for layers with polygon data.")
+
+		local nearestWithoutSelect = function()
+			cl:fill{
+				operation = "nearest",
+				attribute = "attr",
+				layer = layerName1
+			}
+		end
+		unitTest:assertError(nearestWithoutSelect, mandatoryArgumentMsg("select"))
+
+		local nearestNotImplemented = function()
+			cl:fill{
+				operation = "nearest",
+				attribute = "attr",
+				select = "abc",
+				layer = layerName1
+			}
+		end
+		unitTest:assertError(nearestNotImplemented, "Sorry, this operation was not implemented in TerraLib yet.")
 
 		local localidades = "Localidades"
 
@@ -870,8 +916,8 @@ return{
 			name = localidades,
 			file = filePath("Localidades_pt.shp", "terralib")
 		}
-		
-		local cW = customWarning 
+
+		local cW = customWarning
 		customWarning = function() return end
 
 		cl:fill{
@@ -893,7 +939,6 @@ return{
 
 		-- RASTER TESTS ----------------------------------------------------------------
 		local layerName3 = "Desmatamento"
-
 		Layer{
 			project = proj,
 			name = layerName3,
@@ -931,7 +976,7 @@ return{
 		end
 		unitTest:assertError(bandNegative, positiveArgumentMsg("band", -1, true))
 
-		-- TODO: TERRALIB IS NOT VERIFY THIS (REPORT) 
+		-- TODO: TERRALIB IS NOT VERIFY THIS (REPORT)
 		-- local layerNotIntersect = function()
 			-- cl:fill{
 				-- attribute = "attr",
@@ -1083,11 +1128,8 @@ return{
 		end
 		unitTest:assertError(op4NotAvailable, "The operation 'presence' is not available for layers with raster data.")
 
-		if isFile(projName) then
-			rmFile(projName)
-		end
-
-		if isFile(filePath1) then rmFile(filePath1) end
+		File(projName):deleteIfExists()
+		File(filePath1):deleteIfExists()
 	end
 }
 

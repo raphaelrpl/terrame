@@ -38,7 +38,7 @@ return{
 		unitTest:assertEquals(event:getTime(), 0.5)
 		unitTest:assertEquals(event:getPeriod(), 2)
 		unitTest:assertEquals(event:getPriority(), 1)
-	
+
 		event = Event{start = -1, period = 2, priority = -5.2, action = function() end}
 
 		unitTest:assertEquals(event:getTime(), -1)
@@ -69,11 +69,22 @@ return{
 
 		local c = Cell{
 			execute = function()
-				count = count + 1				
+				count = count + 1
 			end
 		}
 
-		local cs = CellularSpace{xdim = 5}
+		local sum = 0
+
+		local cinstance = Cell{
+			execute = function()
+				sum = sum + 1
+			end
+		}
+
+		local cs = CellularSpace{
+			xdim = 5,
+			instance = cinstance
+		}
 
 		forEachCell(cs, function(cell)
 			cell.value = Random():integer(10)
@@ -107,8 +118,19 @@ return{
 
 		t:run(2)
 		unitTest:assertEquals(count, 1222)
+		unitTest:assertEquals(sum, 5 * 5 * 2 + #traj * 2)
 
-		local sum = 0
+		cs = CellularSpace{xdim = 5}
+
+		t = Timer{
+			Event{action = cs}
+		}
+
+		t:run(2)
+
+		unitTest:assertType(cs.cells[1].past, "table")
+
+		sum = 0
 
 		ag = Agent{
 			on_message = function()
@@ -134,6 +156,19 @@ return{
 
 		t:run(5)
 		unitTest:assertEquals(sum, 5)
+
+		local log = Log{
+			target = soc,
+			file = "logfile-event.csv"
+		}
+
+		event = Event{action = log}
+
+		unitTest:assertEquals(event:getPeriod(), 1)
+		unitTest:assertEquals(event:getPriority(), 10)
+
+		log:update()
+		unitTest:assertFile("logfile-event.csv")
 	end,
 	config = function(unitTest)
 		local event = Event{action = function() end}

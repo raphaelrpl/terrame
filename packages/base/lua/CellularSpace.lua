@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------------------
 -- TerraME - a software platform for multiple scale spatially-explicit dynamic modeling.
--- Copyright (C) 2001-2016 INPE and TerraLAB/UFOP -- www.terrame.org
+-- Copyright (C) 2001-2017 INPE and TerraLAB/UFOP -- www.terrame.org
 
 -- This code is part of the TerraME framework.
 -- This framework is free software; you can redistribute it and/or
@@ -25,6 +25,197 @@
 local terralib = getPackage("terralib")
 
 TeCoord.type_ = "Coord" -- We now use Coord only internally, but it is necessary to set its type.
+
+local function separatorCheck(data)
+	local header1 = File(tostring(data.source))
+	local header2 = File(tostring(data.source))
+	local header3 = File(tostring(data.source))
+	local lineTest1 = header1:read("\t")
+	local lineTest2 = header2:read(" ")
+	local lineTest3 = header3:read(";")
+
+	if lineTest1[2] ~= nil and lineTest2[2] == nil or lineTest3[2] ~= nil then
+		customError("Could not read file '"..data.source.."': invalid header.")
+	end
+
+	header1:close()
+	header2:close()
+	header3:close()
+end
+
+local function loadNeighborhoodGAL(self, data)
+	local file = data.source
+	local lineTest = file:read(" ")
+	local layer = ""
+
+	if self.layer ~= nil then
+		layer = self.layer
+	end
+
+	if data.check then
+		local vallayer = ""
+
+		if lineTest[3] ~= nil then vallayer = lineTest[3] end
+
+		if vallayer ~= self.layer then
+			customError("Neighborhood file '"..data.source.."' was not built for this CellularSpace. CellularSpace layer: '"..layer.."', GAL file layer: '"..vallayer.."'.")
+		end
+	end
+
+	forEachCell(self, function(cell)
+		cell:addNeighborhood(Neighborhood{}, data.name)
+	end)
+
+	local line = file:read(" ")
+	local counterLine = 2
+
+	while #line > 0 do
+		local cell = self:get(line[1])
+
+		if cell == nil then
+			customError("Could not find id '"..tostring(line[1]).."' in line "..counterLine..". It seems that it is corrupted.")
+		else
+			local neig = cell:getNeighborhood(data.name)
+			local lineID = file:read(" ")
+
+			counterLine = counterLine + 1
+			for i = 1, tonumber(line[2]) do
+				if lineID[i] == nil then
+					customError("Could not find id '"..tostring(lineID[i]).."' in line "..counterLine..". It seems that it is corrupted.")
+				else
+					local n = self:get(lineID[i])
+
+					neig:add(n)
+				end
+			end
+		end
+
+		line = file:read(" ")
+		counterLine = counterLine + 1
+	end
+
+	file:close()
+end
+
+local function loadNeighborhoodGPM(self, data)
+	local file = data.source
+	local lineTest = file:read(" ")
+	local layer = ""
+
+	if self.layer ~= nil then
+		layer = self.layer
+	end
+
+	if data.check then
+		local vallayer = ""
+
+		if lineTest[2] ~= nil then vallayer = lineTest[2] end
+
+		if vallayer ~= self.layer then
+			customError("Neighborhood file '"..data.source.."' was not built for this CellularSpace. CellularSpace layer: '"..layer.."', GPM file layer: '"..vallayer.."'.")
+		end
+	end
+
+	if lineTest[2] ~= nil and lineTest[3] ~= nil then
+		if lineTest[3] ~= layer and  lineTest[2] ~= layer then
+			customError("This function cannot load neighborhood between two layers. Use 'Environment:loadNeighborhood()' instead.")
+		end
+	end
+
+	local values = 2
+
+	if lineTest[4] == nil or lineTest[4] == "" then
+		values = 1
+	end
+
+	forEachCell(self, function(cell)
+		cell:addNeighborhood(Neighborhood{}, data.name)
+	end)
+
+	local line = file:read(" ")
+	local counterLine = 2
+
+	while #line > 0 do
+		local cell = self:get(line[1])
+
+		if cell == nil then
+			customError("Could not find id '"..tostring(line[i]).."' in line "..counterLine..". It seems that it is corrupted.")
+		else
+			local neig = cell:getNeighborhood(data.name)
+			local lineID = file:read(" ")
+			local valfor = (tonumber(line[2]) * 2)
+
+			counterLine = counterLine + 1
+			for i = 1, valfor, values do
+				if lineID[i] == nil and tonumber(line[2]) * values >= i then
+					customError("Could not find id '"..tostring(lineID[i]).."' in line "..counterLine..". It seems that it is corrupted.")
+				elseif lineID[i] ~= nil then
+					local n = self:get(lineID[i])
+
+					if values == 2 and n ~= nilthen  then
+						neig:add(n, tonumber(lineID[i + 1]))
+					elseif values == 1 and n ~= nil then
+						neig:add(n, 1)
+					end
+				end
+			end
+		end
+
+		line = file:read(" ")
+		counterLine = counterLine + 1
+	end
+
+	file:close()
+end
+
+local function loadNeighborhoodGWT(self, data)
+	local file = data.source
+	local lineTest = file:read(" ")
+	local layer = ""
+
+	if self.layer ~= nil then
+		layer = self.layer
+	end
+
+	if data.check then
+		local vallayer = ""
+
+		if lineTest[3] ~= nil then vallayer = lineTest[3] end
+
+		if vallayer ~= self.layer then
+			customError("Neighborhood file '"..data.source.."' was not built for this CellularSpace. CellularSpace layer: '"..layer.."', GWT file layer: '"..vallayer.."'.")
+		end
+	end
+
+	forEachCell(self, function(cell)
+		cell:addNeighborhood(Neighborhood{}, data.name)
+	end)
+
+	local line = file:read(" ")
+	local counterLine = 2
+
+	while #line > 0 do
+		local cell = self:get(line[1])
+
+		if cell == nil then
+			customError("Could not find id '"..tostring(line[1]).."' in line "..counterLine..". It seems that it is corrupted.")
+		elseif line[2] == nil then
+			customError("Could not find id '"..tostring(line[2]).."' in line "..counterLine..". It seems that it is corrupted.")
+		elseif line[3] == nil then
+			customError("Could not find id '"..tostring(line[3]).."' in line "..counterLine..". It seems that it is corrupted.")
+		else
+			local neig = cell:getNeighborhood(data.name)
+			local n = self:get(line[2])
+
+			neig:add(n, tonumber(line[3]))
+		end
+
+		line = file:read(" ")
+		counterLine = counterLine + 1
+	end
+
+	file:close()
+end
 
 local function getCoordCoupling(_, data)
 	return function(cell)
@@ -94,7 +285,7 @@ local function getMooreNeighborhood(cs, data)
 		local lin = -1
 		while lin <= 1 do
 			local col = -1
-			while col <= 1 do 
+			while col <= 1 do
 				if data.self or (lin ~= col or col ~= 0) then
 					local index
 					if data.wrap then
@@ -142,7 +333,7 @@ local function getMxNNeighborhood(_, data)
 				else
 					neighCell = cs:get(cell.x + col, cell.y + lin)
 				end
-	
+
 				if neighCell then
 					if data.filter(cell, neighCell) and not neighborhood:isNeighbor(neighCell) then
 						neighborhood:add(neighCell, data.weight(cell, neighCell))
@@ -196,26 +387,17 @@ local function checkCsv(self)
 	defaultTableValue(self, "sep", ",")
 end
 
-local function checkMap(self)
+local function checkPGM(self)
 	defaultTableValue(self, "sep", " ")
-
-	local getFileName = function(filename)
-		for i = 1, filename:len() do
-			if filename:sub(i, i) == "." then
-				return filename:sub(1, i - 1)
-			end
-		end
-
-		return filename
-	end
-
-	defaultTableValue(self, "attrname", getFileName(self.file))
+	local _, name = self.file:split()
+	defaultTableValue(self, "attrname", name)
 end
 
 local function checkShape(self)
-	local dbf = self.file:sub(1, self.file:len() - 3).."dbf"
+	local path, name = self.file:split()
+	local dbf = File(path..name..".dbf")
 
-	if not isFile(dbf) then
+	if not dbf:exists() then
 		customError("File '"..dbf.."' was not found.")
 	end
 end
@@ -231,30 +413,47 @@ end
 
 local function checkProject(self)
 	defaultTableValue(self, "geometry", false)
-	mandatoryTableArgument(self, "layer", "string")		
-	
-	if not (type(self.project) == "Project") then
-		if type(self.project) == "string" then
-			if not string.endswith(self.project, ".tview") then
-				self.project = self.project..".tview"
+
+	if type(self.layer) == "string" then
+		if type(self.project) ~= "Project" then
+			if type(self.project) == "string" then
+				self.project = File(self.project)
 			end
 
-			if isFile(self.project) then
-				local file = self.project
-				self.project = terralib.Project{
-					file = file
-				}
+			if type(self.project) == "File" then
+				if self.project:extension() ~= "tview" then
+					self.project = File(self.project..".tview")
+				end
+
+				if self.project:exists() then
+					self.project = terralib.Project{
+						file = self.project
+					}
+				else
+					customError("Project '"..self.project.."' was not found.")
+				end
 			else
-				customError("Project '"..self.project.."' was not found.")
+				customError("Argument 'project' must be a Project or file path to a Project.")
 			end
-		else
-			customError("Argument 'project' must be a Project or file path to a Project.")
 		end
+
+		if not self.project.layers[tostring(self.layer)] then
+			customError("Layer '"..self.layer.."' does not exist in Project '"..self.project.file.."'.")
+		end
+
+		self.layer = terralib.Layer{
+			project = self.project,
+			name = self.layer
+		}
+	else
+		mandatoryTableArgument(self, "layer", "Layer")
+
+		if self.project then
+			customError("It is not possible to use Project when passing a Layer to CellularSpace.")
+		end
+
+		self.project = self.layer.project
 	end
-		
-	if not self.project.layers[self.layer] then
-		customError("Layer '"..self.layer.."' does not exist in Project '"..self.project.file.."'.")
-	end	
 end
 
 local function loadCsv(self)
@@ -265,7 +464,8 @@ local function loadCsv(self)
 
 	self.cells = {}
 	self.cObj_:clear()
-	local data = CSVread(self.file, self.sep)
+	local file = self.file
+	local data = file:readTable(self.sep)
 	local cellIdCounter = 0
 	for i = 1, #data do
 		cellIdCounter = cellIdCounter + 1
@@ -274,10 +474,10 @@ local function loadCsv(self)
 		self:add(cell)
 		self.cObj_:addCell(cell.x, cell.y, cell.cObj_)
 	end
-	return 
+	return
 end
 
-local function loadMap(self)
+local function loadPGM(self)
 	local i = 0
 	local j = 0
 
@@ -288,19 +488,51 @@ local function loadMap(self)
 
 	self.cells = {}
 	self.cObj_:clear()
-	for line in io.lines(self.file) do
-		j = 0
 
-		local res = CSVparseLine(line, self.sep)
+	local file = self.file
+	local pgm = {}
 
-		forEachElement(res, function(_, value)
-			local p = Cell {x = j, y = i} 
-		 	p[self.attrname] = tonumber(value)
-			self:add(p)
-			self.cObj_:addCell(p.x, p.y, p.cObj_)
-			j = j + 1
-		end)
-		i = i + 1
+	pgm.comments = {}
+	pgm.type = file:read(self.sep)[1]
+
+	verify(pgm.type == "P2", "File '"..self.file.."' does not contain the PGM identifier 'P2' in its first line.")
+
+	local res = file:read(self.sep)
+	local len = #res
+	while len > 0 do
+		if res[1]:find("#", 1) then
+			if len > 1 then
+				table.remove(res, 1)
+				table.insert(pgm.comments, table.concat(res, " "))
+			end
+		elseif len == 2 and not pgm.size then
+			pgm.size = {tonumber(res[1]), tonumber(res[2])}
+		elseif len == 1 and not pgm.maximumValue then
+			pgm.maximumValue = tonumber(res[1])
+		else
+			j = 0
+			forEachElement(res, function(_, value)
+				local p = Cell {x = j, y = i, [self.attrname] = tonumber(value)}
+				self:add(p)
+				self.cObj_:addCell(p.x, p.y, p.cObj_)
+				j = j + 1
+			end)
+
+			i = i + 1
+		end
+
+		res = file:read(self.sep)
+		len = #res
+	end
+
+	file:close()
+
+	if (j ~= pgm.size[1]) or (i ~= pgm.size[2]) then
+		customWarning("File '"..self.file.."' has a diffent size declared: expected '("..pgm.size[1]..", "..pgm.size[2]..")', got '("..j..", "..i..")'.")
+	end
+
+	if not pgm.maximumValue then
+		customWarning("File '"..self.file.."' does not have a maximum value declared.")
 	end
 
 	self.xdim = self.xMax
@@ -312,60 +544,82 @@ local function setCellsByTerraLibDataSet(self, dSet)
 	self.yMin = 0
 	self.yMax = 0
 	self.xMin = 0
-	
+
+	if type(self.xy) == "table" then
+		verify(#self.xy == 2, "Argument 'xy' should have exactly two values.")
+
+		verify(type(self.xy[1]) == "string", "Argument 'xy[1]' should be 'string', got '"..type(self.xy[1]).."'.")
+		verify(type(self.xy[2]) == "string", "Argument 'xy[2]' should be 'string', got '"..type(self.xy[2]).."'.")
+
+		defaultTableValue(self, "zero", "top")
+	elseif self.xy == nil then
+		self.xy = {"col", "row"}
+		defaultTableValue(self, "zero", "bottom")
+	elseif type(self.xy) ~= "function" then
+		customError("Argument 'xy' should be a 'table' or a 'function', got '"..type(self.xy).."'")
+	end
+
 	self.cells = {}
 	self.cObj_:clear()
+
+	if type(self.xy) == "table" then
+		local colname = self.xy[1]
+		local rowname = self.xy[2]
+
+		if colname ~= "col" and not dSet[1][colname] then
+			customError("Cells do not have attribute '"..colname.."'.")
+		elseif rowname ~= "row" and not dSet[1][rowname] then
+			customError("Cells do not have attribute '"..rowname.."'.")
+		end
+	end
 
 	for i = 0, #dSet do
 		local row = 0
 		local col = 0
 
-		if dSet[i].row then
-			row = tonumber(dSet[i].row)
-			col = tonumber(dSet[i].col)
-		elseif dSet[i].Lin then
-			row = tonumber(dSet[i].Lin) -- SKIP
-			col = tonumber(dSet[i].Col) -- SKIP
-		elseif dSet[i].lin then
-			row = tonumber(dSet[i].lin) -- SKIP
-			col = tonumber(dSet[i].col) -- SKIP
+		if type(self.xy) == "table" then
+			col = tonumber(dSet[i][self.xy[1]]) or 0
+			row = tonumber(dSet[i][self.xy[2]]) or 0
+		elseif type(self.xy) == "function" then
+			col, row = self.xy(dSet[i])
 		end
 
 		self.xMin = math.min(self.xMin, col)
 		self.xMax = math.max(self.xMax, row)
 		self.yMin = math.min(self.yMin, row)
-		self.yMax = math.max(self.yMax, col)		
+		self.yMax = math.max(self.yMax, col)
 	end
 
-	for i = 0, #dSet do
-		local row = tonumber(dSet[i].row)
-		local col = tonumber(dSet[i].col)
+	local tlib = terralib.TerraLib{}
 
-		if not row then -- compatibility with shapes exported from TerraLLib 4
-			if dSet[i].Lin then
-				row = tonumber(dSet[i].Lin) -- SKIP
-				col = tonumber(dSet[i].Col) -- SKIP
-			elseif dSet[i].lin then
-				row = tonumber(dSet[i].lin) -- SKIP
-				col = tonumber(dSet[i].col) -- SKIP
-			end
-		else
-			row = self.xMax - row + self.xMin
+	for i = 0, #dSet do
+		local row = 0
+		local col = 0
+
+		if type(self.xy) == "table" then
+			col = tonumber(dSet[i][self.xy[1]]) or 0
+			row = tonumber(dSet[i][self.xy[2]]) or 0
+		elseif type(self.xy) == "function" then
+			col, row = self.xy(dSet[i])
+		end
+
+		if self.zero == "bottom" then
+			row = self.xMax - row + self.xMin -- bottom inverts row
 		end
 
 		local cell = Cell{id = tostring(i), x = col, y = row}
 		self.cObj_:addCell(cell.x, cell.y, cell.cObj_)
-		
+
 		for k, v in pairs(dSet[i]) do
 			if (k == "OGR_GEOMETRY") or (k == "geom") then
 				if self.geometry then
-					cell.geom = v
+					cell.geom = tlib:castGeomToSubtype(v)
 				end
 			else
 				cell[k] = v
 			end
 		end
-		
+
 		if cell.object_id0 then
 			cell:setId(cell.object_id0)
 		elseif cell.object_id_ then
@@ -376,37 +630,32 @@ local function setCellsByTerraLibDataSet(self, dSet)
 	end
 end
 
-local function loadShape(self)
+local function loadOGR(self)
 	local tlib = terralib.TerraLib{}
-	local dSet = tlib:getShpByFilePath(self.file)
-	self.geometry = true
+	local dSet = tlib:getOGRByFilePath(tostring(self.file))
+
+	defaultTableValue(self, "geometry", false)
+
 	setCellsByTerraLibDataSet(self, dSet)
-	local temp = ""
 
-	for i = self.file:len(), 1, -1 do
-		if self.file:sub(i, i) ~= sessionInfo().separator then
-			temp = self.file:sub(i, i)..temp
-		else
-			break
-		end
-	end
+	local file = self.file
 
-	self.layer = temp
+	self.layer = file:name()
 	self.cObj_:setLayer(self.layer)
 end
 
 local function loadVirtual(self)
 	self.yMin = 0
 	self.xMin = 0
-	self.xMax = self.xdim - 1
-	self.yMax = self.ydim - 1
+	self.xMax = self.ydim - 1
+	self.yMax = self.xdim - 1
 
 	self.cells = {}
 	self.cObj_:clear()
 	local cellIdCounter = 1
-	for i = 1, self.xdim do
-		for j = 1, self.ydim do
-			local c = Cell{id = tostring(cellIdCounter), x = i - 1, y = j - 1}
+	for row = 1, self.xdim do
+		for col = 1, self.ydim do
+			local c = Cell{id = tostring(cellIdCounter), x = row - 1, y = col - 1}
 			cellIdCounter = cellIdCounter + 1
 			c.parent = self
 			self.cObj_:addCell(c.x, c.y, c.cObj_)
@@ -415,10 +664,46 @@ local function loadVirtual(self)
 	end
 end
 
+local function setRasterCells(self, dSet)
+	local set = dSet[0]
+
+	self.xdim = set.xdim -- SKIP -- TODO(#1306): raster are not tested on Linux.
+	self.ydim = set.ydim -- SKIP
+	self.name = set.name -- SKIP
+	self.srid = set.srid -- SKIP
+	self.bands = set.bands -- SKIP
+	self.resolutionX = set.resolutionX -- SKIP
+	self.resolutionY = set.resolutionY -- SKIP
+
+	loadVirtual(self) -- SKIP
+
+	for _, cell in pairs(self.cells) do
+		for b = 0, self.bands - 1 do
+			cell[b] = set.getValue(cell.y, cell.x, b) -- SKIP
+		end
+	end
+end
+
+local function loadGdal(self)
+	local tlib = terralib.TerraLib{}
+	local dSet = tlib:getGdalByFilePath(tostring(self.file))
+
+	setRasterCells(self, dSet) -- SKIP
+	self.layer = self.file:name() -- SKIP
+	self.cObj_:setLayer(self.layer) -- SKIP
+
+	return self
+end
+
 local function loadLayer(self)
 	local tlib = terralib.TerraLib{}
-	local dset = tlib:getDataSet(self.project, self.layer)
-	setCellsByTerraLibDataSet(self, dset)
+	local dset = tlib:getDataSet(self.project, self.layer.name)
+
+	if self.layer.rep == "raster" then
+		setRasterCells(self, dset) -- SKIP
+	else
+		setCellsByTerraLibDataSet(self, dset)
+	end
 end
 
 local CellularSpaceDrivers = {}
@@ -432,7 +717,7 @@ local function registerCellularSpaceDriver(data)
 	defaultTableValue(data, "extension", true)
 
 	mandatoryTableArgument(data, "load", "function")
-	mandatoryTableArgument(data, "check", "function")
+	optionalTableArgument(data, "check", "function")
 	mandatoryTableArgument(data, "source", "string")
 
 	CellularSpaceDrivers[data.source] =  data
@@ -440,8 +725,9 @@ end
 
 registerCellularSpaceDriver{
 	source = "shp",
-	load = loadShape,
-	check = checkShape
+	load = loadOGR,
+	check = checkShape,
+	optional = "xy"
 }
 
 registerCellularSpaceDriver{
@@ -461,18 +747,40 @@ registerCellularSpaceDriver{
 }
 
 registerCellularSpaceDriver{
-	source = "map",
+	source = "pgm",
 	optional = {"sep", "attrname"},
-	load = loadMap,
-	check = checkMap
+	load = loadPGM,
+	check = checkPGM
 }
 
 registerCellularSpaceDriver{
 	source = "proj",
 	extension = false,
 	load = loadLayer,
-	compulsory = {"project", "layer"},
+	compulsory = "layer",
+	optional = "project",
 	check = checkProject
+}
+
+registerCellularSpaceDriver{
+	source = "geojson",
+	load = loadOGR,
+	optional = "xy"
+}
+
+registerCellularSpaceDriver{
+	source = "tif",
+	load = loadGdal
+}
+
+registerCellularSpaceDriver{
+	source = "nc",
+	load = loadGdal
+}
+
+registerCellularSpaceDriver{
+	source = "asc",
+	load = loadGdal
 }
 
 CellularSpace_ = {
@@ -488,7 +796,7 @@ CellularSpace_ = {
 	add = function(self, cell)
 		if type(cell) ~= "Cell" then
 			incompatibleTypeError(1, "Cell", cell)
-		elseif cell.parent ~= nil then 
+		elseif cell.parent ~= nil then
 			customError("The cell already has a parent.")
 		end
 
@@ -505,27 +813,30 @@ CellularSpace_ = {
 		self.index_xy_ = nil
 	end,
 	--- Create a Neighborhood for each Cell of the CellularSpace.
+	-- Most of the available strategies require that each Cell has
+	-- attributes with (x, y) locations. It is possible to set the attributes
+	-- that represent (x, y) locations while creating the CellularSpace.
 	-- @arg data.inmemory If true (default), a Neighborhood will be built and stored for
 	-- each Cell of the CellularSpace. The Neighborhoods will change only if the
 	-- modeler add or remove neighbors explicitly. If false, a Neighborhood will be
 	-- computed every time the simulation calls Cell:getNeighborhood(), for
-	-- example when using Utils:forEachNeighbor(). In this case, if any of the attributes 
+	-- example when using Utils:forEachNeighbor(). In this case, if any of the attributes
 	-- the Neighborhood is based on changes then the resulting Neighborhood might be different.
 	-- Neighborhoods not in memory also help the simulation to run with larger datasets,
 	-- as they are not explicitly represented, but they consume more
 	-- time as they need to be built again and again along the simulation.
-	-- @arg data.strategy A string with the strategy to be used for creating the Neighborhood. 
+	-- @arg data.strategy A string with the strategy to be used for creating the Neighborhood.
 	-- See the table below.
 	-- @tabular strategy
 	-- Strategy & Description & Compulsory Arguments & Optional Arguments \
 	-- "3x3" & A 3x3 (Couclelis) Neighborhood (Deprecated. Use mxn instead). & & name, filter, weight, inmemory \
-	-- "coord" & A bidirected relation between two CellularSpaces connecting Cells with the same 
+	-- "coord" & A bidirected relation between two CellularSpaces connecting Cells with the same
 	-- (x, y) coordinates. & target & name, inmemory\
 	-- "diagonal" & Connect each Cell to its (at most) four diagonal neighbors.
 	-- & & name, self, wrap, inmemory \
-	-- "function" & A Neighborhood based on a function where any other Cell can be a neighbor. & 
+	-- "function" & A Neighborhood based on a function where any other Cell can be a neighbor. &
 	-- filter & name, weight, inmemory \
-	-- "moore"(default) & A Moore (queen) Neighborhood, connecting each Cell to its (at most) 
+	-- "moore"(default) & A Moore (queen) Neighborhood, connecting each Cell to its (at most)
 	-- eight touching Cells. & & name, self, wrap, inmemory \
 	-- "mxn" & A m (columns) by n (rows) Neighborhood within the CellularSpace or between two
 	-- CellularSpaces if target is used. & & m, name, n, filter, weight, wrap, target, inmemory \
@@ -540,9 +851,9 @@ CellularSpace_ = {
 	-- Cell in the center of the Neighborhood. The default value is 3.
 	-- @arg data.n Number of rows. If n is even then it will be increased by one to keep the Cell
 	-- in the center of the Neighborhood. The default value is m.
-	-- @arg data.name A string with the name of the Neighborhood to be created. 
+	-- @arg data.name A string with the name of the Neighborhood to be created.
 	-- The default value is "1".
-	-- @arg data.self Add the Cell as neighbor of itself? The default value is false. Note that the 
+	-- @arg data.self Add the Cell as neighbor of itself? The default value is false. Note that the
 	-- functions that do not require this argument always depend on a filter function, which will
 	-- define whether the Cell can be neighbor of itself.
 	-- @arg data.target Another CellularSpace whose Cells will be used to create neighborhoods.
@@ -622,7 +933,7 @@ CellularSpace_ = {
 
 				data.func = getDiagonalNeighborhood
 			end,
-			["function"] = function() 
+			["function"] = function()
 				verifyUnnecessaryArguments(data, {"filter", "weight", "name", "strategy", "inmemory"})
 
 				mandatoryTableArgument(data, "filter", "function")
@@ -665,7 +976,7 @@ CellularSpace_ = {
 
 				data.func = getMxNNeighborhood
 			end,
-			vonneumann = function() 
+			vonneumann = function()
 				verifyUnnecessaryArguments(data, {"name", "strategy", "wrap", "self", "inmemory"})
 
 				defaultTableValue(data, "self", false)
@@ -673,10 +984,10 @@ CellularSpace_ = {
 
 				data.func = getVonNeumannNeighborhood
 			end,
-			["3x3"] = function() 
+			["3x3"] = function()
 				deprecatedFunction("createNeighborhood with strategy 3x3", "mxn")
 			end,
-			coord = function() 
+			coord = function()
 				verifyUnnecessaryArguments(data, {"name", "strategy", "target", "inmemory"})
 
 				mandatoryTableArgument(data, "target", "CellularSpace")
@@ -758,7 +1069,7 @@ CellularSpace_ = {
 	--- Return a Cell from the CellularSpace, given its unique identifier or its location. If the Cell
 	-- does not belong to the CellularSpace then it will return nil.
 	-- @arg xIndex A number indicating an x coordinate. It can also be a string with the object id.
-	-- @arg yIndex A number indicating a y coordinate. This argument is unnecessary when the first 
+	-- @arg yIndex A number indicating a y coordinate. This argument is unnecessary when the first
 	-- argument is a string.
 	-- @usage cs = CellularSpace{xdim = 10}
 	--
@@ -834,23 +1145,23 @@ CellularSpace_ = {
 	load = function()
 		customError("Load function was not implemented.")
 	end,
-	--- Load a Neighborhood stored in an external source. Each Cell receives its own set of 
+	--- Load a Neighborhood stored in an external source. Each Cell receives its own set of
 	-- neighbors.
-	-- @arg data.name A string with the location of the Neighborhood 
+	-- @arg data.source A File or a string with the location of the Neighborhood
 	-- to be loaded. See below.
 	-- @arg data.check A boolean value indicating whether this function should match the
 	-- layer name of the CellularSpace with the one described in the source. The default value is true.
-	-- @arg tbAttrLoad.source A string with the name of the Neighborhood
+	-- @arg data.name A string with the name of the Neighborhood
 	-- to be loaded within TerraME. The default value is "1".
 	-- @tabular name
 	-- Source & Description \
 	--"*.gal" & Load a Neighborhood from contiguity relationships described as a GAL file.\
 	-- "*.gwt" & Load a Neighborhood from a GWT (generalized weights) file.\
 	-- "*.gpm" & Load a Neighborhood from a GPM (generalized proximity matrix) file. \
-	-- Any other & Load a Neighborhood from table stored in the same database of the 
+	-- Any other & Load a Neighborhood from table stored in the same database of the
 	-- CellularSpace. \
 	-- @usage cs = CellularSpace{
-	--     file = filePath("cabecadeboi900.shp", "base")	
+	--     file = filePath("cabecadeboi900.shp", "base")
 	-- }
 	--
 	-- cs:loadNeighborhood{source = filePath("cabecadeboi-neigh.gpm", "base")}
@@ -858,26 +1169,36 @@ CellularSpace_ = {
 		verifyNamedTable(data)
 		verifyUnnecessaryArguments(data, {"source", "name", "check"})
 
-		mandatoryTableArgument(data, "source", "string")
+		if type(data.source) == "string" then
+			data.source = File(data.source)
+		end
 
-		if data.source:endswith(".gal") or data.source:endswith(".gwt") or data.source:endswith(".gpm") then
-			if not io.open(data.source, "r") then
+		mandatoryTableArgument(data, "source", "File")
+
+		local ext = data.source:extension()
+
+		if ext == "" then
+			customError("Argument 'source' does not have an extension.")
+		elseif belong(data.source:extension(), {"gal", "gwt", "gpm"}) then
+			if not data.source:exists() then
 				resourceNotFoundError("source", data.source)
 			end
 		else
-			local ext = string.match(data.source, "(([^%.]+))$")
-
-			if ext == data.source then
-				customError("Argument 'source' does not have an extension.")
-			else
-				invalidFileExtensionError("source", ext)
-			end
+			invalidFileExtensionError("source", ext)
 		end
+
+		separatorCheck(data)
 
 		defaultTableValue(data, "name", "1")
 		defaultTableValue(data, "check", true)
 
-		self.cObj_:loadNeighborhood(data.source, data.name, data.check)
+		if ext == "gal" then
+			loadNeighborhoodGAL(self, data)
+		elseif ext == "gwt" then
+			loadNeighborhoodGWT(self, data)
+		elseif ext == "gpm" then
+			loadNeighborhoodGPM(self, data)
+		end
 	end,
 	--- Notify every Observer connected to the CellularSpace.
 	-- @arg modelTime A number representing the notification time. The default value is zero.
@@ -936,91 +1257,98 @@ CellularSpace_ = {
 	sample = function(self)
 		return self.cells[Random():integer(1, #self)]
 	end,
-	--- Save the attributes of a CellularSpace into the same database it was loaded from.
-	-- @arg newLayerName Name of the TerraLib layer to store the saved attributes.
-	-- @arg attrNames A vector with the names of the attributes to be saved.
-	-- When saving a single attribute, you can use
-	-- attrNames = "attribute" instead of attrNames = {"attribute"}.
+	--- Save the attributes of a CellularSpace into the same terralib::Project it was loaded from.
+	-- @arg newLayerName Name of the terralib::Layer to store the saved attributes.
+	-- If the original data comes from a shapefile, it will create another shapefile using
+	-- the name of the layer as file name and will save it in the same directory where the
+	-- original shapefile is stored. If the data comes from a PostGIS database, it
+	-- will create another table with name equals to the the layer's name.
+	-- @arg attrNames A vector with the names of the attributes to be saved. These
+	-- attributes should be only the attributes that were created or modified. The
+	-- other attributes of the layer will also be saved in the new output.
+	-- When saving a single attribute, you can use a string "attribute" instead of a table {"attribute"}.
 	-- @usage -- DONTRUN
-	-- config = getConfig()
-	-- mhost = config.host
-	-- muser = config.user
-	-- mpassword = config.password
-	-- mport = config.port
+	-- import("terralib")
 	--
-	-- cs = CellularSpace{
-	--     host = mhost,
-	--     user = muser,
-	--     password = mpassword,
-	--     port = mport,
-	--     database = "cabecadeboi",
-	--     theme = "cells900x900"
+	-- proj = Project{
+	--     file = "amazonia.tview",
+	--     clean = true,
+	--     amazonia = filePath("amazonia.shp")
 	-- }
 	--
-	-- cs:save("themeName", "height_")
+	-- cs = CellularSpace{
+	--     project = proj,
+	--     layer = "amazonia"
+	-- }
+	--
+	-- forEachCell(cs, function(cell)
+	--     cell.distweight = 1 / cell.distroad
+	-- end)
+	--
+	-- cs:save("myamazonia", "distweight")
 	save = function(self, newLayerName, attrNames)
 		mandatoryArgument(1, "string", newLayerName)
-		
+
 		if (attrNames ~= nil) and (attrNames ~= "") then
-			if type(attrNames) == "string" then 
-				attrNames = {attrNames} 
+			if type(attrNames) == "string" then
+				attrNames = {attrNames}
 			elseif type(attrNames) ~= "table" then
 				customError("Incompatible types. Argument '#2' expected table or string.")
 			end
-			
+
 			for _, attr in pairs(attrNames) do
 				if not self.cells[1][attr] then
 					customError("Attribute '"..attr.."' does not exist in the CellularSpace.")
 				end
 			end
 		end
-		
-		if self.project then
-			local tlib = terralib.TerraLib{}
-			
-			if not self.geometry then
-				local dset = tlib:getDataSet(self.project, self.layer)
 
-				for i = 0, #dset do
-					for k, v in pairs(dset[i]) do
-						if (k == "OGR_GEOMETRY") or (k == "geom") then
-							self.cells[i+1][k] = v
-						end
-					end		
-				end
-			else
-				local dset = tlib:getDataSet(self.project, self.layer)
-				local isOgr = false
-
-				for k in pairs(dset[0]) do
-					if k == "OGR_GEOMETRY" then
-						isOgr = true
-					end
-				end	
-				
-				if isOgr then
-					for i = 0, #dset do
-						for k, v in pairs(dset[i]) do
-							if k == "OGR_GEOMETRY" then
-								self.cells[i+1]["geom"] = nil
-								self.cells[i+1][k] = v
-							end
-						end		
-					end
-				end	
-			end
-			
-			tlib:saveDataSet(self.project, self.layer, self.cells, newLayerName, attrNames)
-		else
+		if not self.project then
 			customError("The CellularSpace must have a valid Project. Please, check the documentation.")
 		end
+
+		local tlib = terralib.TerraLib{}
+
+		if not self.geometry then
+			local dset = tlib:getDataSet(self.project, self.layer.name)
+
+			for i = 0, #dset do
+				for k, v in pairs(dset[i]) do
+					if (k == "OGR_GEOMETRY") or (k == "geom") then
+						self.cells[i + 1][k] = v
+					end
+				end
+			end
+		else
+			local dset = tlib:getDataSet(self.project, self.layer.name)
+			local isOgr = false
+
+			for k in pairs(dset[0]) do
+				if k == "OGR_GEOMETRY" then
+					isOgr = true
+				end
+			end
+
+			if isOgr then
+				for i = 0, #dset do
+					for k, v in pairs(dset[i]) do
+						if k == "OGR_GEOMETRY" then
+							self.cells[i + 1].geom = nil
+							self.cells[i + 1][k] = v
+						end
+					end
+				end
+			end
+		end
+
+		tlib:saveDataSet(self.project, self.layer.name, self.cells, newLayerName, attrNames)
 	end,
 	--- Return the number of Cells in the CellularSpace.
 	-- @deprecated CellularSpace:#
 	size = function()
 		deprecatedFunction("size", "operator #")
 	end,
-	--- Split the CellularSpace into a table of Trajectories according to a classification 
+	--- Split the CellularSpace into a table of Trajectories according to a classification
 	-- strategy. The Trajectories will have empty intersection and union equal to the
 	-- whole CellularSpace (unless function below returns nil for some Cell). It works according
     -- to the type of its only and compulsory argument.
@@ -1051,12 +1379,12 @@ CellularSpace_ = {
 	-- ts = cs:split("cover")
 	-- print(#ts.forest) -- can be zero because it comes from an instance
 	-- print(#ts.pasture) -- also
-	-- 
+	--
 	-- ts2 = cs:split(function(cell)
-	--     if cell.forest > 0.5 then 
-	--         return "gt" 
-	--     else 
-	--         return "lt" 
+	--     if cell.forest > 0.5 then
+	--         return "gt"
+	--     else
+	--         return "lt"
 	--     end
 	-- end)
 	--
@@ -1106,8 +1434,10 @@ CellularSpace_ = {
 		return result
 	end,
 	--- Synchronize the CellularSpace, calling the function synchronize() for each of its Cells.
-	-- @arg values A string or a vector of strings with the attributes to be synchronized. If 
+	-- @arg values A string or a vector of strings with the attributes to be synchronized. If
 	-- empty, TerraME synchronizes every attribute of the Cells but the (x, y) coordinates.
+	-- If the CellularSpace has an instance and it implements Cell:on_synchronize() then it
+	-- will be called for each Cell.
 	-- @usage cell = Cell{
 	--     forest = Random{min = 0, max = 1}
 	-- }
@@ -1134,7 +1464,7 @@ CellularSpace_ = {
 
 		if type(values) == "string" then
 			values = {values}
-		elseif type(values) ~= "table" then 
+		elseif type(values) ~= "table" then
 			incompatibleTypeError(1, "string, table or nil", values)
 		end
 
@@ -1149,7 +1479,9 @@ CellularSpace_ = {
 			end
 		end
 
-		s = s.."} end"
+		s = s.."} "
+		s = s.."if type(cell.on_synchronize) == 'function' then cell:on_synchronize() end "
+		s = s.."end"
 
 		forEachCell(self, load(s)())
 	end
@@ -1168,20 +1500,35 @@ metaTableCellularSpace_ = {
 }
 
 --- A multivalued set of Cells. It can be retrieved from databases, files, or created
--- directly within TerraME. 
--- Every Cell of a CellularSpace has an (x, y) location. The Cell with lower (x, y)
--- represents the upper left location.
+-- directly within TerraME.
+-- Every Cell of a CellularSpace has an (x, y) location that comes from the attributes
+-- (row, col) as default. The Cell with lower (x, y)
+-- represents the bottom left location (see argument zero below).
 -- See the table below with the description and the arguments of each data source.
 -- Calling Utils:forEachCell() traverses CellularSpaces.
 -- @arg data.sep A string with the file separator. The default value is ",".
--- @arg data.layer A string with the name of the layer stored in a TerraLib project. 
--- @arg data.project A string with the name of the TerraLib project to be used. 
+-- @arg data.layer A string with the name of the layer stored in a TerraLib project,
+-- or a terralib::Layer.
+-- @arg data.project A string with the name of the TerraLib project to be used.
 -- If this name does not ends with ".tview", this extension will be added to the name
--- of the file.
--- @arg data.attrname A string with an attribute name. It is useful for files that have 
--- only one attribute value for each cell but no attribute name.
+-- of the file. It can also be a terralib::Project.
+-- @arg data.attrname A string with an attribute name. It is useful for files that have
+-- only one attribute value for each cell but no attribute name. The default value is
+-- the name of the file being read.
+-- @arg data.as A table with string indexes and values. It renames the loaded attributes
+-- of the CellularSpace from the values to its indexes.
+-- @arg data.zero A string value describing where the zero in the y axis starts. The
+-- default value is "bottom". When one uses argument xy, the
+-- default value is "top", which is the most common representation in different data
+-- formats.
+-- @arg data.xy An optional table with two strings describing the names of the
+-- column and row attributes, in this order. The default value is {"col", "row"},
+-- representing the attribute names created by TerraLib for CellularSpaces. A Map
+-- can only be created from a CellularSpace if each Cell has a (x, y) location. This
+-- argument can also be a function that gets a Cell as argument and returns two values
+-- with the (x, y) location.
 -- @arg data.... Any other attribute or function for the CellularSpace.
--- @arg data.instance A Cell with the description of attributes and functions. 
+-- @arg data.instance A Cell with the description of attributes and functions.
 -- When using this argument, each Cell will have attributes and functions according to the
 -- instance. It also calls Cell:init() from the instance for each of its Cells.
 -- Every attribute from the Cell that is a Random will be converted into Random:sample().
@@ -1199,7 +1546,7 @@ metaTableCellularSpace_ = {
 -- @arg data.xdim Number of columns, in the case of creating a CellularSpace without needing to
 -- load from a database.
 -- @arg data.geometry A boolean value indicating whether the geometry should also be loaded.
--- The default value is false. If true, each cell will have an attribute called geom with a TerraLib object. 
+-- The default value is false. If true, each cell will have an attribute called geom with a TerraLib object.
 -- @arg data.ydim Number of lines, in the case of creating a CellularSpace without needing to
 -- load from a database. The default value is equal to xdim.
 -- @arg data.file A string with a file name (if it is stored in the current directory), or the complete
@@ -1208,19 +1555,18 @@ metaTableCellularSpace_ = {
 -- according to the arguments passed to the function.
 -- @tabular source
 -- source & Description & Compulsory arguments & Optional arguments\
--- "map" & Load from a text file where Cells are stored as numbers with its attribute value.
--- & & sep, attrname \
+-- "pgm" & Load from a text file where Cells are stored as numbers with its attribute value.
+-- & & sep, attrname, as \
 -- "csv" & Load from a Comma-separated value (.csv) file. Each column will become an attribute. It
--- requires at least two attributes: x and y. & file & source, sep, geometry, ...\
+-- requires at least two attributes: x and y. & file & source, sep, as, geometry, ...\
 -- "proj" & Load from a layer within a TerraLib project. See the documentation of package terralib for
--- more information. & project, layer & source, geometry, ... \
--- "shp" & Load data from a shapefile. It requires three files with the same name and 
--- different extensions: .shp, .shx, and .dbf. The argument file must contain the
--- extension .shp. Each loaded Cell will have its (x, y) location according to the attributes
--- (row, col) or (Lin, Col) from the shapefile. The first pair keeps compatibility with TerraLib 5, 
--- while the last one is related to TerraLib 4. & file & source, geometry, ... \
+-- more information. & project, layer & source, geometry, as, ... \
+-- "shp" & Load data from a shapefile. It requires three files with the same name and
+-- different extensions: .shp, .shx, and .dbf. The argument file must end with ".shp".
+-- As default, each Cell will have its (x, y) location according
+-- to the attributes (row, col) from the shapefile. & file & source, as, xy, zero, geometry, ... \
 -- "virtual" & Create a rectangular CellularSpace from scratch. Cells will be instantiated with
--- only two attributes, x and y, starting from (0, 0). & xdim & ydim, geometry, ...
+-- only two attributes, x and y, starting from (0, 0). & xdim & ydim, as, geometry, ...
 -- @output cells A vector of Cells pointed by the CellularSpace.
 -- @output cObj_ A pointer to a C++ representation of the CellularSpace. Never use this object.
 -- @output parent The Environment it belongs.
@@ -1236,10 +1582,31 @@ metaTableCellularSpace_ = {
 -- states = CellularSpace{
 --     file = filePath("brazilstates.shp", "base")
 -- }
+--
+-- cabecadeboi = CellularSpace{
+--     file = filePath("cabecadeboi.shp"),
+--     as = {height = "height_"}
+-- }
 function CellularSpace(data)
 	verifyNamedTable(data)
-	
+
+	optionalTableArgument(data, "as", "table")
+
+	if data.as then
+		forEachElement(data.as, function(idx, value)
+			if type(idx) ~= "string" then
+				customError("All indexes of 'as' should be 'string', got '"..type(idx).."'.")
+			elseif type(value) ~= "string" then
+				customError("All values of 'as' should be 'string', got '"..type(value).."'.")
+			end
+		end)
+	end
+
 	local candidates = {}
+
+	if type(data.file) == "string" then
+		data.file = File(data.file)
+	end
 
 	forEachOrderedElement(CellularSpaceDrivers, function(idx, value)
 		local all = true
@@ -1250,7 +1617,7 @@ function CellularSpace(data)
 			end
 		end)
 
-		if value.extension and (not data.file or (type(data.file) == "string" and getExtension(data.file) ~= idx)) then
+		if value.extension and (not data.file or (type(data.file) == "File" and data.file:extension() ~= idx)) then
 			all = false
 		end
 
@@ -1290,13 +1657,13 @@ function CellularSpace(data)
 		word = string.sub(word, 0, string.len(word) - 2).."]."
 		customError("'"..data.source.."' is an invalid value for argument 'source'. "..word)
 	elseif CellularSpaceDrivers[data.source].extension then
-		mandatoryTableArgument(data, "file", "string")
+		mandatoryTableArgument(data, "file", "File")
 
-		if getExtension(data.file) ~= data.source then
+		if data.file:extension() ~= data.source then
 			customError("source and file extension should be the same.")
 		end
 
-		if not isFile(data.file) then
+		if not data.file:exists() then
 			resourceNotFoundError("file", data.file)
 		end
 	end
@@ -1401,7 +1768,7 @@ function CellularSpace(data)
 		forEachCell(data, function(cell)
 			setmetatable(cell, {__index = data.instance})
 			forEachElement(data.instance, function(attribute, value)
-				if not string.endswith(attribute, "_") and not belong(attribute, {"x", "id", "y", "past"}) then 
+				if not string.endswith(attribute, "_") and not belong(attribute, {"x", "id", "y", "past"}) then
 					cell[attribute] = value
 				end
 			end)
@@ -1436,14 +1803,14 @@ function CellularSpace(data)
 			end
 
 			if data.instance[idx] then
-				if type(value) == "function" then
+				if type(value) == "function" and idx ~= "on_synchronize" then
 					strictWarning("Function '"..idx.."()' from Cell is replaced in the instance.")
 				end
 			else
 				data.instance[idx] = value
 			end
 		end)
-		
+
 		local metaTableInstance = {__index = data.instance, __tostring = _Gtme.tostring}
 
 		data.instance.type_ = "Cell"
@@ -1452,6 +1819,27 @@ function CellularSpace(data)
 		forEachCell(data, function(cell)
 			setmetatable(cell, metaTableInstance)
 		end)
+	end
+
+	if data.as then
+		forEachElement(data.as, function(idx, value)
+			if data.cells[1][idx] then
+				customError("Cannot rename '"..value.."' to '"..idx.."' as it already exists.")
+			elseif not data.cells[1][value] then
+				customError("Cannot rename attribute '"..value.."' as it does not exist.")
+			end
+		end)
+
+		local s = "return function(cell)\n"
+
+		forEachElement(data.as, function(idx, value)
+			s = s.."cell."..idx.." = cell."..value.."\n"
+			s = s.."cell."..value.." = nil\n"
+		end)
+
+		s = s.."end"
+
+		forEachCell(data, load(s)())
 	end
 
 	return data

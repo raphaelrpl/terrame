@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------------------
 -- TerraME - a software platform for multiple scale spatially-explicit dynamic modeling.
--- Copyright (C) 2001-2016 INPE and TerraLAB/UFOP -- www.terrame.org
+-- Copyright (C) 2001-2017 INPE and TerraLAB/UFOP -- www.terrame.org
 
 -- This code is part of the TerraME framework.
 -- This framework is free software; you can redistribute it and/or
@@ -38,6 +38,11 @@ return{
 			title = title
 		}
 
+		local customWarningBkp = customWarning
+		customWarning = function(msg)
+			return msg
+		end
+
 		local layerName1 = "Brazil"
 
 		terralib.Layer{
@@ -45,16 +50,13 @@ return{
 			name = layerName1,
 			file = filePath("brazilstates.shp", "base")
 		}
-		
+
 		-- SHAPE
-		local testDir = _Gtme.makePathCompatibleToAllOS(currentDir())
 		local shp1 = "brazil_cells.shp"
-		local filePath1 = testDir.."/"..shp1			
-		
-		if isFile(filePath1) then
-			rmFile(filePath1)
-		end			
-		
+		local filePath1 = currentDir()..shp1
+
+		File(filePath1):deleteIfExists()
+
 		local clName1 = "Brazil_Cells"
 		terralib.Layer{
 			project = proj,
@@ -63,23 +65,23 @@ return{
 			resolution = 100e3,
 			file = filePath1
 		}
-		
+
 		local cs = CellularSpace{
 			project = projName,
 			layer = clName1,
 			geometry = true
 		}
-		
-		forEachCell(cs, function(c)
-			unitTest:assertEquals(c:area(), 10000000000)
-		end)
-		
+
+		for _ = 1, 10 do
+			unitTest:assertEquals(cs:sample():area(), 10000000000)
+		end
+
 		-- POSTGIS
 		local clName2 = "Brazil_Cells_PG"
 		local host = "localhost"
 		local port = "5432"
 		local user = "postgres"
-		local password = "postgres"
+		local password = getConfig().password
 		local database = "postgis_22_sample"
 		local encoding = "CP1252"
 		local tName = string.lower(clName2)
@@ -115,20 +117,16 @@ return{
 			geometry = true
 		}
 
-		forEachCell(cs, function(c)
-			unitTest:assertEquals(c:area(), 10000000000)
-		end)		
-		
-		-- END
-		if isFile(projName) then
-			rmFile(projName)
+		for _ = 1, 10 do
+			unitTest:assertEquals(cs:sample():area(), 10000000000)
 		end
-		
-		if isFile(filePath1) then
-			rmFile(filePath1)
-		end	
 
-		tl:dropPgTable(pgData)		
+		File(projName):deleteIfExists()
+		File(filePath1):deleteIfExists()
+
+		tl:dropPgTable(pgData)
+
+		customWarning = customWarningBkp
 	end,
 	distance = function(unitTest)
 		local projName = "cell_area.tview"
@@ -145,6 +143,11 @@ return{
 			title = title
 		}
 
+		local customWarningBkp = customWarning
+		customWarning = function(msg)
+			return msg
+		end
+
 		local layerName1 = "Brazil"
 
 		terralib.Layer{
@@ -152,16 +155,13 @@ return{
 			name = layerName1,
 			file = filePath("brazilstates.shp", "base")
 		}
-		
+
 		-- SHAPE
-		local testDir = _Gtme.makePathCompatibleToAllOS(currentDir())
 		local shp1 = "brazil_cells.shp"
-		local filePath1 = testDir.."/"..shp1			
-		
-		if isFile(filePath1) then
-			rmFile(filePath1)
-		end			
-		
+		local filePath1 = currentDir()..shp1
+
+		File(filePath1):deleteIfExists()
+
 		local clName1 = "Brazil_Cells"
 		terralib.Layer{
 			project = proj,
@@ -170,21 +170,21 @@ return{
 			resolution = 100e3,
 			file = filePath1
 		}
-		
+
 		local cs = CellularSpace{
 			project = projName,
 			layer = clName1,
 			geometry = true
 		}
-		
+
 		local cell = cs.cells[1]
 		unitTest:assertEquals(cell:distance(cell), 0)
-		
+
 		local othercell = cs.cells[#cs - 1]
 		local dist = cell:distance(othercell)
-		
+
 		unitTest:assertEquals(dist, 4257933.7712088, 1.0e-7)
-		
+
 		-- POSTGIS
 		local clName2 = "Brazil_Cells_PG"
 		local host = "localhost"
@@ -228,21 +228,17 @@ return{
 
 		cell = cs.cells[1]
 		unitTest:assertEquals(cell:distance(cell), 0)
-		
+
 		othercell = cs.cells[#cs - 1]
 		dist = cell:distance(othercell)
-		
-		unitTest:assertEquals(dist, 4257933.7712088, 1.0e-7)
-		
-		-- END
-		if isFile(projName) then
-			rmFile(projName)
-		end
-		
-		if isFile(filePath1) then
-			rmFile(filePath1)
-		end	
 
-		tl:dropPgTable(pgData)			
+		unitTest:assertEquals(dist, 4257933.7712088, 1.0e-7)
+
+		File(projName):deleteIfExists()
+		File(filePath1):deleteIfExists()
+
+		tl:dropPgTable(pgData)
+
+		customWarning = customWarningBkp
 	end
 }

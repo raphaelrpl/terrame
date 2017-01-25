@@ -30,7 +30,7 @@ return{
 			id = "singleFoo",
 			size = 10,
 			execute = function(self)
-				self.size = self.size + 1	
+				self.size = self.size + 1
 				self:walk()
 			end}
 
@@ -87,7 +87,7 @@ socialnetworks  vector of size 0
 		}
 
 		local predators = Society{
-			instance = predator, 
+			instance = predator,
 			quantity = 5
 		}
 
@@ -96,9 +96,9 @@ socialnetworks  vector of size 0
 		local e = Environment{predators, cs}
 		e:createPlacement()
 
-		unitTest:assertEquals(tostring(predators:sample()), [[cell            Cell
+		unitTest:assertEquals(tostring(predators:sample()), [[cObj_           userdata
+cell            Cell
 cells           vector of size 1
-cObj_           userdata
 id              string [4]
 parent          Society
 placement       Trajectory
@@ -117,7 +117,7 @@ state_          State
 	end,
 	addSocialNetwork = function(unitTest)
 		local ag1 = Agent{}
-		unitTest:assertNil(ag1:getSocialNetwork("notfriends"))	
+		unitTest:assertNil(ag1:getSocialNetwork("notfriends"))
 
 		local sn = SocialNetwork()
 		ag1:addSocialNetwork(sn)
@@ -144,7 +144,7 @@ state_          State
 		}
 
 		local predators = Society{
-			instance = predator, 
+			instance = predator,
 			quantity = 5
 		}
 
@@ -155,7 +155,9 @@ state_          State
 
 		unitTest:assertEquals(5, #predators)
 		local dead = predators.agents[2]
-		predators.agents[2]:die()
+		dead:die()
+
+		unitTest:assertType(dead, "<Dead Agent>")
 		unitTest:assertEquals(4, #predators)
 
 		local test_function = function()
@@ -291,6 +293,9 @@ state_          State
 		}
 
 		predators:createSocialNetwork{probability = 0.5, inmemory = false}
+
+		sn2 = predators:sample():getSocialNetwork()
+		unitTest:assertType(sn2, "SocialNetwork")
 	end,
 	getStateName = function(unitTest)
 		local a = Agent{
@@ -439,8 +444,8 @@ state_          State
 		}
 
 		local sc = Society{instance = ag, quantity = 2}
-		local ag1 = sc.agents[1]		
-		local ag2 = sc.agents[2]		
+		local ag1 = sc.agents[1]
+		local ag2 = sc.agents[2]
 
 		ag1:message{
 			receiver = ag2,
@@ -458,8 +463,8 @@ state_          State
 		}
 
 		local sc = Society{instance = ag, quantity = 2}
-		local ag1 = sc.agents[1]		
-		local ag2 = sc.agents[2]		
+		local ag1 = sc.agents[1]
+		local ag2 = sc.agents[2]
 
 		ag1:message{
 			receiver = ag2,
@@ -481,7 +486,7 @@ state_          State
 		}
 
 		local predators = Society{
-			instance = predator, 
+			instance = predator,
 			quantity = 5
 		}
 

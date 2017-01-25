@@ -81,7 +81,7 @@ y          number [0]
 ]])
 
 		c:synchronize()
-		
+
 		unitTest:assertEquals(tostring(c), [[agents     vector of size 0
 cObj_      userdata
 friends    Group
@@ -104,7 +104,7 @@ y          number [0]
 		unitTest:assertEquals(0, #c1)
 		c1:addNeighborhood(n)
 		unitTest:assertEquals(1, #c1)
-		
+
 		unitTest:assertType(c1:getNeighborhood(), "Neighborhood")
 	end,
 	distance = function(unitTest)
@@ -213,6 +213,19 @@ y          number [0]
 		c = cs.cells[2]
 		unitTest:assert(c:isEmpty())
 		unitTest:assert(c:isEmpty("friends"))
+	end,
+	on_synchronize = function(unitTest)
+		local c = Cell{
+			value = 3,
+			on_synchronize = function(self)
+				self.value = 0
+			end
+		}
+
+		c:synchronize()
+
+		unitTest:assertEquals(c.past.value, 3)
+		unitTest:assertEquals(c.value, 0)
 	end,
 	sample = function(unitTest)
 		local cs = CellularSpace{xdim = 3}

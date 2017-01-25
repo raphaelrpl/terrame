@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------------------
 -- TerraME - a software platform for multiple scale spatially-explicit dynamic modeling.
--- Copyright (C) 2001-2016 INPE and TerraLAB/UFOP -- www.terrame.org
+-- Copyright (C) 2001-2017 INPE and TerraLAB/UFOP -- www.terrame.org
 
 -- This code is part of the TerraME framework.
 -- This framework is free software; you can redistribute it and/or
@@ -22,27 +22,18 @@
 --
 -------------------------------------------------------------------------------------------
 
-local printError   = _Gtme.printError
-local printNote    = _Gtme.printNote
+local printError = _Gtme.printError
+local printNote  = _Gtme.printNote
 
 function _Gtme.executeProject(package)
 	local initialTime = os.clock()
 
-	if not isLoaded("base") then
-		import("base")
-	end
-
-	if not isLoaded("terralib") then
-		import("terralib")
-	end
-
 	printNote("Creating projects for package '"..package.."'")
-	local s = sessionInfo().separator
+
 	local package_path = _Gtme.packageInfo(package).path
+	local data_path = Directory(package_path.."data")
 
-	local data_path = package_path..s.."data"
-
-	chDir(data_path)
+	data_path:setCurrentDir()
 
 	local project_report = {
 		projects = 0,
@@ -53,43 +44,113 @@ function _Gtme.executeProject(package)
 
 	printNote("Removing output files")
 	forEachFile(data_path, function(file)
-		if string.endswith(file, ".lua") then
-			local output = string.sub(file, 1, -5)..".tview"
+		if file:extension() == "lua" then
+			local _, name = file:split()
+			local output = File(name..".tview")
 
-			if isFile(output) then
-				print("Removing file '"..output.."'.")
-				rmFile(output)
+			if output:exists() then
+				print("Removing 'data/"..output:name().."'")
+				output:delete()
 			end
 		end
 	end)
 
 	printNote("Checking if data does not contain any .tview file")
 	forEachFile(data_path, function(file)
-		if string.endswith(file, ".tview") then
-			printError("File '"..file.."' should not exist as there is no Lua script with this name.")
+		if file:extension() == "tview" then
+			printError("File 'data/"..file:name().."' should not exist as there is no Lua script with this name.")
 			project_report.errors_invalid = project_report.errors_invalid + 1
 		end
 	end)
 
-	printNote("Creating .tview files")
-	forEachFile(data_path, function(file)
-		if string.endswith(file, ".lua") then
-			print("Processing '"..file.."'")
-			project_report.projects = project_report.projects + 1
+	local oldProject = Project
+	local oldLayer = Layer
 
-			local output = string.sub(file, 1, -5)..".tview"			
 
-			xpcall(function() dofile(data_path..s..file) end, function(err)
-				printError(err)
-				project_report.errors_processing = project_report.errors_processing + 1
-			end)
+	local createdLayers = {}
 
-			if isFile(output) then
-				print("File '"..output.."' was successfully created.")
+	Layer = function(data)
+		if data.resolution then -- a cellular layer
+			local mfile = data.file
+
+			if type(mfile) == "string" then
+				mfile = File(mfile)
+			end
+
+			mfile = mfile:name()
+			print("Creating 'data/"..mfile.."'")
+
+			if createdLayers[mfile] then
+				printError("File 'data/"..mfile.."' was created previously. Please update its name.")
+				project_report.errors_output = project_report.errors_output + 1
 			else
-				printError("File '"..output.."' was not created.")
+				createdLayers[mfile] = true
+			end
+		end
+
+		return oldLayer(data)
+	end
+
+	forEachFile(data_path, function(file)
+		if file:extension() ~= "lua" then return end
+
+		local hasProject = false
+
+		Project = function(data)
+			local mfile = data.file
+
+			if type(mfile) == "string" then
+				mfile = File(mfile)
+			end
+
+			mfile = mfile:name()
+
+			if isFile(mfile) then return oldProject(data) end
+
+			print("Creating 'data/"..mfile.."'")
+
+			if hasProject then
+				printError("File 'data/"..mfile.."' should create only one Project.")
 				project_report.errors_output = project_report.errors_output + 1
 			end
+
+			hasProject = true
+
+			local _, projName = File(mfile):split()
+			local _, luaName = file:split()
+
+			if projName ~= luaName then
+				printError("File 'data/"..mfile.."' should be called 'data/"..luaName..".tview'. Please update its name.")
+				project_report.errors_output = project_report.errors_output + 1
+			end
+
+			return oldProject(data)
+		end
+
+		printNote("Processing 'data/"..file:name().."'")
+		project_report.projects = project_report.projects + 1
+
+		local _, filename = file:split()
+		local output = filename..".tview"
+
+		local ok = true
+
+		xpcall(function() dofile(tostring(file)) end, function(err)
+			ok = false
+			printError("Could not execute the script properly: "..err)
+			project_report.errors_processing = project_report.errors_processing + 1
+		end)
+
+		if File(output):exists() then
+			if ok then
+				print("File '"..output.."' was successfully created")
+			else
+				print("Removing file 'data/"..output.."'")
+				File(output):delete()
+			end
+		else
+			printError("File '"..output.."' was not created.")
+			project_report.errors_output = project_report.errors_output + 1
 		end
 	end)
 
@@ -100,7 +161,6 @@ function _Gtme.executeProject(package)
 
 	if project_report.projects == 0 then
 		printNote("No project file was created.")
-		os.exit(0)
 	elseif project_report.projects == 1 then
 		printNote("One project file was created.")
 	else
@@ -119,10 +179,18 @@ function _Gtme.executeProject(package)
 
 	if project_report.errors_processing == 0 then
 		printNote("No error was found while creating projects.")
-	elseif project_report.errors_invalid == 1 then
+	elseif project_report.errors_processing == 1 then
 		printError("One error was found while creating projects.")
 	else
-		printError(project_report.errors_invalid.." errors were found while creating projects.")
+		printError(project_report.errors_processing.." errors were found while creating projects.")
+	end
+
+	if project_report.errors_output == 0 then
+		printNote("No problem was found in the output of lua files.")
+	elseif project_report.errors_output == 1 then
+		printNote("One problem was found in the output of lua files.")
+	else
+		printError(project_report.errors_output.." problems were found in the output of lua files.")
 	end
 
 	if errors == 0 then
@@ -133,6 +201,6 @@ function _Gtme.executeProject(package)
 		printError("Summing up, "..errors.." problems were found while creating projects.")
 	end
 
-	os.exit(errors)
+	return errors
 end
 

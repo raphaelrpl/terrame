@@ -32,15 +32,15 @@ return{
 		unitTest:assert(not belong("e", mvector))
 	end,
 	call = function(unitTest)
-		local cont = 0
-		local a = Agent{map = function() cont = cont + 1 end}
+		local count = 0
+		local a = Agent{map = function() count = count + 1 end}
 
 		local t = Timer{
 			Event{action = call(a, "map")}
 		}
 
 		t:run(10)
-		unitTest:assertEquals(cont, 10)
+		unitTest:assertEquals(count, 10)
 	end,
 	clone = function(unitTest)
 		local animal = {
@@ -91,7 +91,7 @@ return{
 		local preyFunc = function(_, q)
 			return q[1] * birthPreyRate - q[1] * q[2] * predationRate
 		end
-		
+
 		local predatorFunc = function(_, q)
 			return q[2] * q[1] * birthPredatorPerPreyRate - q[2] * deathPredatorRate
 		end
@@ -102,7 +102,7 @@ return{
 				{preyFunc, predatorFunc},
 				{ag.preys, ag.predators},
 				0,
-				timeStep, 
+				timeStep,
 				0.03125
 			}
 		end
@@ -293,38 +293,78 @@ return{
 		unitTest:assert(not r)
 		unitTest:assertEquals(count, 3)
 	end,
+	forEachDirectory = function(unitTest)
+		local count = 0
+		local r
+
+		r = forEachDirectory(packageInfo("base").path.."data", function(dir)
+			count = count + 1
+			unitTest:assertType(dir, "Directory")
+		end)
+
+		unitTest:assert(r)
+		unitTest:assertEquals(count, 1)
+	end,
 	forEachFile = function(unitTest)
-		if not _Gtme.isWindowsOS() then
-			local count = 0
-			local r
+		local count = 0
+		local r
 
-			r = forEachFile(filePath("", "base"), function(file)
-				count = count + 1
-				unitTest:assertType(file, "string") -- SKIP
-			end)
+		r = forEachFile(packageInfo("base").path.."data", function(file)
+			count = count + 1
+			unitTest:assertType(file, "File")
+		end)
 
-			unitTest:assert(r) -- SKIP
-			unitTest:assertEquals(count, 36) -- SKIP
+		unitTest:assert(r)
+		unitTest:assertEquals(count, 28)
 
-			local count2 = 0
-			forEachFile(dir(filePath("", "base"), true), function()
-				count2 = count2 + 1
-			end)
+		count = 0
 
-			unitTest:assertEquals(count2, count + 2) -- SKIP
+		r = forEachFile(packageInfo("base").path.."data", function()
+			count = count + 1
+			if count > 1 then return false end
+		end)
 
-			count = 0
+		unitTest:assert(not r)
+		unitTest:assertEquals(count, 2)
+	end,
+	forEachModel = function(unitTest)
+		local MyTube = Model{
+			water = 200,
+			sun = Choice{min = 0, default = 10},
+			init = function(model)
+				model.finalTime = 100
 
-			r = forEachFile(filePath("", "base"), function()
-				count = count + 1
-				if count > 1 then return false end
-			end)
+				model.timer = Timer{
+					Event{action = function() end}
+				}
+			end
+		}
 
-			unitTest:assert(not r) -- SKIP
-			unitTest:assertEquals(count, 2) -- SKIP
-		else
-			unitTest:assert(true) -- SKIP
-		end
+		local e = Environment{
+			scenario0 = MyTube{},
+			scenario1 = MyTube{water = 100},
+			scenario2 = MyTube{water = 100, sun = 5},
+			scenario3 = MyTube{water = 100, sun = 10}
+		}
+
+		local count = 0
+
+		forEachModel(e, function(model, name)
+			unitTest:assert(isModel(model))
+			unitTest:assertType(name, "string")
+			count = count + 1
+		end)
+
+		unitTest:assertEquals(count, 4)
+
+		count = 0
+
+		forEachModel(e, function()
+			count = count + 1
+			return false
+		end)
+
+		unitTest:assertEquals(count, 1)
 	end,
 	forEachNeighbor = function(unitTest)
 		local cs = CellularSpace{xdim = 10}
@@ -352,6 +392,29 @@ return{
 
 		unitTest:assert(not r)
 		unitTest:assertEquals(count, 2)
+	end,
+	forEachNeighborAgent = function(unitTest)
+		Random():reSeed(12345)
+		local predator = Agent{}
+
+		local predators = Society{
+			instance = predator,
+			quantity = 20
+		}
+
+		local cs = CellularSpace{xdim = 5}
+
+		local env = Environment{cs, predators = predators}
+		env:createPlacement{}
+		cs:createNeighborhood()
+
+		local count = 0
+
+		forEachNeighborAgent(predators:sample(), function()
+			count = count + 1
+		end)
+
+		unitTest:assertEquals(count, 4)
 	end,
 	forEachNeighborhood = function(unitTest)
 		local c1 = Cell{}
@@ -396,30 +459,74 @@ return{
 		unitTest:assertEquals(count, 1)
 	end,
 	forEachOrderedElement = function(unitTest)
-		local list = {[1] = 1, [3] = 3, [2] = 2, a = "a", A = "A", b = "b", c = "c"}
-		local result = {1, 2, 3, "a", "A", "b", "c"}
+		local list = {aaB = "aaB", aAB = "aAB", aab = "aab", aAb = "aAb", aaBa = "aaBa", aa = "aa"}
+		local result = {"aAB", "aAb", "aa", "aaB", "aaBa", "aab"}
 
-		local cont = 0
+		local count = 0
 		local r
 		r = forEachOrderedElement(list, function(idx, value, mtype)
-			cont = cont + 1
-			unitTest:assertEquals(mtype, type(result[cont]))
+			count = count + 1
+			unitTest:assertEquals(mtype, type(result[count]))
 
-			unitTest:assertEquals(idx, result[cont])
-			unitTest:assertEquals(value, result[cont])
+			unitTest:assertEquals(idx, result[count])
+			unitTest:assertEquals(value, result[count])
 		end)
 
 		unitTest:assert(r)
-		unitTest:assertEquals(cont, #result)
+		unitTest:assertEquals(count, #result)
 
-		cont = 0
+		list = {[1] = 1, [3] = 3, [2] = 2, a = "a", A = "A", b = "b", c = "c"}
+		result = {1, 2, 3, "A", "a", "b", "c"}
+
+		count = 0
+		r = forEachOrderedElement(list, function(idx, value, mtype)
+			count = count + 1
+			unitTest:assertEquals(mtype, type(result[count]))
+
+			unitTest:assertEquals(idx, result[count])
+			unitTest:assertEquals(value, result[count])
+		end)
+
+		unitTest:assert(r)
+		unitTest:assertEquals(count, #result)
+
+		count = 0
 		r = forEachOrderedElement(list, function()
-			cont = cont + 1
+			count = count + 1
 			return false
 		end)
 
 		unitTest:assert(not r)
-		unitTest:assertEquals(cont, 1)
+		unitTest:assertEquals(count, 1)
+
+		list = {cObj = 1, cPbj = 2, cell = 3, cells = 4, cem = 5, value1 = 6, value2 = 7}
+		result = {1, 2, 3, 4, 5, 6, 7}
+
+		count = 0
+		r = forEachOrderedElement(list, function(_, value, _)
+			count = count + 1
+
+			unitTest:assertEquals(value, result[count])
+		end)
+
+		unitTest:assert(r)
+		unitTest:assertEquals(count, #result)
+
+		local files = {
+			["lua/Tube.lua"]    = 1,
+			["lua/Tube2.lua"]   = 2,
+			["lua/Utils.lua"]   = 3,
+			["lua/Utils2m.lua"] = 4,
+			["lua/Utilsm.lua"]  = 5,
+			["lua/Utilsm2.lua"] = 6
+		}
+
+		count = 1
+
+		forEachOrderedElement(files, function(_, value)
+			unitTest:assertEquals(value, count)
+			count = count + 1
+		end)
 	end,
 	forEachSocialNetwork = function(unitTest)
 		local a1 = Agent{id = "111"}
@@ -463,10 +570,10 @@ return{
 		unitTest:assert(not r)
 		unitTest:assertEquals(count, 1)
 	end,
-	getExtension = function(unitTest)
-		unitTest:assertEquals(getExtension("file.txt"), "txt")
-		unitTest:assertEquals(getExtension("/Applications/terrame.app/Contents/bin/packages/base/data/amazonia.shp"), "shp")
-		unitTest:assertEquals(getExtension("/Applications/terrame.app/Contents/bin/packages/base/data/amazonia"), "")
+	getLuaFile = function(unitTest)
+		local version = getLuaFile(packageInfo("base").path.."description.lua").version
+
+		unitTest:assertType(version, "string")
 	end,
 	getn = function(unitTest)
 		local mvector = {"a", "b", "c", "d"}
@@ -702,7 +809,7 @@ return{
 		}
 
 		unitTest:assertType(v, "number")
-	
+
 		-- integrate with a set of functions
 		local timeStep = 0.5
 		local birthPreyRate = 0.2
@@ -713,7 +820,7 @@ return{
 		local preyFunc = function(_, q)
 			return q[1] * birthPreyRate - q[1] * q[2] * predationRate
 		end
-		
+
 		local predatorFunc = function(_, q)
 			return q[2] * q[1] * birthPredatorPerPreyRate - q[2] * deathPredatorRate
 		end
@@ -724,7 +831,7 @@ return{
 				equation = {preyFunc, predatorFunc},
 				initial = {ag.preys, ag.predators},
 				a = 0,
-				b = timeStep, 
+				b = timeStep,
 				step = 0.03125
 			}
 		end
@@ -738,7 +845,7 @@ return{
 				equation = {preyFunc, predatorFunc},
 				initial = {ag.preys, ag.predators},
 				a = 0,
-				b = timeStep, 
+				b = timeStep,
 				method = "heun",
 				step = 0.03125
 			}
@@ -753,7 +860,7 @@ return{
 				equation = {preyFunc, predatorFunc},
 				initial = {ag.preys, ag.predators},
 				a = 0,
-				b = timeStep, 
+				b = timeStep,
 				method = "rungekutta",
 				step = 0.03125
 			}
@@ -797,70 +904,9 @@ return{
 		unitTest:assertEquals(levenshtein("abc", "n"), 3)
 		unitTest:assertEquals(levenshtein("abcd", ""), 4)
 	end,
-	makeDataTable = function(unitTest)
-		local tab = makeDataTable{
-			first = 2000,
-			step = 10,
-			demand = {7, 8, 9, 10},
-			limit = {0.1, 0.04, 0.3, 0.07}
-		}
-
-		unitTest:assertType(tab, "table")
-		unitTest:assertType(tab.demand, "table")
-		unitTest:assertType(tab.limit, "table")
-		unitTest:assertEquals(getn(tab), 2)
-		unitTest:assertEquals(getn(tab.demand), 4)
-		unitTest:assertEquals(getn(tab.limit), 4)
-
-		unitTest:assertEquals(tab.demand[2010], 8)
-		unitTest:assertEquals(tab.limit[2030], 0.07)
-
-		local sumidx = 0
-		local sumvalue = 0
-
-		forEachElement(tab.demand, function(idx, value)
-			sumidx = sumidx + idx
-			sumvalue = sumvalue + value
-		end)
-
-		unitTest:assertEquals(sumidx, 2000 + 2010 + 2020 + 2030)
-		unitTest:assertEquals(sumvalue, 7 + 8 + 9 + 10)
-
-		tab = makeDataTable{
-			first = 2000,
-			step = 10,
-			last = 2030,
-			demand = {7, 8, 9, 10},
-			limit = {0.1, 0.04, 0.3, 0.07}
-		}
-
-		unitTest:assertType(tab, "table")
-		unitTest:assertType(tab.demand, "table")
-		unitTest:assertType(tab.limit, "table")
-		unitTest:assertEquals(getn(tab), 2)
-		unitTest:assertEquals(getn(tab.demand), 4)
-		unitTest:assertEquals(getn(tab.limit), 4)
-
-		sumidx = 0
-		sumvalue = 0
-
-		forEachElement(tab.limit, function(idx, value)
-			sumidx = sumidx + idx
-			sumvalue = sumvalue + value
-		end)
-
-		unitTest:assertEquals(sumidx, 2000 + 2010 + 2020 + 2030)
-		unitTest:assertEquals(sumvalue, 0.1 + 0.04 + 0.3 + 0.07)
-	end,
 	round = function(unitTest)
 		unitTest:assertEquals(round(5.22), 5)
 		unitTest:assertEquals(round(5.2235, 3), 5.224)
-	end,
-	sessionInfo = function(unitTest)
-		local s = sessionInfo()
-
-		unitTest:assertEquals(s.mode, "debug")
-		unitTest:assertEquals(s.version, packageInfo().version)
 	end,
 	["string.endswith"] = function(unitTest)
 		unitTest:assert(string.endswith("abcdef", "def"))
@@ -904,37 +950,138 @@ return{
 		unitTest:assertEquals(type(c), "Cell")
 	end,
 	vardump = function(unitTest)
-		local x = vardump{a = 2, b = 3, w = {2, 3, 4}}
+		local actual = vardump{}
 
-		unitTest:assertEquals(x, [[{
-    a = 2, 
-    b = 3, 
+		unitTest:assertEquals(actual, "{}")
+
+		actual = vardump{a = 2, b = 3, w = {2, 3, [4] = 4}}
+
+		unitTest:assertEquals(actual, [[{
+    a = 2,
+    b = 3,
     w = {
-        [1] = 2, 
-        [2] = 3, 
-        [3] = 4
+        2,
+        3,
+        [4] = 4
     }
 }]])
 
-		x = vardump{abc = 2, be2 = 3, ["2bx"] = {2, 3, 4}}
+		actual = vardump{abc = 2, be2 = 3, ["2bx"] = {2, 3, 4}}
 
-		unitTest:assertEquals(x, [[{
+		unitTest:assertEquals(actual, [[{
     ["2bx"] = {
-        [1] = 2, 
-        [2] = 3, 
-        [3] = 4
-    }, 
-    abc = 2, 
+        2,
+        3,
+        4
+    },
+    abc = 2,
     be2 = 3
 }]])
 
-		x = vardump{name = "john", age = 20, [false] = 5}
+		actual = vardump{name = "john", age = 20, [false] = 5}
 
-		unitTest:assertEquals(x, [[{
-    age = 20, 
-    [false] = 5, 
+		unitTest:assertEquals(actual, [[{
+    [false] = 5,
+    age = 20,
     name = "john"
 }]])
+
+		actual = "Phrase 1. \nPhrase 2."
+		local expected = "\"Phrase 1. \\nPhrase 2.\""
+
+		unitTest:assertEquals(vardump(actual), expected)
+
+		actual = vardump{
+			name = "john",
+			age = 20,
+			phrase = "Phrase 1. \nPhrase 2."
+		}
+
+		expected = [[{
+    age = 20,
+    name = "john",
+    phrase = "Phrase 1. \nPhrase 2."
+}]]
+
+		unitTest:assertEquals(actual, expected, 1)
+
+        local t = {x = true}
+
+        local y = (vardump(t))
+
+		unitTest:assertEquals(y, [[{
+    x = true
+}]])
+
+		local cs = CellularSpace{xdim = 1}
+
+        y = (vardump(cs))
+
+		unitTest:assertEquals(y, [[CellularSpace{
+    cObj_ = "TeCellularSpace(0x7fad0da0e840)",
+    cells = {
+        Cell{
+            cObj_ = "TeCell(0x7fad0da19a00)",
+            parent = "CellularSpace",
+            past = {},
+            x = 0,
+            y = 0
+        }
+    },
+    load = "function: 0x7fad0a66aff0",
+    source = "virtual",
+    xMax = 0,
+    xMin = 0,
+    xdim = 1,
+    yMax = 0,
+    yMin = 0,
+    ydim = 1
+}]], 45)
+
+		local tab = {
+			a = 2,
+			b = 3
+		}
+
+		tab.c = tab
+
+		unitTest:assertEquals(vardump(tab), [[{
+    a = 2,
+    b = 3,
+    c = "<copy of another table above>"
+}]])
+
+		tab = {}
+
+		local tab2 = {
+			tab,
+			tab
+		}
+
+		unitTest:assertEquals(vardump(tab2), [[{
+    {},
+    "<copy of another table above>"
+}]])
+	end,
+	forEachRecursiveDirectory = function(unitTest)
+		local count = 0
+
+		forEachRecursiveDirectory(packageInfo("base").path.."data", function(file)
+			count = count + 1
+			unitTest:assertType(file, "File")
+		end)
+
+		unitTest:assertEquals(count, 58)
+
+		local dir = Directory(packageInfo("base").path.."data")
+		count = 0
+
+		forEachRecursiveDirectory(dir, function(file)
+			count = count + 1
+			unitTest:assertType(file, "File")
+		end)
+
+		unitTest:assertEquals(count, 58)
 	end
 }
 

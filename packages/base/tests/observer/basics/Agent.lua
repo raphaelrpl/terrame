@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------------------
 -- TerraME - a software platform for multiple scale spatially-explicit dynamic modeling.
--- Copyright (C) 2001-2016 INPE and TerraLAB/UFOP -- www.terrame.org
+-- Copyright (C) 2001-2017 INPE and TerraLAB/UFOP -- www.terrame.org
 
 -- This code is part of the TerraME framework.
 -- This framework is free software; you can redistribute it and/or
@@ -45,7 +45,6 @@ return{
 		world:notify(1)
 		world.count = world.count + 5
 		world:notify(2)
-		--unitTest:clear()
 
 		local t = Timer{
 			Event{action = function(e)
@@ -55,19 +54,17 @@ return{
 		}
 
 		local ts = TextScreen{target = world}
-		LogFile{target = world, file = "agent.csv"}
+		Log{target = world, file = "agent.csv"}
 		local vt = VisualTable{target = world}
 
 		t:run(15)
 
 		unitTest:assertFile("agent.csv")
 
-		unitTest:assertSnapshot(c1, "chart_agent.bmp", 0.01)
-		unitTest:assertSnapshot(c2, "chart_agent_select.bmp", 0.01)
-		unitTest:assertSnapshot(ts, "textscreen_agent_select.bmp", 0.01)
-		unitTest:assertSnapshot(vt, "agent_visualtable.bmp", 0.059)
-		
-		unitTest:clear()
+		unitTest:assertSnapshot(c1, "chart_agent.bmp", 0.03)
+		unitTest:assertSnapshot(c2, "chart_agent_select.bmp", 0.03)
+		unitTest:assertSnapshot(ts, "textscreen_agent_select.bmp", 0.03)
+		unitTest:assertSnapshot(vt, "agent_visualtable.bmp", 0.15)
 
 		world = Agent{
 			probability = 0,
@@ -94,7 +91,7 @@ return{
 
 		t:run(200)
 
-		unitTest:assertSnapshot(c3, "chart_agent_xaxis.bmp", 0.02)
+		unitTest:assertSnapshot(c3, "chart_agent_xaxis.bmp", 0.035)
 	end
 }
 

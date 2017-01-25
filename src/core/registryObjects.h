@@ -1,6 +1,6 @@
 /************************************************************************************
 TerraME - a software platform for multiple scale spatially-explicit dynamic modeling.
-Copyright (C) 2001-2016 INPE and TerraLAB/UFOP -- www.terrame.org
+Copyright (C) 2001-2017 INPE and TerraLAB/UFOP -- www.terrame.org
 
 This code is part of the TerraME framework.
 This framework is free software; you can redistribute it and/or
@@ -159,7 +159,6 @@ Luna<luaCellularSpace>::RegType luaCellularSpace::methods[] = {
 	method(luaCellularSpace, size),
 	method(luaCellularSpace, addCell),
 	method(luaCellularSpace, setWhereClause),
-	method(luaCellularSpace, loadNeighborhood),
 
 	method(luaCellularSpace, getReference),
 	method(luaCellularSpace, setReference),
@@ -279,7 +278,8 @@ const char luaMap::className[] = "TeMap";
 Luna<luaMap>::RegType luaMap::methods[] = {
 	method(luaMap, save),
 	method(luaMap, setObserver),
-        method(luaMap, setGridVisible),
+	method(luaMap, setGridVisible),
+	method(luaMap, setTitle),
 	{0, 0}
 };
 

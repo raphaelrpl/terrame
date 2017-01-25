@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------------------
 -- TerraME - a software platform for multiple scale spatially-explicit dynamic modeling.
--- Copyright (C) 2001-2016 INPE and TerraLAB/UFOP -- www.terrame.org
+-- Copyright (C) 2001-2017 INPE and TerraLAB/UFOP -- www.terrame.org
 
 -- This code is part of the TerraME framework.
 -- This framework is free software; you can redistribute it and/or
@@ -74,9 +74,9 @@ return{
 		unitTest:assertEquals(cs:defor(), 100)
 		unitTest:assert(not cs:deforest())
 		unitTest:assertEquals(cs:defor(), 150)
-		
-		local projName = "cellspace.tview"
 
+		-- Shapefile
+		local projName = "cellspace.tview"
 		local author = "Avancini"
 		local title = "Cellular Space"
 
@@ -89,57 +89,57 @@ return{
 			title = title
 		}
 
+		local customWarningBkp = customWarning
+		customWarning = function(msg)
+			return msg
+		end
+
 		local layerName1 = "Sampa"
 
 		terralib.Layer{
 			project = proj,
 			name = layerName1,
-			file = filePath("sampa.shp", "terralib")
+			file = filePath("test/sampa.shp", "terralib")
 		}
 
-		local testDir = _Gtme.makePathCompatibleToAllOS(currentDir())
+		local testDir = currentDir()
 		local shp1 = "sampa_cells.shp"
-		local filePath1 = testDir.."/"..shp1	
-		local fn1 = terralib.getFileName(filePath1)
-		fn1 = testDir.."/"..fn1			
-		
-		local exts = {".dbf", ".prj", ".shp", ".shx"}
-		for i = 1, #exts do
-			local f = fn1..exts[i]
-			if isFile(f) then
-				rmFile(f)
-			end
-		end			
-		
+		local filePath1 = testDir..shp1
+		local fn1 = File(filePath1):name()
+		fn1 = testDir..fn1
+
+		File(fn1):deleteIfExists()
+
 		local clName1 = "Sampa_Cells"
 		local layer = terralib.Layer{
 			project = proj,
+			clean = true,
 			input = layerName1,
 			name = clName1,
 			resolution = 1,
 			file = filePath1
 		}
-		
+
 		cs = CellularSpace{
 			project = projName,
 			layer = clName1
 		}
-		
-		unitTest:assertEquals(projName, cs.project.file)
-		unitTest:assertEquals(clName1, cs.layer)
-		
+
+		unitTest:assertEquals(File(projName), cs.project.file)
+		unitTest:assertType(cs.layer, "Layer")
+
 		unitTest:assertEquals(proj.title, title)
 		unitTest:assertEquals(proj.author, author)
-		
+
 		unitTest:assertEquals(layer.source, "shp")
 		unitTest:assertEquals(layer.file, filePath1)
-		
+
 		cs = CellularSpace{
 			file = filePath1
 		}
-		
+
 		unitTest:assert(#cs.cells > 0)
-		
+
 		forEachCell(cs, function(c)
 			unitTest:assertNotNil(c.x)
 			unitTest:assertNotNil(c.y)
@@ -149,8 +149,8 @@ return{
 			project = projName,
 			layer = clName1,
 			geometry = true
-		}	
-		
+		}
+
 		forEachCell(cs, function(c)
 			unitTest:assertNotNil(c.geom)
 			unitTest:assertNil(c.OGR_GEOMETRY)
@@ -159,47 +159,264 @@ return{
 		cs = CellularSpace{
 			project = projName,
 			layer = clName1
-		}	
+		}
 
 		forEachCell(cs, function(c)
 			unitTest:assertNil(c.geom)
 			unitTest:assertNil(c.OGR_GEOMETRY)
-		end)		
-		
-		if isFile(projName) then
-			rmFile(projName)
+		end)
+
+		File(projName):deleteIfExists()
+		File(fn1):deleteIfExists()
+
+		-- GeoJSON
+		author = "Carneiro Heitor"
+
+		projName = "geojson_cellspace.tview"
+		title = "GeoJSON Cellular Space"
+
+		proj = terralib.Project{
+			file = projName,
+			clean = true,
+			author = author,
+			title = title
+		}
+
+		layerName1 = "GeoJSON_Sampa"
+
+		terralib.Layer{
+			project = proj,
+			name = layerName1,
+			file = filePath("test/sampa.geojson", "terralib")
+		}
+
+		cs = CellularSpace{
+			project = projName,
+			layer = layerName1
+		}
+
+		forEachCell(cs, function(c)
+			unitTest:assertEquals(c.CD_GEOCODU, "35")
+			unitTest:assertNotNil(c.NM_MICRO)
+		end)
+
+		local geojson1 = "geojson_sampa_cells.geojson"
+		filePath1 = testDir..geojson1
+
+		File(filePath1):deleteIfExists()
+
+		clName1 = "GeoJSON_Sampa_Cells"
+		layer = terralib.Layer{
+			project = proj,
+			input = layerName1,
+			name = clName1,
+			resolution = 1,
+			file = filePath1
+		}
+
+		cs = CellularSpace{
+			project = projName,
+			layer = clName1
+		}
+
+		unitTest:assertEquals(projName, cs.project.file:name())
+		unitTest:assertType(cs.layer, "Layer")
+
+		unitTest:assertEquals(proj.title, title)
+		unitTest:assertEquals(proj.author, author)
+
+		unitTest:assertEquals(layer.source, "geojson")
+		unitTest:assertEquals(layer.file, filePath1)
+		unitTest:assert(#cs.cells > 0)
+
+		cs = CellularSpace{
+			file = filePath1
+		}
+
+		unitTest:assert(#cs.cells > 0)
+
+		forEachCell(cs, function(c)
+			unitTest:assertNotNil(c.x)
+			unitTest:assertNotNil(c.y)
+		end)
+
+		cs = CellularSpace{
+			project = projName,
+			layer = clName1,
+			geometry = true
+		}
+
+		forEachCell(cs, function(c)
+			unitTest:assertNotNil(c.geom)
+			unitTest:assertNil(c.OGR_GEOMETRY)
+		end)
+
+		cs = CellularSpace{
+			project = projName,
+			layer = clName1
+		}
+
+		forEachCell(cs, function(c)
+			unitTest:assertNil(c.geom)
+			unitTest:assertNil(c.OGR_GEOMETRY)
+		end)
+
+		File(projName):deleteIfExists()
+		File(geojson1):deleteIfExists()
+
+		if _Gtme.sessionInfo().system == "windows" then
+			-- Tif
+			projName = "tif_four_cellspace.tview"
+			title = "Tif Cellular Space"
+
+			proj = terralib.Project{
+				file = projName,
+				clean = true,
+				author = author,
+				title = title
+			}
+
+			layerName1 = "tif_one_Layer"
+			filePath1 = filePath("elevation.tif", "terralib")
+
+			layer = terralib.Layer{
+				project = proj,
+				name = layerName1,
+				file = filePath1
+			}
+
+			cs = CellularSpace{
+				project = projName,
+				layer = layerName1
+			}
+
+			unitTest:assertEquals(projName, cs.project.file:name()) -- SKIP
+			unitTest:assertType(cs.layer, "Layer") -- SKIP
+
+			unitTest:assertEquals(proj.title, title) -- SKIP
+			unitTest:assertEquals(proj.author, author) -- SKIP
+
+			unitTest:assertEquals(layer.source, "tif") -- SKIP
+			unitTest:assertEquals(layer.file, tostring(filePath1)) -- SKIP
+			unitTest:assertEquals(#cs, 10000) -- SKIP
+
+			cs = CellularSpace{
+				file = filePath1
+			}
+
+			unitTest:assertEquals(#cs, 10000) -- SKIP
+			File(projName):deleteIfExists()
+
+			-- NetCDF
+			projName = "nc_cellspace.tview"
+			title = "NC Cellular Space"
+
+			proj = terralib.Project{
+				file = projName,
+				clean = true,
+				author = author,
+				title = title
+			}
+
+			layerName1 = "NC_vegtype2000"
+			filePath1 = filePath("test/vegtype_2000.nc", "terralib")
+
+			layer = terralib.Layer{
+				project = proj,
+				name = layerName1,
+				file = filePath1
+			}
+
+			cs = CellularSpace{
+				project = projName,
+				layer = layerName1
+			}
+
+			unitTest:assertEquals(projName, cs.project.file:name()) -- SKIP
+			unitTest:assertType(cs.layer, "Layer") -- SKIP
+
+			unitTest:assertEquals(proj.title, title) -- SKIP
+			unitTest:assertEquals(proj.author, author) -- SKIP
+
+			unitTest:assertEquals(layer.source, "nc") -- SKIP
+			unitTest:assertEquals(layer.file, tostring(filePath1)) -- SKIP
+			unitTest:assertEquals(#cs.cells, 8904) -- SKIP
+
+			cs = CellularSpace{
+				file = filePath1
+			}
+
+			unitTest:assertEquals(#cs.cells, 8904) -- SKIP
+			File(projName):deleteIfExists()
+
+			-- ASC
+			projName = "asc_cellspace.tview"
+			title = "Asc Cellular Space"
+
+			proj = terralib.Project{
+				file = projName,
+				clean = true,
+				author = author,
+				title = title
+			}
+
+			layerName1 = "ASC_biomassa-manaus"
+			filePath1 = filePath("test/biomassa-manaus.asc", "terralib")
+
+			layer = terralib.Layer{
+				project = proj,
+				name = layerName1,
+				file = filePath1
+			}
+
+			cs = CellularSpace{
+				project = projName,
+				layer = layerName1
+			}
+
+			unitTest:assertEquals(projName, cs.project.file:name()) -- SKIP
+			unitTest:assertType(cs.layer, "Layer") -- SKIP
+
+			unitTest:assertEquals(proj.title, title) -- SKIP
+			unitTest:assertEquals(proj.author, author) -- SKIP
+
+			unitTest:assertEquals(layer.source, "asc") -- SKIP
+			unitTest:assertEquals(layer.file, tostring(filePath1)) -- SKIP
+			unitTest:assertEquals(#cs.cells, 9964) -- SKIP
+
+			cs = CellularSpace{
+				file = filePath1
+			}
+
+			unitTest:assertEquals(#cs.cells, 9964) -- SKIP
+			File(projName):deleteIfExists()
 		end
-		
-		for i = 1, #exts do
-			local f = fn1..exts[i]
-			if isFile(f) then
-				rmFile(f)
-			end
-		end			
-	end, 
+
+		customWarning = customWarningBkp
+	end,
 	__len = function(unitTest)
 		local cs = CellularSpace{xdim = 10}
 
 		unitTest:assertEquals(#cs, 100)
 	end,
 	__tostring = function(unitTest)
-		local cs1 = CellularSpace{ 
+		local cs1 = CellularSpace{
 			xdim = 10,
 			ydim = 20,
 			xyz = function() end,
 			vvv = 333}
-		unitTest:assertEquals(tostring(cs1), [[cells   vector of size 200
-cObj_   userdata
+		unitTest:assertEquals(tostring(cs1), [[cObj_   userdata
+cells   vector of size 200
 load    function
 source  string [virtual]
 vvv     number [333]
-xdim    number [10]
-xMax    number [9]
+xMax    number [19]
 xMin    number [0]
+xdim    number [10]
 xyz     function
-ydim    number [20]
-yMax    number [19]
+yMax    number [9]
 yMin    number [0]
+ydim    number [20]
 ]])
 	end,
 	add = function(unitTest)
@@ -212,7 +429,7 @@ yMin    number [0]
 		unitTest:assertEquals(cs.cells[101], c)
 	end,
 	createNeighborhood = function(unitTest)
-		local cs = CellularSpace{xdim = 10}
+		local cs = CellularSpace{xdim = 5}
 
 		cs:createNeighborhood()
 
@@ -243,8 +460,8 @@ yMin    number [0]
 		end)
 
 		unitTest:assertEquals(4, sizes[3])
-		unitTest:assertEquals(32, sizes[5])
-		unitTest:assertEquals(64, sizes[8])
+		unitTest:assertEquals(12, sizes[5])
+		unitTest:assertEquals(9, sizes[8])
 
 		cs:createNeighborhood{name = "neigh2"}
 
@@ -279,8 +496,8 @@ yMin    number [0]
 		end)
 
 		unitTest:assertEquals(4, sizes[4])
-		unitTest:assertEquals(32, sizes[6])
-		unitTest:assertEquals(64, sizes[9])
+		unitTest:assertEquals(12, sizes[6])
+		unitTest:assertEquals(9, sizes[9])
 
 		local verifyWrapX = function(cs1, cell, neigh)
 			return neigh.x == ((cell.x - 1) - cs1.xMin) % (cs1.xMax - cs1.xMin + 1) + cs1.xMin
@@ -330,7 +547,7 @@ yMin    number [0]
 			end)
 		end)
 
-		cs = CellularSpace{xdim = 10}
+		cs = CellularSpace{xdim = 5}
 
 		cs:createNeighborhood{strategy = "vonneumann"}
 
@@ -358,10 +575,10 @@ yMin    number [0]
 		end)
 
 		unitTest:assertEquals(4, sizes[2])
-		unitTest:assertEquals(32, sizes[3])
-		unitTest:assertEquals(64, sizes[4])
+		unitTest:assertEquals(12, sizes[3])
+		unitTest:assertEquals(9, sizes[4])
 
-		cs:createNeighborhood{ 
+		cs:createNeighborhood{
 			strategy = "vonneumann",
 			name = "my_neighborhood1",
 			self = true
@@ -390,10 +607,10 @@ yMin    number [0]
 		end)
 
 		unitTest:assertEquals(4, sizes[3])
-		unitTest:assertEquals(32, sizes[4])
-		unitTest:assertEquals(64, sizes[5])
+		unitTest:assertEquals(12, sizes[4])
+		unitTest:assertEquals(9, sizes[5])
 
-		cs:createNeighborhood{ 
+		cs:createNeighborhood{
 			strategy = "vonneumann",
 			name = "my_neighborhood2",
 			wrap = true
@@ -451,7 +668,7 @@ yMin    number [0]
 			unitTest:assert(neighborhood:isNeighbor(cell))
 		end)
 
-		cs = CellularSpace{xdim = 10}
+		cs = CellularSpace{xdim = 5}
 
 		cs:createNeighborhood{strategy = "diagonal"}
 
@@ -479,10 +696,10 @@ yMin    number [0]
 		end)
 
 		unitTest:assertEquals(4, sizes[1])
-		unitTest:assertEquals(32, sizes[2])
-		unitTest:assertEquals(64, sizes[4])
+		unitTest:assertEquals(12, sizes[2])
+		unitTest:assertEquals(9, sizes[4])
 
-		cs = CellularSpace{xdim = 10}
+		cs = CellularSpace{xdim = 5}
 
 		cs:createNeighborhood{
 			strategy = "diagonal",
@@ -515,9 +732,9 @@ yMin    number [0]
 			unitTest:assert(not neighborhood:isNeighbor(cell))
 		end)
 
-		unitTest:assertEquals(100, sizes[4])
+		unitTest:assertEquals(25, sizes[4])
 
-		cs = CellularSpace{xdim = 10}
+		cs = CellularSpace{xdim = 5}
 
 		cs:createNeighborhood{
 			strategy = "diagonal",
@@ -549,7 +766,7 @@ yMin    number [0]
 
 		end)
 
-		unitTest:assertEquals(100, sizes[5])
+		unitTest:assertEquals(25, sizes[5])
 
 		-- mxn
 		cs = CellularSpace{xdim = 10}
@@ -937,7 +1154,7 @@ yMin    number [0]
 		unitTest:assertEquals(48, sizes[10])
 
 		-- filter
-		cs = CellularSpace{xdim = 10}
+		cs = CellularSpace{xdim = 5}
 
 		filterFunction = function(cell, neighbor)
 			return cell.x == neighbor.x and cell.y ~= neighbor.y
@@ -953,7 +1170,7 @@ yMin    number [0]
 			local neighborhood = cell:getNeighborhood("my_neighborhood1")
 
 			local neighborhoodSize = #neighborhood
-			unitTest:assertEquals(9, neighborhoodSize)
+			unitTest:assertEquals(4, neighborhoodSize)
 
 			forEachNeighbor(cell, "my_neighborhood1", function(c, neigh, weight)
 				unitTest:assertEquals(neigh.x, cell.x)
@@ -983,7 +1200,7 @@ yMin    number [0]
 			local neighborhood = cell:getNeighborhood("my_neighborhood2")
 
 			local neighborhoodSize = #neighborhood
-			unitTest:assertEquals(9, neighborhoodSize)
+			unitTest:assertEquals(4, neighborhoodSize)
 
 			local sumWeight = 0
 
@@ -1002,16 +1219,14 @@ yMin    number [0]
 			sumWeightVec[sumWeight] = sumWeightVec[sumWeight] + 1
 		end)
 
-		unitTest:assertEquals(20, sumWeightVec[25])
-		unitTest:assertEquals(20, sumWeightVec[31])
-		unitTest:assertEquals(20, sumWeightVec[45])
-		unitTest:assertEquals(20, sumWeightVec[37])
-		unitTest:assertEquals(20, sumWeightVec[27])
+		unitTest:assertEquals(5, sumWeightVec[6])
+		unitTest:assertEquals(10, sumWeightVec[7])
+		unitTest:assertEquals(10, sumWeightVec[10])
 
 		--  coord
-		cs = CellularSpace{xdim = 10}
-		cs2 = CellularSpace{xdim = 10}
-	
+		cs = CellularSpace{xdim = 5}
+		cs2 = CellularSpace{xdim = 5}
+
 		cs:createNeighborhood{
 			strategy = "coord",
 			name = "my_neighborhood1",
@@ -1033,7 +1248,7 @@ yMin    number [0]
 				unitTest:assertEquals(1, weight)
 			end)
 		end)
-	
+
 		forEachCell(cs2, function(cell)
 			local neighborhood = cell:getNeighborhood("my_neighborhood1")
 
@@ -1048,16 +1263,9 @@ yMin    number [0]
 				unitTest:assertEquals(1, weight)
 			end)
 		end)
-	
-		cs = CellularSpace{xdim = 5}
-		cs:createNeighborhood()
-
-		forEachCell(cs, function(cell)
-			unitTest:assertType(cell:getNeighborhood(), "Neighborhood")
-		end)
 
 		-- on the fly
-		cs = CellularSpace{xdim = 10}
+		cs = CellularSpace{xdim = 5}
 
 		cs:createNeighborhood{inmemory = false}
 
@@ -1091,10 +1299,10 @@ yMin    number [0]
 		end)
 
 		unitTest:assertEquals(4, sizes[3])
-		unitTest:assertEquals(32, sizes[5])
-		unitTest:assertEquals(64, sizes[8])
+		unitTest:assertEquals(12, sizes[5])
+		unitTest:assertEquals(9, sizes[8])
 
-		cs = CellularSpace{xdim = 10}
+		cs = CellularSpace{xdim = 5}
 
 		cs:createNeighborhood{strategy = "vonneumann", inmemory = false}
 
@@ -1124,8 +1332,8 @@ yMin    number [0]
 		end)
 
 		unitTest:assertEquals(4, sizes[2])
-		unitTest:assertEquals(32, sizes[3])
-		unitTest:assertEquals(64, sizes[4])
+		unitTest:assertEquals(12, sizes[3])
+		unitTest:assertEquals(9, sizes[4])
 
 		-- small cellular spaces
 		cs = CellularSpace{xdim = 2}
@@ -1194,13 +1402,11 @@ yMin    number [0]
 	end,
 	save = function(unitTest)
         local terralib = getPackage("terralib")
-	
+
 		local projName = "cellspace_save_basic.tview"
-		
-		if isFile(projName) then
-			rmFile(projName)
-		end
-		
+
+		File(projName):deleteIfExists()
+
 		local proj = terralib.Project{
 			file = projName,
 			clean = true,
@@ -1212,27 +1418,21 @@ yMin    number [0]
 		terralib.Layer{
 			project = proj,
 			name = layerName1,
-			file = filePath("sampa.shp", "terralib")
-		}	
+			file = filePath("test/sampa.shp", "terralib")
+		}
 
-		local testDir = _Gtme.makePathCompatibleToAllOS(currentDir())
+		local testDir = currentDir()
 		local shp1 = "sampa_cells.shp"
-		local filePath1 = testDir.."/"..shp1
-		local fn1 = terralib.getFileName(filePath1)
-		fn1 = testDir.."/"..fn1
+		local filePath1 = testDir..shp1
+		local fn1 = File(filePath1):name()
+		fn1 = testDir..fn1
 
-		local exts = {".dbf", ".prj", ".shp", ".shx"}
-		
-		for i = 1, #exts do
-			local f = fn1..exts[i]
-			if isFile(f) then
-				rmFile(f)
-			end
-		end
+		File(fn1):deleteIfExists()
 
 		local clName1 = "Sampa_Cells"
 		terralib.Layer{
 			project = proj,
+			clean = true,
 			input = layerName1,
 			name = clName1,
 			resolution = 0.7,
@@ -1251,13 +1451,11 @@ yMin    number [0]
 		local cellSpaceLayerNameT0 = clName1.."_CellSpace_T0"
 
 		local shp2 = cellSpaceLayerNameT0..".shp"
-		local filePath2 = testDir.."/"..shp2	
-		local fn2 = terralib.getFileName(filePath2)
-		fn2 = testDir.."/"..fn2	
+		local filePath2 = testDir..shp2
+		local fn2 = File(filePath2):name()
+		fn2 = testDir..fn2
 
-		if isFile(filePath2) then
-			rmFile(filePath2)
-		end
+		File(fn2):deleteIfExists()
 
 		cs:save(cellSpaceLayerNameT0, "t0")
 
@@ -1267,111 +1465,82 @@ yMin    number [0]
 		}
 
 		unitTest:assertEquals(layer.source, "shp")
-		unitTest:assertEquals(layer.file, filePath2)		
-		
+		unitTest:assertEquals(layer.file, filePath2)
+
 		cs = CellularSpace{
 			project = projName,
 			layer = cellSpaceLayerNameT0
-		}			
-		
+		}
+
 		forEachCell(cs, function(cell)
 			unitTest:assertEquals(cell.t0, 1000)
 			cell.t0 = cell.t0 + 1000
 		end)
 
 		cs:save(cellSpaceLayerNameT0)
-		
+
 		cs = CellularSpace{
 			project = projName,
 			layer = cellSpaceLayerNameT0
-		}		
+		}
 
 		forEachCell(cs, function(cell)
 			unitTest:assertEquals(cell.t0, 2000)
 		end)
-		
+
 		cs = CellularSpace{
 			project = projName,
 			layer = cellSpaceLayerNameT0
-		}		
+		}
 
 		local cellSpaceLayerNameGeom = clName1.."_CellSpace_Geom"
-		
+
 		local shp3 = cellSpaceLayerNameGeom..".shp"
-		local filePath3 = testDir.."/"..shp3	
-		local fn3 = terralib.getFileName(filePath3)
-		fn3 = testDir.."/"..fn3	
-		
-		for i = 1, #exts do
-			local f = fn3..exts[i]
-			if isFile(f) then
-				rmFile(f)
-			end
-		end			
-		
+		local filePath3 = testDir..shp3
+		local fn3 = File(filePath3):name()
+		fn3 = testDir..fn3
+
+		File(fn3):deleteIfExists()
+
 		cs:save(cellSpaceLayerNameGeom)
-		
+
 		cs = CellularSpace{
 			project = projName,
 			layer = cellSpaceLayerNameGeom,
 			geometry = true
-		}		
-		
+		}
+
 		forEachCell(cs, function(cell)
 			unitTest:assertNotNil(cell.geom)
-		end)	
+		end)
 
 		local cellSpaceLayerNameGeom2 = clName1.."_CellSpace_Geom2"
-		
+
 		local shp4 = cellSpaceLayerNameGeom2..".shp"
-		local filePath4 = testDir.."/"..shp4	
-		local fn4 = terralib.getFileName(filePath4)
-		fn4 = testDir.."/"..fn4	
-		
-		for i = 1, #exts do
-			local f = fn4..exts[i]
-			if isFile(f) then
-				rmFile(f)
-			end
-		end			
-		
+		local filePath4 = testDir..shp4
+		local fn4 = File(filePath4):name()
+		fn4 = testDir..fn4
+
+		File(fn4):deleteIfExists()
+
 		cs:save(cellSpaceLayerNameGeom2)
-		
+
 		cs = CellularSpace{
 			project = projName,
 			layer = cellSpaceLayerNameGeom2,
 			geometry = true
-		}		
-		
+		}
+
 		forEachCell(cs, function(cell)
 			unitTest:assertNotNil(cell.geom)
-		end)		
-		
-		if isFile(projName) then
-			rmFile(projName)
-		end
+		end)
 
-		for i = 1, #exts do
-			local f = fn1..exts[i]
-			if isFile(f) then
-				rmFile(f)
-			end
+		File(projName):deleteIfExists()
 
-			f = fn2..exts[i]
-			if isFile(f) then
-				rmFile(f)
-			end
-
-			f = fn3..exts[i]
-			if isFile(f) then
-				rmFile(f)
-			end
-		
-			f = fn4..exts[i]
-			if isFile(f) then
-				rmFile(f)
-			end				
-		end
+		File(fn1):deleteIfExists()
+		File(fn2):deleteIfExists()
+		File(fn3):deleteIfExists()
+		File(fn4):deleteIfExists()
 	end,
 	split = function(unitTest)
 		local cs = CellularSpace{xdim = 3}
@@ -1411,7 +1580,7 @@ yMin    number [0]
 				return nil
 			end
 		end
-		
+
 		t2 = cs:split(v)
 
 		unitTest:assertEquals(#t2.test, 3)
@@ -1442,6 +1611,23 @@ yMin    number [0]
 
 		forEachElement(cs.cells[1], function(el) unitTest:assertNotNil(el) end)
 		forEachElement(cs.cells[1].past, function(el) unitTest:assertNotNil(el) end)
+
+		local c = Cell{
+			value = 3,
+			on_synchronize = function(self)
+				self.value = 0
+			end
+		}
+
+		cs = CellularSpace{
+			instance = c,
+			xdim = 3
+		}
+
+		cs:synchronize()
+
+		forEachCell(cs, function(cell) unitTest:assertEquals(3, cell.past.value) end)
+		forEachCell(cs, function(cell) unitTest:assertEquals(0, cell.value) end)
 	end
 }
 

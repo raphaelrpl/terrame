@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------------------
 -- TerraME - a software platform for multiple scale spatially-explicit dynamic modeling.
--- Copyright (C) 2001-2016 INPE and TerraLAB/UFOP -- www.terrame.org
+-- Copyright (C) 2001-2017 INPE and TerraLAB/UFOP -- www.terrame.org
 
 -- This code is part of the TerraME framework.
 -- This framework is free software; you can redistribute it and/or
@@ -23,28 +23,41 @@
 -------------------------------------------------------------------------------------------
 
 return {
-	getFileNameWithExtension = function(unitTest)
-		unitTest:assertEquals(getFileNameWithExtension("/my/path/file.txt"), "file.txt")
-	end,
-	removeFileExtension = function(unitTest)
-		unitTest:assertEquals(removeFileExtension("file.txt"), "file")
-	end,
-	getFileName = function(unitTest)
-		unitTest:assertEquals(getFileName("/my/path/file.txt"), "file")
-	end,	
-	getFilePathAndNameAndExtension = function(unitTest)
-		local p, n, e = getFilePathAndNameAndExtension("/my/path/file.txt")
-		unitTest:assertEquals(p, "/my/path/")
-		unitTest:assertEquals(n, "file")
-		unitTest:assertEquals(e, "txt")
-	end,	
-	getFileExtension = function(unitTest)
-		local e = getFileExtension("/my/path/file.txt")
-		unitTest:assertEquals(e, "txt")
-	end,
-	getFileDir = function(unitTest)
-		local p = getFileDir("/my/path/file.txt")
-		unitTest:assertEquals(p, "/my/path/")
+	forEachLayer = function(unitTest)
+		local tview = File("emas-count.tview")
+		tview:deleteIfExists()
+
+		local project = Project{
+			file = tview,
+			clean = true,
+			firebreak = filePath("firebreak_lin.shp", "terralib"),
+			river = filePath("River_lin.shp", "terralib"),
+			limit = filePath("Limit_pol.shp", "terralib")
+		}
+
+		local count = 0
+		local layers = {"firebreak", "limit", "river"}
+
+		local each = forEachLayer(project, function(layer, name)
+			count = count + 1
+			unitTest:assertType(layer, "Layer")
+			unitTest:assertEquals(name, layers[count])
+		end)
+
+		unitTest:assertEquals(count, 3)
+		unitTest:assertEquals(each , true)
+
+		count = 0
+		each = forEachLayer(project, function(layer, name)
+			count = count + 1
+			unitTest:assertType(layer, "Layer")
+			unitTest:assertEquals(name, layers[count])
+
+			if count == 2 then return false end
+		end)
+
+		unitTest:assertEquals(count, 2)
+		unitTest:assertEquals(each , false)
+		tview:deleteIfExists()
 	end
 }
-

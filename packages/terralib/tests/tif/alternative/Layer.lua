@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------------------
 -- TerraME - a software platform for multiple scale spatially-explicit dynamic modeling.
--- Copyright (C) 2001-2016 INPE and TerraLAB/UFOP -- www.terrame.org
+-- Copyright (C) 2001-2017 INPE and TerraLAB/UFOP -- www.terrame.org
 
 -- This code is part of the TerraME framework.
 -- This framework is free software; you can redistribute it and/or
@@ -36,12 +36,12 @@ return {
 		-- Layer{
 			-- project = proj,
 			-- name = prodes,
-			-- file = filePath("PRODES_5KM.tif", "terralib")	
+			-- file = filePath("PRODES_5KM.tif", "terralib")
 		-- }
-		
+
 		-- local clName1 = "cells"
 		-- local shp1 = clName1..".shp"
-		
+
 		-- local boxUnnecessary = function()
 			-- local cl = Layer{
 				-- project = proj,
@@ -54,9 +54,9 @@ return {
 			-- }
 		-- end
 		-- unitTest:assertError(boxUnnecessary, unnecessaryArgumentMsg("box")) -- SKIP
-		
-		-- rmFile(projName)
-		
+
+		-- File(projName):delete()
+
 		-- SPATIAL INDEX TEST
 		local projName = "layer_tif_alternative.tview"
 
@@ -75,8 +75,8 @@ return {
 			}
 		end
 		unitTest:assertError(indexUnnecessary, unnecessaryArgumentMsg("index"))
-		
-		rmFile(proj.file)
+
+		proj.file:delete()
 		-- // SPATIAL INDEX TEST
 	end,
 	fill = function(unitTest)
@@ -87,26 +87,29 @@ return {
 			clean = true
 		}
 
+		local customWarningBkp = customWarning
+		customWarning = function(msg)
+			return msg
+		end
+
 		local layerName1 = "limitepa"
 		Layer{
 			project = proj,
 			name = layerName1,
-			file = filePath("limitePA_polyc_pol.shp", "terralib")
+			file = filePath("test/limitePA_polyc_pol.shp", "terralib")
 		}
 
 		local prodes = "prodes"
 		Layer{
 			project = proj,
 			name = prodes,
-			file = filePath("prodes_polyc_10k.tif", "terralib")	
+			file = filePath("test/prodes_polyc_10k.tif", "terralib")
 		}
-		
+
 		local clName1 = "cells"
 		local shp1 = clName1..".shp"
 
-		if isFile(shp1) then
-			rmFile(shp1)
-		end
+		File(shp1):deleteIfExists()
 
 		local cl = Layer{
 			project = proj,
@@ -117,16 +120,10 @@ return {
 			file = clName1..".shp"
 		}
 
-		local shapes = {}
-
 		local modeTifLayerName = clName1.."_"..prodes.."_mode"
 		local shp = modeTifLayerName..".shp"
 
-		table.insert(shapes, shp)
-		
-		if isFile(shp) then
-			rmFile(shp)
-		end
+		File(shp):deleteIfExists()
 
 		local invalidBand = function()
 			cl:fill{
@@ -137,8 +134,8 @@ return {
 			}
 		end
 
-		unitTest:assertError(invalidBand, "Band '5' does not exist. The available bands are from '0' to '4.0'.")
-		
+		unitTest:assertError(invalidBand, "Band '5' does not exist. The only available band is '0'.")
+
 		Layer{
 			project = proj,
 			name = "altimetria",
@@ -154,8 +151,43 @@ return {
 			}
 		end
 		unitTest:assertError(invalidBand, "Band '5' does not exist. The only available band is '0'.")
-		
-		unitTest:assertFile(projName)
+
+		-- unitTest:assertFile(projName) -- SKIP #1242
+		File(projName):delete() -- #1242
+		File(shp1):deleteIfExists()
+
+		customWarning = customWarningBkp
+	end,
+	dummy = function(unitTest)
+		local projName = "layer_tif_dummy.tview"
+
+		File(projName):deleteIfExists()
+
+		local proj = Project{
+			file = projName,
+			clean = true
+		}
+
+		local customWarningBkp = customWarning
+		customWarning = function(msg)
+			return msg
+		end
+
+		local prodes = "prodes"
+		local bandNoExists = function()
+			local l = Layer{
+				project = proj,
+				name = prodes,
+				file = filePath("test/prodes_polyc_10k.tif", "terralib")
+			}
+
+			l:dummy(4)
+		end
+		unitTest:assertError(bandNoExists, "The only available band is '0.0'.")
+
+		File(projName):delete()
+
+		customWarning = customWarningBkp
 	end
 }
 

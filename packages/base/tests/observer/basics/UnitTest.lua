@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------------------
 -- TerraME - a software platform for multiple scale spatially-explicit dynamic modeling.
--- Copyright (C) 2001-2016 INPE and TerraLAB/UFOP -- www.terrame.org
+-- Copyright (C) 2001-2017 INPE and TerraLAB/UFOP -- www.terrame.org
 
 -- This code is part of the TerraME framework.
 -- This framework is free software; you can redistribute it and/or
@@ -32,17 +32,7 @@ return{
 		c:notify(2)
 		c:notify(3)
 
-		unitTest:assertSnapshot(ch, "chart_snapshot_test.bmp", 0.01)
-	end,
-    clear = function(unitTest)
-        local u = UnitTest{sleep = 1}
-        local cell = Cell{value = 1}
-        Chart{target = cell}
-
-        local t1 = os.time()
-        u:clear()
-        local t2 = os.time()
-        unitTest:assert(t2 - t1 >= 1)
-    end
+		unitTest:assertSnapshot(ch, "chart_snapshot_test.bmp", 0.03)
+	end
 }
 

@@ -1,3 +1,4 @@
+Using log directory '/Users/pedro/github/terrame/repository/ca/log/'
 Loading package 'ca'
 Looking for overwritten variables
 Looking for documented functions
@@ -6,18 +7,45 @@ Skip looking for lines of source code
 Testing tests/Anneal.lua
 Testing Anneal
 Checking if all asserts were executed
-Testing tests/CellularAutomataModel.lua
-Testing CellularAutomataModel
+Testing tests/BandedVegetation.lua
+Testing BandedVegetation
+Checking if all asserts were executed
+Testing tests/DaisyWorld.lua
+Testing DaisyWorld
+Checking if all asserts were executed
+Testing tests/Excitable.lua
+Testing Excitable
 Checking if all asserts were executed
 Testing tests/Fire.lua
 Testing Fire
 Checking if all asserts were executed
-Testing tests/Life.lua
-Testing Life
+Testing tests/Growth.lua
+Testing Growth
+Checking if all asserts were executed
+Testing tests/InterspecificCompetition.lua
+Testing InterspecificCompetition
 Checking if all asserts were executed
 Testing tests/LifePatterns.lua
 Testing getLife
 Testing insertPattern
+Checking if all asserts were executed
+Testing tests/Life.lua
+Testing Life
+Checking if all asserts were executed
+Testing tests/Oscillator.lua
+Testing Oscillator
+Checking if all asserts were executed
+Testing tests/Parasit.lua
+Testing Parasit
+Checking if all asserts were executed
+Testing tests/Parity.lua
+Testing Parity
+Checking if all asserts were executed
+Testing tests/Snow.lua
+Testing Snow
+Checking if all asserts were executed
+Testing tests/SolidDiffusion.lua
+Testing SolidDiffusion
 Checking if all asserts were executed
 Testing tests/Utils.lua
 Testing countNeighbors
@@ -27,40 +55,45 @@ Testing Wolfram
 Checking if all asserts were executed
 Checking if functions from source code were tested
 Checking Anneal.lua
-Checking CellularAutomataModel.lua
+Checking BandedVegetation.lua
+Checking DaisyWorld.lua
+Checking Excitable.lua
 Checking Fire.lua
-Checking Life.lua
+Checking Growth.lua
+Checking InterspecificCompetition.lua
 Checking LifePatterns.lua
+Checking Life.lua
+Checking Oscillator.lua
+Checking Parasit.lua
+Checking Parity.lua
+Checking Snow.lua
+Checking SolidDiffusion.lua
 Checking Utils.lua
 Checking Wolfram.lua
 Skipping lines of source code check
-Checking snapshots
 Testing examples
-Testing excitable
-Testing growth
-Testing oscillator
-Testing parasit
-Testing parity
-Testing snow
+Testing bv-scenario
+Testing daisy-scenario
+Checking logs
 
-Unit test report:
-Tests were executed in 458.29 seconds.
-Snapshots were saved in '.terrametmp_6pmAn'.
+Functional test report for package 'ca':
+Tests were executed in 365.29 seconds.
+Logs were saved in '/Users/pedro/github/terrame/repository/.terrametmp_uo9oF/'.
 No print() calls were found when loading the package.
 No variable is overwritten when loading the package.
 There are no invalid files or directories in directory 'tests'.
 All asserts were executed at least once.
-All 34 asserts were executed successfully.
-All 8 tested functions do not have any unexpected execution error.
-All 8 tested functions have at least one assert.
-All 8 tested functions exist in the source code of the package.
+All 962 asserts were executed successfully.
+All 17 tested functions do not have any unexpected execution error.
+All 17 tested functions have at least one assert.
+All 17 tested functions exist in the source code of the package.
 No tested function creates or updates any global variable.
 No function prints any text on the screen.
 No assertError() calls have error messages pointing to internal files.
-All 8 functions of the package were tested.
+No file was created along the tests.
+All 17 functions of the package were tested.
 No lines from the source code were verified.
-No new snapshot file was created.
-All snapshot files were used in the tests.
-All 6 examples were successfully executed.
+All 2 examples were successfully executed.
 No new log file was created.
+All log files were used in the tests.
 Summing up, all tests were successfully executed.

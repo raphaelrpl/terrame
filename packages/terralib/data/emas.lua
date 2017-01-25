@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------------------
 -- TerraME - a software platform for multiple scale spatially-explicit dynamic modeling.
--- Copyright (C) 2001-2016 INPE and TerraLAB/UFOP -- www.terrame.org
+-- Copyright (C) 2001-2017 INPE and TerraLAB/UFOP -- www.terrame.org
 
 -- This code is part of the TerraME framework.
 -- This framework is free software; you can redistribute it and/or
@@ -32,9 +32,15 @@ project = Project{
 	author = "Almeida, R.",
 	title = "Emas database",
 	firebreak = filePath("firebreak_lin.shp", "terralib"),
-	cover = filePath("accumulation_Nov94May00.tif", "terralib"),
 	river = filePath("River_lin.shp", "terralib"),
 	limit = filePath("Limit_pol.shp", "terralib")
+}
+
+Layer{
+	project = project,
+	name = "cover",
+	file = filePath("accumulation_Nov94May00.tif", "terralib"),
+	srid = 29192
 }
 
 cl = Layer{
@@ -49,30 +55,24 @@ cl = Layer{
 cl:fill{
 	operation = "presence",
 	attribute = "firebreak",
-	clean = true,
-	layer = "firebreak",
-	output = "firebreak2"
+	layer = "firebreak"
 }
 
 cl:fill{
 	operation = "presence",
 	attribute = "river",
-	clean = true,
-	layer = "river",
-	output = "river2"
+	layer = "river"
 }
 
 cl:fill{
 	operation = "average",
 	attribute = "cover",
-	clean = true,
-	layer = "cover",
-	output = "cover2"
+	layer = "cover"
 }
 
 cs = CellularSpace{
 	project = project,
-	layer = "cover2"
+	layer = "cells"
 }
 
 Map{

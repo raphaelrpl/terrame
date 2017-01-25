@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------------------
 -- TerraME - a software platform for multiple scale spatially-explicit dynamic modeling.
--- Copyright (C) 2001-2016 INPE and TerraLAB/UFOP -- www.terrame.org
+-- Copyright (C) 2001-2017 INPE and TerraLAB/UFOP -- www.terrame.org
 
 -- This code is part of the TerraME framework.
 -- This framework is free software; you can redistribute it and/or
@@ -68,6 +68,11 @@ return{
 		end
 		unitTest:assertError(error_func, "All the elements of an RGB composition should be numbers, got 'string' in position 1.")
 
+		error_func = function()
+			Map{target = c, select = "x", slices = "abc", values = {"a"}, color = {"green"}}
+		end
+		unitTest:assertError(error_func, "Argument 'values' is unnecessary. Do you mean 'value'?")
+
 		-- equalsteps
 		error_func = function()
 			Map{target = c, grouping = "equalsteps"}
@@ -127,7 +132,12 @@ return{
 		error_func = function()
 			Map{target = c, select = "x", title = 5, slices = 10, color = {"blue", "red"}}
 		end
-		unitTest:assertError(error_func, unnecessaryArgumentMsg("title"))
+		unitTest:assertError(error_func, incompatibleTypeMsg("title", "string", 5))
+
+		error_func = function()
+			Map{target = c, select = "x", author = 5, slices = 10, color = {"blue", "red"}}
+		end
+		unitTest:assertError(error_func, unnecessaryArgumentMsg("author"))
 
 		error_func = function()
 			Map{
@@ -177,7 +187,7 @@ return{
 		error_func = function()
 			Map{target = c, slices = 3, color = {"red", {0, 0}, "green"}}
 		end
-		unitTest:assertError(error_func, "RGB composition should have 3 values, got 2 values in position 2.")	
+		unitTest:assertError(error_func, "RGB composition should have 3 values, got 2 values in position 2.")
 
 		error_func = function()
 			Map{target = c, select = "x", invert = 2, slices = 10, min = 0, max = 100, color = "Blues"}
@@ -246,9 +256,9 @@ return{
 		unitTest:assertError(error_func, "Invalid description for color in position 1. It should be a table or string, got number.")
 
 		error_func = function()
-			Map{target = c, select = "x", title = 5, slices = 10, color = {"blue", "red"}, grouping = "quantil"}
+			Map{target = c, select = "x", author = 5, slices = 10, color = {"blue", "red"}, grouping = "quantil"}
 		end
-		unitTest:assertError(error_func, unnecessaryArgumentMsg("title"))
+		unitTest:assertError(error_func, unnecessaryArgumentMsg("author"))
 
 		error_func = function()
 			Map{target = c, select = "x", invert = 2, slices = 10, color = "Blues", grouping = "quantil"}
@@ -312,7 +322,7 @@ return{
 		error_func = function()
 			Map{target = c, slices = 3, color = {"red", {0, 0}, "green"}, grouping = "quantil"}
 		end
-		unitTest:assertError(error_func, "RGB composition should have 3 values, got 2 values in position 2.")	
+		unitTest:assertError(error_func, "RGB composition should have 3 values, got 2 values in position 2.")
 
 		-- uniquevalue
 		error_func = function()
@@ -387,7 +397,7 @@ return{
 				label = {"1", "2", "3"}
 			}
 		end
-		unitTest:assertError(error_func, "Color 'xxxxx' not found. Check the name or use a table with an RGB description.")
+		unitTest:assertError(error_func, "Color 'xxxxx' was not found. Check the name or use a table with an RGB description.")
 
 		error_func = function()
 			Map{
@@ -446,20 +456,20 @@ return{
 		unitTest:assertError(error_func, "There should not exist repeated elements in 'value'.")
 
 		error_func = function()
-			Map{target = c, select = "x", title = 5, value = {1, 2}, color = {"blue", "red"}}
+			Map{target = c, select = "x", author = 5, value = {1, 2}, color = {"blue", "red"}}
 		end
-		unitTest:assertError(error_func, unnecessaryArgumentMsg("title"))
+		unitTest:assertError(error_func, unnecessaryArgumentMsg("author"))
 
 		-- none
 		error_func = function()
-			Map{target = c, grouping = "none", title =  "aaa"}
+			Map{target = c, grouping = "none", author =  "aaa"}
 		end
-		unitTest:assertError(error_func, unnecessaryArgumentMsg("title"))
+		unitTest:assertError(error_func, unnecessaryArgumentMsg("author"))
 
 		error_func = function()
 			Map{target = c, grouping = "none", color = {"blue", "red"}}
 		end
-		unitTest:assertError(error_func, "Grouping 'none' requires only one color, got 2.")	
+		unitTest:assertError(error_func, "Grouping 'none' requires only one color, got 2.")
 
 		error_func = function()
 			Map{target = c, grouping = "none", color = {"blues"}}
@@ -471,6 +481,25 @@ return{
 		end
 		unitTest:assertError(error_func, "Grouping 'none' cannot use ColorBrewer.")
 
+		-- non-virtual
+		error_func = function()
+			local shpcs = CellularSpace{
+				file = filePath("river.shp", "base")
+			}
+
+			forEachCell(shpcs, function(cell)
+				cell.value = 1
+			end)
+
+			Map{
+				target = shpcs,
+				select = "value",
+				value = {1, 2},
+				color = {"red", "blue"}
+			}
+		end
+		unitTest:assertError(error_func, "It is not possible to create a Map from this CellularSpace as its objects do not have a valid (x, y) location.")
+
 		-- Society
 		local ag = Agent{}
 		local soc = Society{instance = ag, quantity = 10}
@@ -479,7 +508,7 @@ return{
 		error_func = function()
 			Map{target = soc}
 		end
-		unitTest:assertError(error_func, "The Society does not have a placement. Please use Environment:createPlacement() first.")
+		unitTest:assertError(error_func, "The Society does not have a placement. Please call Environment:createPlacement() first.")
 
 		local map = Map{
 			target = cs,
@@ -583,7 +612,7 @@ return{
 		end
 		unitTest:assertError(error_func, invalidFileExtensionMsg(1, "csv"))
 
-		unitTest:clear()
+		clean()
 
 		error_func = function()
 			m:save("file.bmp")

@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------------------
 -- TerraME - a software platform for multiple scale spatially-explicit dynamic modeling.
--- Copyright (C) 2001-2016 INPE and TerraLAB/UFOP -- www.terrame.org
+-- Copyright (C) 2001-2017 INPE and TerraLAB/UFOP -- www.terrame.org
 
 -- This code is part of the TerraME framework.
 -- This framework is free software; you can redistribute it and/or
@@ -39,7 +39,7 @@ return{
 			call("value", "sum")
 		end
 		unitTest:assertError(error_func, "Cannot access elements from an object of type 'string'.")
-	
+
 		error_func = function()
 			call(Cell{}, "sum")
 		end
@@ -66,7 +66,7 @@ return{
 		local myf = function() end
 
 		error_func = function()
-			d{{myf, myf}, {1}, 0, 0, 10} 
+			d{{myf, myf}, {1}, 0, 0, 10}
 		end
 		unitTest:assertError(error_func, "You should provide the same number of differential equations and initial conditions.")
 	end,
@@ -125,7 +125,7 @@ return{
 			forEachCellPair(cs1, cs2)
 		end
 		unitTest:assertError(error_func, incompatibleTypeMsg(3, "function"))
-	end,	
+	end,
 	forEachConnection = function(unitTest)
 		local a = Agent{value = 2}
 		local soc = Society{instance = a, quantity = 10}
@@ -184,21 +184,41 @@ return{
 		error_func = function()
 			forEachFile(2)
 		end
-		unitTest:assertError(error_func, incompatibleTypeMsg(1, "table", 2))
+		unitTest:assertError(error_func, incompatibleTypeMsg(1, "Directory", 2))
 
 		error_func = function()
-			forEachFile(filePath("", "base"))
+			forEachFile(packageInfo("base").path.."data")
 		end
 		unitTest:assertError(error_func, mandatoryArgumentMsg(2))
 
 		error_func = function()
 			forEachFile("abcdef12345", function() end)
 		end
-		unitTest:assertError(error_func, "Directory 'abcdef12345' is not valid or does not exist.")
-
+		unitTest:assertError(error_func, "Directory '/' is not valid or does not exist.", 0, true)
 
 		error_func = function()
-			forEachFile(filePath("", "base"), 2)
+			forEachFile(packageInfo("base").path.."data", 2)
+		end
+		unitTest:assertError(error_func, incompatibleTypeMsg(2, "function", 2))
+	end,
+	forEachModel = function(unitTest)
+		local error_func = function()
+			forEachModel()
+		end
+		unitTest:assertError(error_func, mandatoryArgumentMsg(1))
+
+		error_func = function()
+			forEachModel(2)
+		end
+		unitTest:assertError(error_func, incompatibleTypeMsg(1, "Environment", 2))
+
+		error_func = function()
+			forEachModel(Environment{})
+		end
+		unitTest:assertError(error_func, mandatoryArgumentMsg(2))
+
+		error_func = function()
+			forEachModel(Environment{}, 2)
 		end
 		unitTest:assertError(error_func, incompatibleTypeMsg(2, "function", 2))
 	end,
@@ -226,6 +246,48 @@ return{
 			forEachNeighbor(cell, "2", function() end)
 		end
 		unitTest:assertError(error_func, "Neighborhood '2' does not exist.")
+	end,
+	forEachNeighborAgent = function(unitTest)
+		Random():reSeed(12345)
+		local predator = Agent{
+			energy = 40,
+			name = "predator",
+			execute = function(self)
+				self:move(self:getCell():getNeighborhood():sample())
+			end
+		}
+
+		local predators = Society{
+			instance = predator,
+			quantity = 20
+		}
+
+		local error_func = function()
+			forEachNeighborAgent(predators:sample(), function() end)
+		end
+		unitTest:assertError(error_func, "The Agent does not have a default placement. Please call Environment:createPlacement() first.")
+
+		local cs = CellularSpace{xdim = 5}
+
+		local env = Environment{cs, predators = predators}
+		env:createPlacement{}
+
+		error_func = function()
+			forEachNeighborAgent(predators:sample(), function() end)
+		end
+		unitTest:assertError(error_func, "The CellularSpace does not have a default neighborhood. Please call 'CellularSpace:createNeighborhood' first.")
+
+		cs:createNeighborhood()
+
+		error_func = function()
+			forEachNeighborAgent(nil, function() end)
+		end
+		unitTest:assertError(error_func, incompatibleTypeMsg(1, "Agent"))
+
+		error_func = function()
+			forEachNeighborAgent(predators:sample())
+		end
+		unitTest:assertError(error_func, incompatibleTypeMsg(2, "function"))
 	end,
 	forEachNeighborhood = function(unitTest)
 		local cs = CellularSpace{xdim = 10}
@@ -268,12 +330,6 @@ return{
 			forEachSocialNetwork(ag)
 		end
 		unitTest:assertError(error_func, incompatibleTypeMsg(2, "function"))
-	end,
-	getExtension = function(unitTest)
-		local error_func = function()
-			getExtension(2)
-		end
-		unitTest:assertError(error_func, incompatibleTypeMsg(1, "string", 2))
 	end,
 	getn = function(unitTest)
 		local error_func = function()
@@ -377,76 +433,11 @@ return{
 			levenshtein(2)
 		end
 		unitTest:assertError(error_func, incompatibleTypeMsg(1, "string", 2))
-	
+
 		error_func = function()
 			levenshtein("abc", 2)
 		end
 		unitTest:assertError(error_func, incompatibleTypeMsg(2, "string", 2))
-	end,
-	makeDataTable = function(unitTest)
-		local error_func = function()
-			x = makeDataTable()
-		end
-		unitTest:assertError(error_func, tableArgumentMsg())
-
-		error_func = function()
-			x = makeDataTable{first = "a"}
-		end
-		unitTest:assertError(error_func, incompatibleTypeMsg("first", "number", "a"))
-
-		error_func = function()
-			x = makeDataTable{
-				first = 2000,
-				step = "a"
-			}
-		end
-		unitTest:assertError(error_func, incompatibleTypeMsg("step", "number", "a"))
-
-		error_func = function()
-			x = makeDataTable{
-				first = 2000,
-				step = 10,
-				demand = "a"
-			}
-		end
-		unitTest:assertError(error_func, incompatibleTypeMsg("demand", "table", "a"))
-
-		error_func = function()
-			x = makeDataTable{
-				first = 2000,
-				step = 10,
-				last = 2025
-			}
-		end
-		unitTest:assertError(error_func, "Invalid 'last' value (2025). It could be 2020.0 or 2030.0.")
-
-		error_func = function()
-			x = makeDataTable{
-				first = 2000,
-				step = 10
-			}
-		end
-		unitTest:assertError(error_func, "It is not possible to create a table without any data.")
-
-		error_func = function()
-			x = makeDataTable{
-				first = 2000,
-				step = 10,
-				last = 2030,
-				demand = {7, 8, 9}
-			}
-		end
-		unitTest:assertError(error_func, "Argument 'demand' should have 4.0 elements, got 3.")
-
-		error_func = function()
-			x = makeDataTable{
-				first = 2000,
-				step = 10,
-				demand = {7, 8, 9, 10},
-				limit = {0.1, 0.04, 0.3}
-			}
-		end
-		unitTest:assertError(error_func, "Argument 'limit' should have 4 elements, got 3.")
 	end,
 	round = function(unitTest)
 		local error_func = function()
@@ -523,6 +514,14 @@ return{
 			vardump(vtable)
 		end
 		unitTest:assertError(error_func, "Function vardump cannot handle an index of type table.")
+	end,
+	forEachRecursiveDirectory = function(unitTest)
+		local file = File(packageInfo("base").path.."lua/Utils.lua")
+
+		local wrongType = function()
+			forEachRecursiveDirectory(file, function(_) end)
+		end
+		unitTest:assertError(wrongType, "Argument '#1' must be a 'Directory' or 'string' path.")
 	end
 }
 

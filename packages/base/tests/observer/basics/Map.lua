@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------------------
 -- TerraME - a software platform for multiple scale spatially-explicit dynamic modeling.
--- Copyright (C) 2001-2016 INPE and TerraLAB/UFOP -- www.terrame.org
+-- Copyright (C) 2001-2017 INPE and TerraLAB/UFOP -- www.terrame.org
 
 -- This code is part of the TerraME framework.
 -- This framework is free software; you can redistribute it and/or
@@ -42,6 +42,7 @@ return{
 
 		m = Map{
 			target = cs,
+			title = "Basic",
 			select = "value",
 			min = 0,
 			max = 1,
@@ -50,6 +51,7 @@ return{
 		}
 
 		unitTest:assertType(m, "Map")
+		unitTest:assertEquals(m.title, "Basic")
 
 		local mi = Map{
 			target = cs,
@@ -96,7 +98,7 @@ return{
 		cs = CellularSpace{
 			xdim = 20
 		}
-		
+
 		forEachCell(cs, function(cell)
 			cell.w = cell.x
 		end)
@@ -249,14 +251,15 @@ return{
 		}
 
 		m:update()
-		unitTest:assertSnapshot(m, "map_society_background.bmp")
+		unitTest:assertSnapshot(m, "map_society_background.bmp", 0.02)
+
 
 		m = Map{
 			target = soc,
 			background = "green",
 			symbol = "turtle"
 		}
-		unitTest:assertSnapshot(m, "map_society_background2.bmp")
+		unitTest:assertSnapshot(m, "map_society_background2.bmp", 0.02)
 
 		m = Map{
 			target = soc,
@@ -265,7 +268,7 @@ return{
 			color = {"green", "red"}
 		}
 
-		unitTest:assertSnapshot(m, "map_society_uniquevalue.bmp")
+		unitTest:assertSnapshot(m, "map_society_uniquevalue.bmp", 0.03)
 
 		m = Map{
 			target = soc,
@@ -274,7 +277,7 @@ return{
 			symbol = "beetle"
 		}
 
-		unitTest:assertSnapshot(m, "map_society_white.bmp")
+		unitTest:assertSnapshot(m, "map_society_white.bmp", 0.03)
 
 		cs = CellularSpace{xdim = 10}
 
@@ -309,7 +312,7 @@ return{
 			size = 30
 		}
 
-		unitTest:assertSnapshot(m, "map_single_agent_config.bmp")
+		unitTest:assertSnapshot(m, "map_single_agent_config.bmp", 0.05)
 
 		soc = Society{instance = Agent{}, quantity = 10}
 		cs = CellularSpace{xdim = 10}
@@ -339,7 +342,7 @@ return{
 			color = "red"
 		}
 
-		unitTest:assertSnapshot(m2, "map_society_location.bmp")
+		unitTest:assertSnapshot(m2, "map_society_location.bmp", 0.03)
 
 		for _ = 1, 5 do
 			soc:sample():die()
@@ -350,16 +353,16 @@ return{
 			target = soc,
 			color = "red"
 		}
-		
-		unitTest:assertSnapshot(m2, "map_society_five_left.bmp")
-		
+
+		unitTest:assertSnapshot(m2, "map_society_five_left.bmp", 0.02)
+
 		local cell = Cell{
 			init = function(self)
 				self.state = "alive"
 			end
 		}
 
-		cs = CellularSpace {
+		cs = CellularSpace{
 			xdim = 4,
 			instance = cell
 		}
@@ -369,10 +372,10 @@ return{
 			select = "state",
 			value = {"dead", "alive"},
 			color = {"red", "yellow"}
-		}		
-		
+		}
+
 		unitTest:assertSnapshot(map, "map_string_values.bmp")
-		
+
 		ag = Agent{}
 
 		soc = Society{
@@ -424,8 +427,7 @@ return{
 			target = cs
 		}
 
-		m:save("save_map.bmp")
-		unitTest:assertFile("save_map.bmp")
+		unitTest:assertSnapshot(m, "save_map.bmp", 0.05)
 	end,
 	update = function(unitTest)
 		local cs = CellularSpace{xdim = 10}

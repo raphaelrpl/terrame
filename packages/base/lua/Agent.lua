@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------------------
 -- TerraME - a software platform for multiple scale spatially-explicit dynamic modeling.
--- Copyright (C) 2001-2016 INPE and TerraLAB/UFOP -- www.terrame.org
+-- Copyright (C) 2001-2017 INPE and TerraLAB/UFOP -- www.terrame.org
 
 -- This code is part of the TerraME framework.
 -- This framework is free software; you can redistribute it and/or
@@ -22,7 +22,9 @@
 --
 -------------------------------------------------------------------------------------------
 
-local deadAgentMetaTable_ = {__index = function()
+local deadAgentMetaTable_ = {__index = function(_, idx)
+	if idx == "type_" then return "<Dead Agent>" end
+
 	customError("Trying to use a function or an attribute of a dead Agent.")
 end}
 
@@ -60,7 +62,11 @@ Agent_ = {
 	--
 	-- sn = SocialNetwork()
 	-- sn:add(friend1)
-	-- sn:add(friend2)
+	--
+	-- if friend2 ~= friend1 then
+	--     sn:add(friend2)
+	-- end
+	--
 	-- agent:addSocialNetwork(sn)
 	-- @see Utils:forEachConnection
 	addSocialNetwork = function(self, set, id)
@@ -131,7 +137,7 @@ Agent_ = {
 	--
 	-- env = Environment{soc, cs}
 	-- env:createPlacement{strategy = "void"}
-	-- 
+	--
 	-- agent = soc:sample()
 	-- agent:enter(cs:sample())
 	-- @see Environment:createPlacement
@@ -141,7 +147,7 @@ Agent_ = {
 		optionalArgument(2, "string", placement)
 		if placement == nil then placement = "placement" end
 
-		if self[placement] then 
+		if self[placement] then
 			if self[placement].cells[1] then
 				customWarning("Agent is already inside of a Cell. Use Agent:move() instead.")
 			end
@@ -197,7 +203,7 @@ Agent_ = {
 	--
 	-- env = Environment{soc, cs}
 	-- env:createPlacement{}
-	-- 
+	--
 	-- agent = soc:sample()
 	-- cell = agent:getCell()
 	getCell = function(self, placement)
@@ -205,7 +211,12 @@ Agent_ = {
 		if placement == nil then placement = "placement" end
 
 		if type(self[placement]) ~= "Trajectory" then
-			customError("Placement '".. placement.. "' should be a Trajectory, got "..type(self[placement])..".")
+			if self[placement] == nil then
+				customError("The Agent does not have a default placement. Please call Environment:createPlacement() first.")
+			else
+				customError("Placement '".. placement.. "' should be a Trajectory, got "..type(self[placement])..".")
+
+			end
 		end
 		return self[placement].cells[1]
 	end,
@@ -223,7 +234,7 @@ Agent_ = {
 	--
 	-- env = Environment{soc, cs}
 	-- env:createPlacement{}
-	-- 
+	--
 	-- agent = soc:sample()
 	--
 	-- cell = agent:getCells()[1]
@@ -282,7 +293,7 @@ Agent_ = {
 	getStateName = function(self)
 		return self.cObj_:getControlModeName()
 	end,
-	--- Return the status of the Trajectories of the Agent. 
+	--- Return the status of the Trajectories of the Agent.
 	-- This function is useful only when the Agent is described as a State machine.
 	-- @see Agent:setTrajectoryStatus
 	-- @usage -- DONTRUN
@@ -302,7 +313,7 @@ Agent_ = {
 	--         end
 	--     end
 	-- }
-	-- 
+	--
 	-- soc = Society{
 	--     instance = agent,
 	--     quantity = 10
@@ -369,7 +380,7 @@ Agent_ = {
 	-- The efault value is zero (no delay, no synchronization required).
 	-- Whenever a delayed message is received, it comes with an attribute delay equals to true.
 	-- @arg data.... Other arguments are allowed to this function, as the message is a table.
-	-- The receiver will get all the attributes sent plus an attribute called sender. 
+	-- The receiver will get all the attributes sent plus an attribute called sender.
 	-- @usage agent1 = Agent{
 	--     on_message = function(self, message)
 	--         print("Got money:"..message.quantity)
@@ -442,7 +453,7 @@ Agent_ = {
 
 		if self[placement] == nil then
 			valueNotFoundError(2, placement)
-		elseif not self[placement].cells[1] then 
+		elseif not self[placement].cells[1] then
 			customError("Agent should belong to a Cell in order to move().")
 		end
 
@@ -523,7 +534,7 @@ Agent_ = {
 	-- @arg message A table with the received message. It has an attribute called sender with
 	-- the Agent that sent the message.
 	on_message = function(self, message)
-		customError("Agent "..self.id.." cannot get a message from "..message.sender.id.." because it does not implement 'on_message'.")
+		customError("Agent '"..tostring(self.id).."' cannot get a message from '"..tostring(message.sender.id).."' because it does not implement 'on_message'.")
 	end,
 	--- Execute a random walk to a neighbor Cell.
 	-- @deprecated Agent:walk
@@ -627,7 +638,7 @@ Agent_ = {
 	--
 	-- e = Environment{cs, singleFooAgent}
 	-- e:createPlacement()
-	-- 
+	--
 	-- singleFooAgent:walk()
 	-- singleFooAgent:walk()
 	-- @see Environment:createPlacement
@@ -639,15 +650,25 @@ Agent_ = {
 		if neighborhood == nil then neighborhood = "1" end
 
 		if type(self[placement]) ~= "Trajectory" then
-			valueNotFoundError(1, placement)
+			if placement == "placement" then
+				customError("The Agent does not have a default placement. Please call Environment:createPlacement() first.")
+			elseif not self[placement] then
+				customError("Placement '".. placement.. "' does not exist. Please call Environment:createPlacement() first.")
+			else
+				customError("Placement '".. placement.. "' should be a Trajectory, got "..type(self[placement])..".")
+			end
 		end
 
 		local c1 = self:getCell(placement)
-		local c2 = c1:getNeighborhood(neighborhood)
-		if c2 == nil then
-			valueNotFoundError(2, neighborhood)
+		local neigh = c1:getNeighborhood(neighborhood)
+		if neigh == nil then
+			if neighborhood == "1" then
+				customError("The CellularSpace does not have a default neighborhood. Please call 'CellularSpace:createNeighborhood' first.")
+			else
+				customError("Neighborhood '"..neighborhood.."' does not exist.")
+			end
 		end
-		self:move(c2:sample(), placement)
+		self:move(neigh:sample(), placement)
 	end
 }
 

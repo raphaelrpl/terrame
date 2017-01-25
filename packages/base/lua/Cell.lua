@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------------------
 -- TerraME - a software platform for multiple scale spatially-explicit dynamic modeling.
--- Copyright (C) 2001-2016 INPE and TerraLAB/UFOP -- www.terrame.org
+-- Copyright (C) 2001-2017 INPE and TerraLAB/UFOP -- www.terrame.org
 
 -- This code is part of the TerraME framework.
 -- This framework is free software; you can redistribute it and/or
@@ -64,12 +64,12 @@ Cell_ = {
 	-- print(dist)
 	distance = function(self, cell)
 		mandatoryArgument(1, "Cell", cell)
-		
+
 		if self.geom then
 			local tl = terralib.TerraLib{}
 			return tl:getDistance(self.geom, cell.geom)
-		end		
-		
+		end
+
 		return math.sqrt((self.x - cell.x) ^ 2 + (self.y - cell.y) ^ 2)
 	end,
 	--- Return an Agent that belongs to the Cell. It assumes that there is at most one Agent per Cell.
@@ -83,7 +83,7 @@ Cell_ = {
 	-- myEnv = Environment{cs, ag1}
 	--
 	-- myEnv:createPlacement{strategy = "void"}
-	-- 
+	--
 	-- ag1:enter(c)
 	-- if c:getAgent() == ag1 then
 	--     print("equal")
@@ -101,7 +101,7 @@ Cell_ = {
 	-- myEnv = Environment{cs, ag1}
 	--
 	-- myEnv:createPlacement{strategy = "void"}
-	-- 
+	--
 	-- ag1:enter(c)
 	-- if c:getAgents()[1] == ag1 then
 	--     print("equal")
@@ -113,7 +113,11 @@ Cell_ = {
 		if type(self[placement]) == "Group" then
 			return self[placement].agents
 		elseif self[placement] == nil then
-			customError("Placement '".. placement.. "' does not exist. Use Environment:createPlacement first.")
+			if placement == "placement" then
+				customError("The Cell does not have a default placement. Please call Environment:createPlacement() first.")
+			else
+				customError("Placement '".. placement.. "' does not exist. Please call Environment:createPlacement() first.")
+			end
 		else
 			customError("Placement '".. placement.. "' should be a Group, got "..type(self[placement])..".")
 		end
@@ -160,7 +164,7 @@ Cell_ = {
 	--     end,
 	--     -- ...
 	-- }
-	-- 
+	--
 	-- cs = CellularSpace{
 	--     xdim = 10,
 	--     instance = cell
@@ -221,6 +225,18 @@ Cell_ = {
 
 		self.cObj_:notify(modelTime)
 	end,
+	--- An optional user-defined function that is activated just after one calls Cell:synchronize().
+	-- @usage cell = Cell{
+	--     value = 3,
+	--     on_synchronize = function(self)
+	--         self.value = 0
+	--     end
+	-- }
+	--
+	-- cell:synchronize()
+	-- print(cell.value) -- 0
+	on_synchronize = function()
+	end,
 	--- Return a random Cell from a Neighborhood of the Cell.
 	-- @arg id A string with the name of the Neighborhood. The default value is "1".
 	-- @see Cell:getNeighborhood
@@ -264,7 +280,8 @@ Cell_ = {
 	--- Synchronizes the Cell. TerraME can keep two copies of the attributes of a Cell in memory:
 	-- one stores the past values and the other stores the current (present) values. Synchronize
 	-- copies the current values to a table named past, within the Cell. The previous past is
-	-- therefore overwritten.
+	-- therefore overwritten. In the end synchronize, it calls Cell:on_synchronize() if
+	-- it exists.
 	-- @usage cell = Cell{value = 5}
 	--
 	-- cell:synchronize()
@@ -277,15 +294,19 @@ Cell_ = {
 				self.past[k] = v
 			end
 		end
+
+		if type(self.on_synchronize) == "function" then
+			self:on_synchronize()
+		end
 	end,
 	--- Return the Cell area.
 	-- @usage -- DONTRUN
-	-- cell:area()	
+	-- cell:area()
 	area = function(self)
 		if cellArea then
 			return cellArea
 		end
-		
+
 		if self.geom then
 			local tl = terralib.TerraLib{}
 			cellArea = tl:getArea(self.geom)
@@ -313,7 +334,7 @@ metaTableCell_ = {
 
 --- A spatial location with homogeneous internal content.
 -- It is a table that may contain nearness relations as well as persistent and runtime attributes.
--- Persistent attributes can be loaded from databases using CellularSpace, 
+-- Persistent attributes can be loaded from databases using CellularSpace,
 -- while runtime attributes can be created along the simulation.
 -- @arg data.init An optional function that describes how to initialize a Cell that is going
 -- to be used as an instance of a CellularSpace. See Cell:init().
@@ -350,14 +371,14 @@ function Cell(data)
 	data.cObj_:setReference(data)
 
 	if data.x == nil then
-		data.x = 0 
+		data.x = 0
 	else
 		mandatoryTableArgument(data, "x", "number")
 		integerTableArgument(data, "x")
 	end
 
 	if data.y == nil then
-		data.y = 0 
+		data.y = 0
 	else
 		mandatoryTableArgument(data, "y", "number")
 		integerTableArgument(data, "y")

@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------------------
 -- TerraME - a software platform for multiple scale spatially-explicit dynamic modeling.
--- Copyright (C) 2001-2016 INPE and TerraLAB/UFOP -- www.terrame.org
+-- Copyright (C) 2001-2017 INPE and TerraLAB/UFOP -- www.terrame.org
 
 -- This code is part of the TerraME framework.
 -- This framework is free software; you can redistribute it and/or
@@ -29,18 +29,30 @@ import("terralib")
 proj = Project{
 	file = "itaituba.tview",
 	clean = true,
-	deforestation = filePath("desmatamento_2000.tif", "terralib"),
-	altimetria = filePath("altimetria.tif", "terralib"),
 	localidades = filePath("Localidades_pt.shp", "terralib"),
 	roads = filePath("Rodovias_lin.shp", "terralib"),
 	setores = filePath("Setores_Censitarios_2000_pol.shp", "terralib")
+}
+
+Layer{
+	project = proj,
+	name = "deforestation",
+	file = filePath("Desmatamento_2000.tif", "terralib"),
+	srid = 29191
+}
+
+Layer{
+	project = proj,
+	name = "altimetria",
+	file = filePath("altimetria.tif", "terralib"),
+	srid = 29191
 }
 
 cl = Layer{
 	project = proj,
 	name = "cells",
 	clean = true,
-	file = "cells.shp",
+	file = "itaituba.shp",
 	input = "setores",
 	resolution = 5000
 }
@@ -48,17 +60,13 @@ cl = Layer{
 cl:fill{
 	operation = "average",
 	layer = "altimetria",
-	attribute = "altim",
-	clean = true,
-	output = "altim"
+	attribute = "altim"
 }
 
 cl:fill{
 	operation = "coverage",
 	layer = "deforestation",
-	attribute = "defor",
-	clean = true,
-	output = "defor"
+	attribute = "defor"
 }
 
 cl:fill{
@@ -66,31 +74,24 @@ cl:fill{
 	layer = "setores",
 	attribute = "pop",
 	select = "Populacao",
-	clean = true,
-	output = "pop",
 	area = true
 }
-
 
 cl:fill{
 	operation = "distance",
 	layer = "roads",
-	attribute = "distr",
-	clean = true,
-	output = "distr"
+	attribute = "distr"
 }
 
 cl:fill{
 	operation = "distance",
 	layer = "localidades",
-	attribute = "distl",
-	clean = true,
-	output = "distl"
+	attribute = "distl"
 }
 
 cs = CellularSpace{
 	project = proj,
-	layer = "distl"
+	layer = "cells"
 }
 
 m = Map{
@@ -109,14 +110,14 @@ m = Map{
 
 m = Map{
 	target = cs,
-	select = "defor_0",
+	select = "defor_167",
 	slices = 10,
 	color = "Greens"
 }
 
 m = Map{
 	target = cs,
-	select = "defor_254",
+	select = "defor_87",
 	slices = 10,
 	color = "Greens"
 }
@@ -134,4 +135,3 @@ m = Map{
 	slices = 10,
 	color = "Reds"
 }
-

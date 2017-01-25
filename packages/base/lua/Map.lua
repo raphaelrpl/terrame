@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------------------
 -- TerraME - a software platform for multiple scale spatially-explicit dynamic modeling.
--- Copyright (C) 2001-2016 INPE and TerraLAB/UFOP -- www.terrame.org
+-- Copyright (C) 2001-2017 INPE and TerraLAB/UFOP -- www.terrame.org
 
 -- This code is part of the TerraME framework.
 -- This framework is free software; you can redistribute it and/or
@@ -1444,7 +1444,7 @@ forEachElement(brewerRGB, function(idx, value)
 			if #mmvalue ~= 3 then
 				print("Color description '"..idx.."' in position "..midx.."/"..mmidx.." does not have 3 numbers.")
 			end
-		end) 
+		end)
 	end)
 
 	local found = false
@@ -1477,7 +1477,7 @@ Map_ = {
 	-- }
 	--
 	-- map:save("file.bmp")
-	-- rmFile("file.bmp")
+	-- File("file.bmp"):delete()
 	save = function(self, file)
 		local _, extension = string.match(file, "(.-)([^%.]+)$")
 
@@ -1540,7 +1540,7 @@ metaTableMap_ = {__index = Map_}
 -- interpolation of the two colors. & color, slices, max, min, target, select & precision,
 -- grid, invert \
 -- "placement" & Observe a CellularSpace showing the number of Agents in each Cell. Values can
--- be grouped in the same way of uniquevalue or equalsteps. & color, target & 
+-- be grouped in the same way of uniquevalue or equalsteps. & color, target &
 -- min, max, value, slices, grid \
 -- "quantil" & Aggregate the values into slices with approximately the same size. Values are
 -- ordered from lower to higher and then sliced. This strategy uses two colors in the same way
@@ -1550,7 +1550,7 @@ metaTableMap_ = {__index = Map_}
 -- color, stdColor, target, select & stdDeviation, precision, grid \
 -- "uniquevalue" & Associate each attribute value to a given color. Attributes with type string can
 -- only be sliced with this strategy. It can be used for CellularSpaces as well as for
--- Society. & color, target, select, value & label, background, 
+-- Society. & color, target, select, value & label, background,
 -- size, font, symbol, grid \
 -- "none" & Does not execute any color slicing. It can be used for CellularSpaces as well as for
 -- Society. & & background, size, font, symbol, target, color, grid \
@@ -1561,7 +1561,7 @@ metaTableMap_ = {__index = Map_}
 -- number greater than zero. It indicates that differences less than 10^(-digits) will
 -- not be considered. It means that, for instance, if a slice is in the interval [1.0, 2.0]
 -- and precision is 2 (0.01), a value 0.99 might belong to such slice.
--- @arg data.color A table with the colors for the attributes. Colors can be described as strings 
+-- @arg data.color A table with the colors for the attributes. Colors can be described as strings
 -- ("red", "green", "blue", "white", "black",
 -- "yellow", "brown", "cyan", "gray", "magenta", "orange", "purple", and their light and dark
 -- compositions, such as "lightGray" and "darkGray"), as tables with three integer numbers
@@ -1656,7 +1656,7 @@ metaTableMap_ = {__index = Map_}
 --     soc
 -- }
 --
--- e:createPlacement{max = 1}
+-- e:createPlacement{}
 --
 -- m = Map{
 --     target = soc,
@@ -1674,6 +1674,17 @@ function Map(data)
 		customError("Invalid type. Maps only work with CellularSpace, Agent, Society, got "..type(data.target)..".")
 	end
 
+	if type(data.target) == "CellularSpace" then
+		if (data.target.xMin == 0 and data.target.xMax == 0) or (data.target.yMin == 0 and data.target.yMax == 0) then
+			customError("It is not possible to create a Map from this CellularSpace as its objects do not have a valid (x, y) location.")
+		end
+	end
+
+	local validArgs = {"background", "color", "font", "grid", "grouping", "invert", "label", "max", "min",
+	"precision", "select", "size", "slices", "stdColor", "stdDeviation", "symbol", "target", "value", "title"}
+
+	verifyUnnecessaryArguments(data, validArgs)
+
 	if type(data.target) == "Agent" then
 		local s = Society{instance = Agent{}, quantity = 0}
 		s:add(data.target)
@@ -1683,6 +1694,7 @@ function Map(data)
 
 	optionalTableArgument(data, "value", "table")
 	optionalTableArgument(data, "select", "string")
+	optionalTableArgument(data, "title", "string")
 
 	if type(data.background) ~= "Map" then
 		defaultTableValue(data, "grid", false)
@@ -1714,7 +1726,7 @@ function Map(data)
 		if #data.target == 0 then
 			customError("It is not possible to create a Map from an empty Society.")
 		elseif not data.target:sample().cell then
-			customError("The Society does not have a placement. Please use Environment:createPlacement() first.")
+			customError("The Society does not have a placement. Please call Environment:createPlacement() first.")
 		end
 
 		defaultTableValue(data, "size", 1)
@@ -1770,13 +1782,13 @@ function Map(data)
 			if type(data.color[i]) == "string" then
 				local colorName = data.color[i]
 				data.color[i] = colors[colorName]
-	
+
 				if data.color[i] == nil then
 					local s = suggestion(colorName, colors)
 					if s then
 						customError(switchInvalidArgumentSuggestionMsg(colorName, "color", s))
 					else
-						customError("Color '"..colorName.."' not found. Check the name or use a table with an RGB description.")
+						customError("Color '"..colorName.."' was not found. Check the name or use a table with an RGB description.")
 					end
 				end
 			elseif type(data.color[i]) ~= "table" then
@@ -1798,7 +1810,7 @@ function Map(data)
 
 	switch(data, "grouping"):caseof{
 		equalsteps = function()
-			verifyUnnecessaryArguments(data, {"target", "select", "color", "grouping", "min", "max", "slices", "invert", "grid"})
+			verifyUnnecessaryArguments(data, {"target", "select", "color", "grouping", "min", "max", "slices", "invert", "grid", "title"})
 
 			mandatoryTableArgument(data, "select", "string")
 			mandatoryTableArgument(data, "target", "CellularSpace")
@@ -1874,7 +1886,7 @@ function Map(data)
 			verify(#data.color >= 2, "Grouping '"..data.grouping.."' requires at least two colors, got "..#data.color..".")
 		end,
 		quantil = function() -- equal to 'equalsteps'
-			verifyUnnecessaryArguments(data, {"target", "select", "color", "grouping", "min", "max", "slices", "invert", "grid"})
+			verifyUnnecessaryArguments(data, {"target", "select", "color", "grouping", "min", "max", "slices", "invert", "grid", "title"})
 
 			mandatoryTableArgument(data, "select", "string")
 			mandatoryTableArgument(data, "target", "CellularSpace")
@@ -1952,7 +1964,7 @@ function Map(data)
 			local attrs
 
 			if type(data.target) == "CellularSpace" then
-				attrs = {"target", "select", "value", "label", "color", "grouping", "grid"}
+				attrs = {"target", "select", "value", "label", "color", "grouping", "grid", "title"}
 
 				local sample = data.target.cells[1][data.select]
 
@@ -1961,7 +1973,7 @@ function Map(data)
 					customError("Selected element should be string, number, or function, got "..type(sample)..".")
 				end
 			else -- Society
-				attrs = {"target", "select", "value", "label", "color", "grouping", "background", "size", "font", "symbol", "grid"}
+				attrs = {"target", "select", "value", "label", "color", "grouping", "background", "size", "font", "symbol", "grid", "title"}
 			end
 
 			if type(data.color) == "string" then
@@ -2019,7 +2031,7 @@ function Map(data)
 
 			-- we need to verify the target before unnecessary arguments because if
 			-- target is Society then new attributes were added
-			verifyUnnecessaryArguments(data, {"target", "color", "grouping", "min", "max", "slices", "value", "grid"})
+			verifyUnnecessaryArguments(data, {"target", "color", "grouping", "min", "max", "slices", "value", "grid", "title"})
 
 			if data.grid == false then data.grid = nil end
 
@@ -2060,12 +2072,12 @@ function Map(data)
 				else
 					data.color = {data.color[1], mblack}
 				end
-		
+
 				forEachCell(data.target, function(cell)
 					cell.background_ = 0
 				end)
 			else -- Society
-				verifyUnnecessaryArguments(data, {"target", "color", "grouping", "background", "size", "font", "symbol", "grid"})
+				verifyUnnecessaryArguments(data, {"target", "color", "grouping", "background", "size", "font", "symbol", "grid", "title"})
 
 				data.select = "state_"
 				data.value = {"alive", "dead"}
@@ -2194,6 +2206,10 @@ function Map(data)
 
 	if data.grid then
 		map:setGridVisible(1)
+	end
+
+	if data.title then
+		map:setTitle(data.title)
 	end
 
 	setmetatable(data, metaTableMap_)

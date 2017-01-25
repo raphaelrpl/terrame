@@ -22,8 +22,6 @@ Building and checking HTML files
 Building doc/index.html
 Building doc/files/Spline.html
 Building doc/files/examples.html
-Building doc/files/data.html
-Building doc/files/font.html
 Checking images
 Checking data.lua
 Checking models
@@ -33,15 +31,16 @@ Checking if all functions are documented
 Checking Spline.lua
 Checking if all Models are documented
 
-Documentation report:
-Documentation was built in 0.2 seconds.
-5 HTML files were created.
+Documentation report for package 'sci':
+Documentation was built in 0.34 seconds.
+3 HTML files were created.
 All files are documented.
 All fields of 'description.lua' are correct.
 No problems were found in the documentation of data.
 No problems were found in the documentation of fonts.
 All source code lines starting with --- are valid.
 There are no Models in the package.
+All projects were successfully processed.
 All 2 global functions of the package are documented.
 All functions of each file are declared only once.
 All descriptions end with a correct character.

@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------------------
 -- TerraME - a software platform for multiple scale spatially-explicit dynamic modeling.
--- Copyright (C) 2001-2016 INPE and TerraLAB/UFOP -- www.terrame.org
+-- Copyright (C) 2001-2017 INPE and TerraLAB/UFOP -- www.terrame.org
 
 -- This code is part of the TerraME framework.
 -- This framework is free software; you can redistribute it and/or
@@ -25,43 +25,31 @@
 return{
 	CellularSpace = function(unitTest)
 		local cs = CellularSpace{
-			file = filePath("cabecadeboi.shp")
+			file = filePath("cabecadeboi900.shp"),
+			xy = {"Col", "Lin"},
+			as = {
+				height = "height_"
+			}
 		}
 
-		unitTest:assertEquals("cabecadeboi.shp", cs.layer)
-		unitTest:assertEquals(10201, #cs.cells)
+		unitTest:assertEquals("cabecadeboi900.shp", cs.layer)
+		unitTest:assertEquals(121, #cs.cells)
 
-		cs:createNeighborhood{name = "moore1"}
-		cs:createNeighborhood{name = "moore2", inmemory = false}
-
-		local countNeigh = 0
-		local sumWeight  = 0
-
-		forEachCell(cs, function(cell)
+		for _ = 1, 5 do
+			local cell = cs:sample()
 			unitTest:assertType(cell.object_id0, "string")
 			unitTest:assertType(cell.x, "number")
 			unitTest:assertType(cell.y, "number")
-			unitTest:assertNotNil(cell.height_)
+			unitTest:assertNotNil(cell.height)
+			unitTest:assertNil(cell.height_)
 			unitTest:assertNotNil(cell.soilWater)
-
-			forEachNeighbor(cell, "moore1", function(_, _, weight)
-				countNeigh = countNeigh + 1
-				sumWeight = sumWeight + weight
-			end)
-
-			forEachNeighbor(cell, "moore2", function(_, _, weight)
-				countNeigh = countNeigh + 1
-				sumWeight = sumWeight + weight
-			end)
-		end)
-
-		unitTest:assertEquals(160800, countNeigh)
-		unitTest:assertEquals(20402, sumWeight, 0.00001)
+			unitTest:assertNil(cell.geom)
+		end
 
 		local cell = cs:get(0, 0)
 		unitTest:assertEquals(0, cell.x)
 		unitTest:assertEquals(0, cell.y)
-		
+
 		cell = cs.cells[1]
 		unitTest:assertEquals(0, cell.x)
 		unitTest:assertEquals(0, cell.y)
@@ -69,31 +57,42 @@ return{
 		cell = cs:get(0, 1)
 		unitTest:assertEquals(0, cell.x)
 		unitTest:assertEquals(1, cell.y)
-		
+
 		cell = cs.cells[2]
 		unitTest:assertEquals(0, cell.x)
 		unitTest:assertEquals(1, cell.y)
 
-		cell = cs:get(0, 99)
+		cell = cs:get(0, 9)
 		unitTest:assertEquals(0, cell.x)
-		unitTest:assertEquals(99, cell.y)
-		
-		-- in TerraLib 5 we have 
-		-- [11] (0, 10)
-		-- [12] (0, 100) -- this line was not here in TerraLib 4
-		-- [13] (0, 11)
+		unitTest:assertEquals(9, cell.y)
 
 		cell = cs.cells[100]
-		unitTest:assertEquals(0, cell.x)
-		unitTest:assertEquals(98, cell.y)
+		unitTest:assertEquals(9, cell.x)
+		unitTest:assertEquals(0, cell.y)
 
-		cell = cs:get(0, 100)
+		cell = cs:get(0, 10)
 		unitTest:assertEquals(0, cell.x)
-		unitTest:assertEquals(100, cell.y)
-		
+		unitTest:assertEquals(10, cell.y)
+
 		cell = cs.cells[101]
-		unitTest:assertEquals(0, cell.x)
-		unitTest:assertEquals(99, cell.y)
+		unitTest:assertEquals(9, cell.x)
+		unitTest:assertEquals(1, cell.y)
+
+		cs = CellularSpace{
+			file = filePath("cabecadeboi900.shp"),
+			xy = function(mcell)
+				return mcell.Col, mcell.Lin
+			end
+		}
+
+		unitTest:assertEquals("cabecadeboi900.shp", cs.layer)
+		unitTest:assertEquals(121, #cs.cells)
+
+		for _ = 1, 5 do
+			local mcell = cs:sample()
+			unitTest:assertEquals(mcell.x, mcell.Col)
+			unitTest:assertEquals(mcell.y, mcell.Lin)
+		end
 
 		-- shp file
 		cs = CellularSpace{file = filePath("brazilstates.shp", "base")}
@@ -123,12 +122,14 @@ return{
 
 		-- project
 		local terralib = getPackage("terralib")
-		local projName = "cellspace_basic.tview"
+		local projName = File("cellspace_basic.tview")
 		local author = "Avancini"
 		local title = "Cellular Space"
 
+		if projName:exists() then projName:delete() end
+
 		local proj = terralib.Project{
-			file = projName,
+			file = projName:name(true),
 			clean = true,
 			author = author,
 			title = title
@@ -139,16 +140,16 @@ return{
 		terralib.Layer{
 			project = proj,
 			name = layerName1,
-			file = filePath("sampa.shp", "terralib")
+			file = filePath("test/sampa.shp", "terralib")
 		}
 
 		local clName1 = "Sampa_Cells_DB"
 		local tName1 = "sampa_cells"
-		
+
 		local host = "localhost"
 		local port = "5432"
 		local user = "postgres"
-		local password = "postgres"
+		local password = getConfig().password
 		local database = "postgis_22_sample"
 		local encoding = "CP1252"
 
@@ -179,7 +180,7 @@ return{
 		}
 
 		cs = CellularSpace{
-			project = projName,
+			project = projName:name(true),
 			layer = clName1,
 			geometry = true
 		}
@@ -199,133 +200,43 @@ return{
 			unitTest:assertNil(c.OGR_GEOMETRY)
 		end)
 
-		unitTest:assertEquals(303, #cs.cells)		
-		unitTest:assertFile(projName)
+		unitTest:assertEquals(303, #cs.cells)
+		-- unitTest:assertFile(projName:name(true)) -- SKIP #TODO(#1242)
+		if projName:exists() then projName:delete() end
 
 		pgData.table = string.lower(tName1)
 		tl:dropPgTable(pgData)
-		
-		-- map file
+
+		-- pgm file
 		cs = CellularSpace{
-			file = filePath("simple.map", "base")
+			file = filePath("simple.pgm", "base")
 		}
 
 		unitTest:assertEquals(#cs, 100)
-		
+
 		-- csv file
-		cs = CellularSpace{file = filePath("simple-cs.csv", "base"), sep = ";"}
+		cs = CellularSpace{file = filePath("test/simple-cs.csv", "base"), sep = ";"}
 
 		unitTest:assertType(cs, "CellularSpace")
-		unitTest:assertEquals(2500, #cs)
+		unitTest:assertEquals(400, #cs)
 
-		forEachCell(cs, function(c)
-			unitTest:assertType(c.maxSugar, "number")
-		end)	
-	end,
-	createNeighborhood = function(unitTest)
-		-- neighborhood between two cellular spaces
-		local cs = CellularSpace{
-			file = filePath("cabecadeboi.shp", "base"),
-		}
-
-		local cs2 = CellularSpace{
-			file = filePath("cabecadeboi900.shp", "base"),
-		}
-
-		cs:createNeighborhood{
-			strategy = "mxn",
-			target = cs2,
-			filter = function(cell,neigh) 
-				return not ((cell.x == neigh.x) and (cell.y == neigh.y))
-			end,
-			weight = function() return 1 / 9 end,
-			name = "spatialCoupling"
-		}
-
-		local countNeigh = 0
-		local sumWeight  = 0
-
-		forEachCell(cs, function(cell)
-			forEachNeighbor(cell, "spatialCoupling", function(_, _, weight)
-				countNeigh = countNeigh + 1
-				sumWeight = sumWeight + weight
-			end)
-		end)
-
-		unitTest:assertEquals(903, countNeigh)
-		unitTest:assertEquals(100.33333, sumWeight, 0.00001)
-
-		countNeigh = 0
-		sumWeight  = 0
-
-		forEachCell(cs2, function(cell)
-			forEachNeighbor(cell, "spatialCoupling", function(_, _, weight)
-				countNeigh = countNeigh + 1
-				sumWeight = sumWeight + weight
-			end)
-		end)
-
-		unitTest:assertEquals(10201, #cs)
-		unitTest:assertEquals(903, countNeigh)
-		unitTest:assertEquals(100.33333, sumWeight, 0.00001)
-
---[[
-		-- where plus createNeighborhood
-		cs = CellularSpace{
-			host = mhost,
-			user = muser,
-			password = mpassword,
-			port = mport,
-			database = mdatabase,
-			theme = "cells90x90",
-			select = {"height_", "soilWater"},
-			where = "height_ > 100"
-		}
-
-		cs:createNeighborhood{name = "first", self = true}
-
-		cs:createNeighborhood{
-			strategy = "mxn",
-			filter = function(c, n) return n.height_ < c.height_ end,
-			weight = function(c, n) return (c.height_ - n.height_ ) / (c.height_ + n.height_) end,
-			name = "second"
-		}
-
-		countNeigh = 0
-		sumWeight  = 0
-		forEachCell(cs, function(cell)
-			forEachNeighbor(cell, "first", function(cell, neigh, weight)
-				countNeigh = countNeigh + 1
-				sumWeight = sumWeight + weight
-			end)
-		end)
-		unitTest:assertEquals(49385, countNeigh) -- SKIP
-		unitTest:assertEquals(5673, sumWeight, 0.00001) -- SKIP
-
-		countNeigh = 0
-		sumWeight  = 0
-
-		forEachCell(cs, function(cell)
-			forEachNeighbor(cell, "second", function(cell, neigh, weight)
-				countNeigh = countNeigh + 1
-				sumWeight = sumWeight + weight
-			end)
-		end)
-		unitTest:assertEquals(18582, countNeigh) -- SKIP
-		unitTest:assertEquals(451.98359156683, sumWeight, 0.00001) -- SKIP
-		--]]
+		unitTest:assertType(cs:sample().maxSugar, "number")
+		unitTest:assertType(cs:sample().maxSugar, "number")
+		unitTest:assertType(cs:sample().maxSugar, "number")
 	end,
 	loadNeighborhood = function(unitTest)
 		local cs1 = CellularSpace{
-			file = filePath("cabecadeboi900.shp", "base")	
+			file = filePath("cabecadeboi900.shp", "base"),
+			xy = {"Col", "Lin"}
 		}
 
 		local cs2 = CellularSpace{
-			file = filePath("River_lin.shp", "base")
+			file = filePath("river.shp", "base")
 		}
 
 		local cs3 = CellularSpace{
-			file = filePath("emas.shp", "base")
+			file = filePath("emas.shp", "base"),
+			xy = {"Col", "Lin"},
 		}
 
 		unitTest:assertType(cs1, "CellularSpace")
@@ -446,7 +357,7 @@ return{
 		countTest = countTest + 1
 
 		cs3:loadNeighborhood{
-			source = filePath("gpmdistanceDbEmasCells.gpm", "base"),
+			source = filePath("test/gpmdistanceDbEmasCells.gpm", "base"),
 			name = "my_neighborhood"..countTest
 		}
 
@@ -496,7 +407,7 @@ return{
 		countTest = countTest + 1
 
 		cs2:loadNeighborhood{
-			source = filePath("emas-distance.gpm", "base"),
+			source = filePath("test/emas-distance.gpm", "base"),
 			name = "my_neighborhood"..countTest
 		}
 
@@ -540,9 +451,9 @@ return{
 
 		-- .GAL Regular CS
 		countTest = countTest + 1
- 
+
 		cs1:loadNeighborhood{
-			source = filePath("cabecadeboi-neigh.gal", "base"),
+			source = filePath("test/cabecadeboi-neigh.gal", "base"),
 			name = "my_neighborhood"..countTest
 		}
 
@@ -591,7 +502,7 @@ return{
 		countTest = countTest + 1
 
 		cs2:loadNeighborhood{
-			source = filePath("emas-distance.gal", "base"),
+			source = filePath("test/emas-distance.gal", "base"),
 			name = "my_neighborhood"..countTest
 		}
 
@@ -627,7 +538,7 @@ return{
 		countTest = countTest + 1
 
 		cs1:loadNeighborhood{
-			source = filePath("cabecadeboi-neigh.gwt", "base"),
+			source = filePath("test/cabecadeboi-neigh.gwt", "base"),
 			name = "my_neighborhood"..countTest
 		}
 
@@ -683,7 +594,7 @@ return{
 		countTest = countTest + 1
 
 		cs2:loadNeighborhood{
-			source = filePath("emas-distance.gwt", "base"),
+			source = filePath("test/emas-distance.gwt", "base"),
 			name = "my_neighborhood"..countTest
 		}
 
@@ -732,7 +643,7 @@ return{
 		}
 
 		cs:loadNeighborhood{
-			source = filePath("brazil.gal", "base"),
+			source = filePath("test/brazil.gal", "base"),
 			check = false
 		}
 
@@ -741,7 +652,7 @@ return{
 			count = count + #cell:getNeighborhood()
 		end)
 
-		unitTest:assertEquals(count, 7) 	
+		unitTest:assertEquals(count, 7)
 	end,
 	save = function(unitTest)
 		local terralib = getPackage("terralib")
@@ -760,7 +671,7 @@ return{
 		terralib.Layer{
 			project = proj,
 			name = layerName1,
-			file = filePath("sampa.shp", "terralib")
+			file = filePath("test/sampa.shp", "terralib")
 		}
 
 		local clName1 = "Sampa_Cells_DB"
@@ -769,7 +680,7 @@ return{
 		local host = "localhost"
 		local port = "5432"
 		local user = "postgres"
-		local password = "postgres"
+		local password = getConfig().password
 		local database = "postgis_22_sample"
 		local encoding = "CP1252"
 
@@ -787,7 +698,7 @@ return{
 		local tl = terralib.TerraLib{}
 		tl:dropPgTable(pgData)
 
-		terralib.Layer{
+		local layer = terralib.Layer{
 			project = proj,
 			source = "postgis",
 			input = layerName1,
@@ -800,9 +711,17 @@ return{
 		}
 
 		local cs = CellularSpace{
+			layer = layer
+		}
+
+		unitTest:assertEquals(#cs, 303)
+
+		cs = CellularSpace{
 			project = proj,
 			layer = clName1
 		}
+
+		unitTest:assertEquals(#cs, 303)
 
 		forEachCell(cs, function(cell)
 			cell.t0 = 1000
@@ -812,7 +731,7 @@ return{
 
 		cs:save(cellSpaceLayerNameT0, "t0")
 
-		local layer = terralib.Layer{
+		layer = terralib.Layer{
 			project = proj,
 			name = cellSpaceLayerNameT0
 		}
@@ -888,7 +807,7 @@ return{
 
 		local cellSpaceLayerNameGeom = clName1.."_CellSpace_Geom"
 		cs:save(cellSpaceLayerNameGeom)
-		
+
 		cs = CellularSpace{
 			project = projName,
 			layer = cellSpaceLayerNameGeom,
@@ -911,9 +830,9 @@ return{
 		forEachCell(cs, function(cell)
 			unitTest:assertNotNil(cell.geom)
 		end)
-		
-		if isFile(projName) then
-			rmFile(projName)
+
+		if File(projName):exists() then
+			File(projName):delete()
 		end
 
 		pgData.table = string.lower(tName1)
@@ -944,7 +863,7 @@ return{
 		terralib.Layer{
 			project = proj,
 			name = layerName1,
-			file = filePath("sampa.shp", "terralib")
+			file = filePath("test/sampa.shp", "terralib")
 		}
 
 		local cs = CellularSpace{
@@ -957,9 +876,7 @@ return{
 
 		unitTest:assertNil(cs:sample().past.geom)
 
-		if isFile(projName) then
-			rmFile(projName)
-		end
+		File(projName):deleteIfExists()
 	end
 }
 

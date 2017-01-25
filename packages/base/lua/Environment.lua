@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------------------
 -- TerraME - a software platform for multiple scale spatially-explicit dynamic modeling.
--- Copyright (C) 2001-2016 INPE and TerraLAB/UFOP -- www.terrame.org
+-- Copyright (C) 2001-2017 INPE and TerraLAB/UFOP -- www.terrame.org
 
 -- This code is part of the TerraME framework.
 -- This framework is free software; you can redistribute it and/or
@@ -39,7 +39,7 @@ local function createRandomPlacement(environment, cs, max, placement)
 			end)
 		elseif t == "Agent" then
 			g:add(element)
-		end 
+		end
 	end)
 
 	local traj = Trajectory{
@@ -78,15 +78,15 @@ local function createUniformPlacement(environment, cs, placement)
 				counter = counter + 1
 				if counter > #cs then
 					counter = 1
-				end 
+				end
 			end)
 		elseif mtype == "Agent" then
 			element:enter(cs.cells[counter], placement)
 			counter = counter + 1
 			if counter > #cs then
 				counter = 1
-			end 
-		end 
+			end
+		end
 	end)
 end
 
@@ -132,7 +132,9 @@ end
 Environment_ = {
 	type_ = "Environment",
 	--- Add an element to the Environment.
-	-- @arg object An Agent, Automaton, Cell, CellularSpace, Society, Trajectory, Group, Timer, or Environment.
+	-- @arg object An Agent, Automaton, Cell, CellularSpace, Society, Trajectory, Group, Event, Timer, Environment, or table.
+	-- When adding a table, this function converts the table into an Event.
+	-- When adding an Event, this function converts the Event into a Timer that contains the Event itself.
 	-- @usage environment = Environment{}
 	--
 	-- cs1 = CellularSpace{xdim = 10}
@@ -144,17 +146,25 @@ Environment_ = {
 	-- environment:add(t1)
 	add = function(self, object)
 		local t = type(object)
+		if t == "table" then
+			object = Event(object)
+			t = type(object)
+		end
 		if belong(t, {"Cell", "CellularSpace", "Society", "Agent", "Automaton", "Timer", "Environment", "Trajectory", "Cell"}) then
 			object.parent = self
 			table.insert(self, object)
 
 			if t == "Society" then return end
+		elseif t == "Event" then
+			object = Timer{object} -- create a Timer with the Event itself
+			table.insert(self, object)
 		else
 			incompatibleTypeError(1, "Agent, Automaton, Cell, CellularSpace, Environment, Group, Society, Timer or Trajectory", object)
 		end
+
 		self.cObj_:add(object.cObj_)
 	end,
-	--- Create relations between behavioural entities (Agents) and spatial entities (Cells). 
+	--- Create relations between behavioural entities (Agents) and spatial entities (Cells).
 	-- It is possible to have more than one behavioural entity within the Environment, but it must
 	-- have only one CellularSpace, Trajectory, or Cell.
 	-- When distributing Agents over
@@ -168,7 +178,7 @@ Environment_ = {
 	-- between Agents and Cells. See the options below:
 	-- @arg data.name A string with the name of the relation. The default value
 	-- is "placement", which means that the modeler can use Agent:enter(), Agent:move(), and
-	-- Agent:leave() without needing to refer to the name of the placement. If the name is 
+	-- Agent:leave() without needing to refer to the name of the placement. If the name is
 	-- different from the default value, the modeler will
 	-- have to use the last argument of these functions with the name of the placement.
 	-- @arg data.max A number representing the maximum number of Agents that can enter in the
@@ -292,6 +302,9 @@ Environment_ = {
 	-- of the Environments it contains, and so on.
 	-- @arg finalTime A number representing the final time. This funcion will stop when there is no
 	-- Event scheduled to a time less or equal to the final time.
+	-- When using instances of Models within the Environment (to simulate them at the same time),
+	-- this argument is optional. In this case, the default value is the greater final time
+	-- amongst all instances.
 	-- @usage env = Environment{
 	--     Timer{Event{action = function()
 	--         print("execute 1")
@@ -302,11 +315,11 @@ Environment_ = {
 	-- }
 	-- env:run(10)
 	run = function(self, finalTime)
-		mandatoryArgument(1, "number", finalTime)
 		local timer = Timer{}
 		local timers = {}
 
 		local process
+		local modelFinalTime
 
 		process = function(env)
 			forEachOrderedElement(env, function(idx, value, mtype)
@@ -317,13 +330,24 @@ Environment_ = {
 					forEachElement(value.events, function(_, ev)
 						timer:add(ev)
 					end)
-				elseif isModel(value) then
+				elseif isModel(value) and idx ~= "parent" then
+					local ft = value.finalTime
+					if not modelFinalTime or ft > modelFinalTime then
+						modelFinalTime = ft
+					end
+
 					process(value)
 				end
 			end)
 		end
 
 		process(self)
+
+		if modelFinalTime and not finalTime then
+			finalTime = modelFinalTime
+		end
+
+		mandatoryArgument(1, "number", finalTime)
 
 		timer:run(finalTime)
 
@@ -362,14 +386,14 @@ Environment_ = {
 		return oldTime
 	end,
 	--- Load a Neighborhood between two different CellularSpaces.
-	-- @arg data.source A string representing the name of the file to be loaded.
+	-- @arg data.source A File or a string with the name of the file to be loaded.
 	-- @arg data.name A string with the name of the relation to be created.
 	-- The default value is "1".
 	-- @arg data.bidirect A boolean value. If true then, for each relation from Cell a
 	-- to Cell b loaded from the file, it will also create
 	-- a relation from b to a. The default value is false.
 	-- @usage river = CellularSpace{
-	--     file = filePath("River_lin.shp")
+	--     file = filePath("river.shp")
 	-- }
 	--
 	-- emas = CellularSpace{
@@ -383,59 +407,50 @@ Environment_ = {
 		verifyNamedTable(data)
 
 		defaultTableValue(data, "name", "1")
-		mandatoryTableArgument(data, "source", "string")
 
-		local extension = string.match(data.source, "%w+$")
+		if type(data.source) == "string" then
+			data.source = File(data.source)
+		end
+
+		mandatoryTableArgument(data, "source", "File")
+
+		local extension = data.source:extension()
+
 		if extension ~= "gpm" then
 			invalidFileExtensionError("source", extension)
 		end
 
 		defaultTableValue(data, "bidirect", false)
 
-		local file = io.open(data.source, "r")
-		if not file then
+		if not data.source:exists() then
 			resourceNotFoundError("source", data.source)
 		end
 
-		local header = file:read()
-		
+		local header = data.source:read()
+
 		local numAttribIdx = string.find(header, "%s", 1)
 		local layer1Idx = string.find(header, "%s", numAttribIdx + 1)
 		local layer2Idx = string.find(header, "%s", layer1Idx + 1)
-		
+
 		local numAttributes = tonumber(string.sub(header, 1, numAttribIdx))
 		local layer1Id = string.sub(header, numAttribIdx + 1, layer1Idx - 1)
 		local layer2Id = string.sub(header, layer1Idx + 1, layer2Idx - 1)
 
 		verify(layer1Id ~= layer2Id, "This function does not load neighborhoods between cells from the same "..
-			"CellularSpace. Use CellularSpace:loadNeighborhood() instead.") 
+			"CellularSpace. Use CellularSpace:loadNeighborhood() instead.")
 
 		verify(numAttributes < 2, "This function does not support GPM with more than one attribute.")
 
-		local beginName = layer2Idx
-		local attribNames = {}
-
-		for i = 1, numAttributes do
-			local endName = string.find(header, "%s", beginName + 1)
-			
-			attribNames[i] = string.sub(header, beginName + 1)
-			if endName ~= nil then
-				attribNames[i] = string.sub(header, beginName + 1, endName - 1)
-			else
-				break
-			end
-		end
-		
 		local cellSpaces = {}
 		for _, element in pairs(self) do
 			if type(element) == "CellularSpace" then
 				local cellSpaceLayer = element.layer
-				
+
 				if cellSpaceLayer == layer1Id then cellSpaces[1] = element
 				elseif cellSpaceLayer == layer2Id then cellSpaces[2] = element end
 			end
 		end
-		
+
 		if cellSpaces[1] == nil and cellSpaces[2] == nil then
 			customError("CellularSpaces with layers '"..layer1Id.."' and '"..layer2Id.."' were not found in the Environment.")
 		elseif cellSpaces[1] == nil then
@@ -445,7 +460,7 @@ Environment_ = {
 		end
 
 		repeat
-			local line_cell = file:read()
+			local line_cell = data.source:read()
 			if line_cell == nil then break; end
 
 			local cellIdIdx = string.find(line_cell, "%s", 1)
@@ -460,7 +475,7 @@ Environment_ = {
 			local weight
 
 			if numNeighbors > 0 then
-				local line_neighbors = file:read()
+				local line_neighbors = data.source:read()
 
 				local neighIdEndIdx = string.find(line_neighbors, "%s")
 
@@ -470,7 +485,7 @@ Environment_ = {
 				local neighIdIdx = 1
 
 				for i = 1, numNeighbors do
-					if i ~= 1 then 
+					if i ~= 1 then
 						neighIdIdx = string.find(line_neighbors, "%s", neighIdEndIdx) + 1
 						neighIdEndIdx = string.find(line_neighbors, "%s", neighIdIdx)
 					end
@@ -481,7 +496,7 @@ Environment_ = {
 					if numAttributes > 0 then
 						local weightEndIdx = string.find(line_neighbors, "%s", neighIdEndIdx + 1)
 
-						if weightEndIdx == nil then 
+						if weightEndIdx == nil then
 							local weightAux = string.sub(line_neighbors, neighIdEndIdx + 1)
 							weight = tonumber(weightAux)
 
@@ -507,7 +522,7 @@ Environment_ = {
 					-- Adds the neighbor to the neighborhood
 					neighborhood:add(neighbor, weight)
 
-					if data.bidirect then 
+					if data.bidirect then
 						local neighborhoodNeigh = neighbor:getNeighborhood(data.name)
 						if neighborhoodNeigh == nil then
 							neighborhoodNeigh = Neighborhood()
@@ -529,7 +544,7 @@ Environment_ = {
 			end
 		end
 
-		file:close()
+		data.source:close()
 	end,
 	--- Notify every Observer connected to the Environment.
 	-- @arg modelTime A number representing the notification time. The default value is zero.
@@ -558,8 +573,10 @@ metaTableEnvironment_ = {__index = Environment_, __tostring = _Gtme.tostring}
 -- control the simulation engine, synchronizing all the Timers within it, or instantiate
 -- relations between sets of objects. Calling
 -- Utils:forEachElement() traverses each object of an Environment.
+-- If the Environment has a set of Model instances, it is possible to call Utils:forEachModel()
+-- to traverse them.
 -- @arg data.... Agents, Automatons, Cells, CellularSpaces, Societies, Trajectories, Groups,
--- Timers, or Environments.
+-- Timers, Environments, or instances of Models.
 -- @output cObj_ A pointer to a C++ representation of the Environment. Never use this object.
 -- @usage environment = Environment{
 --     cs1 = CellularSpace{xdim = 10},
@@ -596,7 +613,7 @@ function Environment(data)
 		elseif t == "Timer" or t == "Agent" or t == "Environment" then
 			ud.parent = data
 			cObj:add(ud.cObj_)
-		elseif type(_G[t]) == "Model" then
+		elseif isModel(ud) then
 			forEachElement(ud, function(_, value, mtype)
 				if mtype == "Timer" or mtype == "Environment" then
 					cObj:add(value.cObj_)

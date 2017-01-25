@@ -1,6 +1,6 @@
 ############################################################################################
 # TerraME - a software platform for multiple scale spatially-explicit dynamic modeling.
-# Copyright (C) 2001-2016 INPE and TerraLAB/UFOP -- www.terrame.org
+# Copyright (C) 2001-2017 INPE and TerraLAB/UFOP -- www.terrame.org
 #
 # This code is part of the TerraME framework.
 # This framework is free software; you can redistribute it and/or
@@ -134,7 +134,7 @@ if (APPLE)
 
 	if (TERRAME_BUILD_AS_BUNDLE)
 		set(MACOSX_BUNDLE_BUNDLE_NAME "TerraME")
-		set(MACOSX_BUNDLE_COPYRIGHT "Copyright 2001-2016")
+		set(MACOSX_BUNDLE_COPYRIGHT "Copyright 2001-2017")
 		set(MACOSX_BUNDLE_SIGNATURE "TerraME")
 		set(MACOSX_BUNDLE_GUI_IDENTIFIER "http://www.terrame.org")
 		set(MACOSX_BUNDLE_EXECUTABLE_NAME "terrame")
@@ -367,9 +367,9 @@ if (APPLE)
             PATTERN "cmake" EXCLUDE
            )
 
-    list(APPEND QTLUA_LIBS  ${TERRAME_DEPENDENCIES_DIR}/lib/libqtluae.0.1.dylib
-                            ${TERRAME_DEPENDENCIES_DIR}/lib/qtluae.dylib
-                            ${TERRAME_DEPENDENCIES_DIR}/lib/libqtlua.dylib
+    list(APPEND QTLUA_LIBS  ${TERRALIB_3RDPARTY_DIR}/lib/libqtluae.0.1.dylib
+                            ${TERRALIB_3RDPARTY_DIR}/lib/qtluae.dylib
+                            ${TERRALIB_3RDPARTY_DIR}/lib/libqtlua.dylib
        )
 
     install(FILES   ${QTLUA_LIBS}
@@ -389,11 +389,22 @@ if (APPLE)
            )
 
     set(TERRAME_PACKAGES_DIR ${TERRAME_ABSOLUTE_ROOT_DIR}/packages)
-    install(DIRECTORY ${TERRAME_PACKAGES_DIR}
-            DESTINATION ${TERRAME_CURRENT_BINARY_DIR}
-            COMPONENT runtime
-            PATTERN "log" EXCLUDE
-           )
+	if (NOT TERRAME_CREATE_INSTALLER)
+		install(DIRECTORY ${TERRAME_PACKAGES_DIR}
+				DESTINATION ${TERRAME_CURRENT_BINARY_DIR}
+				COMPONENT runtime
+				PATTERN "windows" EXCLUDE
+				PATTERN "linux" EXCLUDE
+			   )
+	else()
+		install(DIRECTORY ${TERRAME_PACKAGES_DIR}
+				DESTINATION ${TERRAME_CURRENT_BINARY_DIR}
+				COMPONENT runtime
+				PATTERN "log" EXCLUDE
+				PATTERN "test" EXCLUDE
+				PATTERN "tests" EXCLUDE
+			   )	
+	endif()
 
 #    install(DIRECTORY ${TERRALIB_DIR}/share/data
 #            DESTINATION ${TERRAME_INSTALL_PREFIX}/share/data/
@@ -418,8 +429,12 @@ if (APPLE)
     install(DIRECTORY ${TERRALIB_3RDPARTY_DIR}/gdal2/share/gdal
         DESTINATION ${TERRAME_CURRENT_BINARY_DIR}/share
         COMPONENT runtime
-   )
-
+	)
+	
+    install(DIRECTORY ${TERRAME_DEPENDENCIES_DIR}/luacheck/src/luacheck
+        DESTINATION ${TERRAME_INSTALL_PREFIX}/lib
+        COMPONENT runtime
+	)	
 elseif(WIN32)
     set(TERRAME_LUA_SRC_DIR ${TERRAME_SRC_DIR}/lua)
     install(DIRECTORY ${TERRAME_LUA_SRC_DIR}/
@@ -428,11 +443,22 @@ elseif(WIN32)
            )
 
     set(TERRAME_PACKAGES_DIR ${TERRAME_ABSOLUTE_ROOT_DIR}/packages)
-    install(DIRECTORY ${TERRAME_PACKAGES_DIR}/
-            DESTINATION bin/packages
-            COMPONENT runtime
-			PATTERN "log" EXCLUDE
-           )
+	if (NOT TERRAME_CREATE_INSTALLER)
+		install(DIRECTORY ${TERRAME_PACKAGES_DIR}/
+				DESTINATION bin/packages
+				COMPONENT runtime
+				PATTERN "linux" EXCLUDE
+				PATTERN "mac" EXCLUDE
+			   )
+	else()
+		install(DIRECTORY ${TERRAME_PACKAGES_DIR}/
+				DESTINATION bin/packages
+				COMPONENT runtime
+				PATTERN "log" EXCLUDE
+				PATTERN "test" EXCLUDE
+				PATTERN "tests" EXCLUDE
+			   )
+	endif()
 	
 	set(QTLUA_LIBRARY_DLL ${QTLUA_INCLUDE_DIR}/../../bin/qtlua.dll)
 	install(FILES ${QTLUA_LIBRARY_DLL}
@@ -447,7 +473,6 @@ elseif(WIN32)
 			)	
 			
 	list(APPEND MSYS_DEPENDENCIES 	${MSYS_DIR}/cp.exe 
-									#${MSYS_DIR}/find.exe
 									${MSYS_DIR}/ls.exe 
 									${MSYS_DIR}/md5sum.exe 
 									${MSYS_DIR}/mktemp.exe
@@ -458,22 +483,25 @@ elseif(WIN32)
 									${MSYS_DIR}/touch.exe
 									${MSYS_DIR}/unzip.exe 
 									${MSYS_DIR}/zip.exe
-		)	
-							
-	install(FILES ${MSYS_DEPENDENCIES}
-		DESTINATION bin
-		COMPONENT runtime
-	)
-	
+									${MSYS_DIR}/mv.exe
+	)	
+						
     add_custom_command(
 		TARGET terrame
 		POST_BUILD
 		COMMAND ${CMAKE_COMMAND} -E copy "${MSYS_DIR}/find.exe" "${CMAKE_INSTALL_PREFIX}/bin/find.exe"
 		COMMAND ${CMAKE_COMMAND} -E rename "${CMAKE_INSTALL_PREFIX}/bin/find.exe" "${CMAKE_INSTALL_PREFIX}/bin/find-msys.exe"
-		COMMENT "rename bin/find.exe to bin/find-msys.exe..."
+		COMMENT "Renamed bin/find.exe to bin/find-msys.exe..."
 		VERBATIM
-   )	
-		
+	)	
+	
+	list(APPEND MSYS_DEPENDENCIES ${CMAKE_INSTALL_PREFIX}/bin/find-msys.exe)
+	
+	install(FILES ${MSYS_DEPENDENCIES}
+		DESTINATION bin
+		COMPONENT runtime
+	)
+			
 	install(DIRECTORY ${TERRALIB_DIR}/bin/
 			DESTINATION bin
 			COMPONENT runtime
@@ -524,8 +552,6 @@ elseif(WIN32)
 										${TERRALIB_3RDPARTY_DIR}/lib/geos_c.dll
 										${TERRALIB_3RDPARTY_DIR}/lib/hdfdll.dll
 										${TERRALIB_3RDPARTY_DIR}/lib/iconv.dll
-										${TERRALIB_3RDPARTY_DIR}/lib/icudt52.dll
-										${TERRALIB_3RDPARTY_DIR}/lib/icuuc52.dll
 										${TERRALIB_3RDPARTY_DIR}/lib/libcurl.dll
 										${TERRALIB_3RDPARTY_DIR}/lib/libeay32.dll
 										${TERRALIB_3RDPARTY_DIR}/lib/libgeotiff.dll
@@ -542,7 +568,7 @@ elseif(WIN32)
 										${TERRALIB_3RDPARTY_DIR}/lib/ssleay32.dll
 										${TERRALIB_3RDPARTY_DIR}/lib/xdrdll.dll
 										${TERRALIB_3RDPARTY_DIR}/lib/xerces-c_3_1.dll
-										${TERRALIB_3RDPARTY_DIR}/lib/xercesc_messages_3_1.dll
+										${TERRALIB_3RDPARTY_DIR}/lib/xercesc_messages_3_1_1.dll
 		)
 		
 	install(FILES ${TERRALIB_DEPENDENCIES}
@@ -565,6 +591,10 @@ elseif(WIN32)
 		# COMPONENT runtime
 		#)	
 
+    install(DIRECTORY ${TERRAME_DEPENDENCIES_DIR}/luacheck/src/luacheck/
+        DESTINATION bin/luacheck
+        COMPONENT runtime
+	)		
 else(UNIX)
     set(TERRAME_LUA_SRC_DIR ${TERRAME_SRC_DIR}/lua)
     install(DIRECTORY ${TERRAME_LUA_SRC_DIR}
@@ -573,11 +603,22 @@ else(UNIX)
     )
 
     set(TERRAME_PACKAGES_DIR ${TERRAME_ABSOLUTE_ROOT_DIR}/packages)
-    install(DIRECTORY ${TERRAME_PACKAGES_DIR}/
-            DESTINATION ${TERRAME_INSTALL_PREFIX}/bin/packages
-            COMPONENT runtime
-			PATTERN "log" EXCLUDE
-    )
+	if (NOT TERRAME_CREATE_INSTALLER)
+		install(DIRECTORY ${TERRAME_PACKAGES_DIR}/
+				DESTINATION ${TERRAME_INSTALL_PREFIX}/bin/packages
+				COMPONENT runtime
+				PATTERN "windows" EXCLUDE
+				PATTERN "mac" EXCLUDE
+		)
+	else()
+		install(DIRECTORY ${TERRAME_PACKAGES_DIR}/
+				DESTINATION ${TERRAME_INSTALL_PREFIX}/bin/packages
+				COMPONENT runtime
+				PATTERN "log" EXCLUDE
+				PATTERN "test" EXCLUDE
+				PATTERN "tests" EXCLUDE
+		)
+	endif()
 
     install(DIRECTORY ${TERRALIB_DIR}/lib/
             DESTINATION ${TERRAME_INSTALL_PREFIX}/bin
@@ -585,9 +626,8 @@ else(UNIX)
             PATTERN "cmake" EXCLUDE
     )
 
-    list(APPEND QTLUAE_LIBS  ${TERRAME_DEPENDENCIES_DIR}/lib/libqtluae.so.0.1
-                            ${TERRAME_DEPENDENCIES_DIR}/lib/qtluae.so
-    )
+    list(APPEND QTLUAE_LIBS ${TERRALIB_3RDPARTY_DIR}/lib/libqtluae.so.0.1
+                            ${TERRALIB_3RDPARTY_DIR}/lib/qtluae.so)
 
     install(FILES   ${QTLUAE_LIBS}
             DESTINATION ${TERRAME_INSTALL_PREFIX}/bin
@@ -613,7 +653,9 @@ else(UNIX)
 		${Qt5_DIR}/../../libQt5Svg.so*
 		${Qt5_DIR}/../../libQt5OpenGL.so*
 		${Qt5_DIR}/../../libQt5DBus.so*
-		${Qt5_DIR}/../../libicu*
+		${Qt5_DIR}/../../libicui18n.so*
+		${Qt5_DIR}/../../libicuuc.so*
+		${Qt5_DIR}/../../libicudata.so*
 		${Qt5_DIR}/../../libkmldom*so*
 		${Qt5_DIR}/../../libkmlengine*so*
 		${Qt5_DIR}/../../libkmlbase*so*
@@ -640,6 +682,10 @@ else(UNIX)
 		${TERRALIB_3RDPARTY_DIR}/lib/libboost_date_time.so*
 		${TERRALIB_3RDPARTY_DIR}/lib/libboost_filesystem.so*
 		${TERRALIB_3RDPARTY_DIR}/lib/libboost_thread.so*
+		${TERRALIB_3RDPARTY_DIR}/lib/libboost_locale.so*
+		${TERRALIB_3RDPARTY_DIR}/lib/libboost_regex.so*
+		${TERRALIB_3RDPARTY_DIR}/lib/libboost_log.so*
+		${TERRALIB_3RDPARTY_DIR}/lib/libboost_log_setup.so*
 		${TERRALIB_3RDPARTY_DIR}/lib/libgeos*so*
 		${TERRALIB_3RDPARTY_DIR}/lib/libproj*so*
 		${TERRALIB_3RDPARTY_DIR}/lib/libxerces*so*
@@ -678,6 +724,10 @@ else(UNIX)
         COMPONENT runtime	
 	)			
 	
+    install(DIRECTORY ${TERRAME_DEPENDENCIES_DIR}/luacheck/src/luacheck/
+        DESTINATION ${TERRAME_INSTALL_PREFIX}/bin/luacheck
+        COMPONENT runtime
+	)	
 endif()		
 		
 if (TERRAME_BUILD_AS_BUNDLE)

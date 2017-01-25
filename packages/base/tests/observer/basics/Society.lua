@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------------------
 -- TerraME - a software platform for multiple scale spatially-explicit dynamic modeling.
--- Copyright (C) 2001-2016 INPE and TerraLAB/UFOP -- www.terrame.org
+-- Copyright (C) 2001-2017 INPE and TerraLAB/UFOP -- www.terrame.org
 
 -- This code is part of the TerraME framework.
 -- This framework is free software; you can redistribute it and/or
@@ -58,17 +58,17 @@ return{
 		}
 
 		local ts = TextScreen{target = soc}
-		LogFile{target = soc, file = "society.csv"}
+		Log{target = soc, file = "society.csv"}
 		local vt = VisualTable{target = soc}
 
 		t:run(15)
 
 		unitTest:assertFile("society.csv")
 
-		unitTest:assertSnapshot(c1, "chart_society.bmp", 0.02)
-		unitTest:assertSnapshot(c2, "chart_society_select.bmp", 0.03)
-		unitTest:assertSnapshot(ts, "textscreen_society_grow.bmp")
-		unitTest:assertSnapshot(vt, "society_visualtable.bmp", 0.059)
+		unitTest:assertSnapshot(c1, "chart_society.bmp", 0.03)
+		unitTest:assertSnapshot(c2, "chart_society_select.bmp", 0.05)
+		unitTest:assertSnapshot(ts, "textscreen_society_grow.bmp", 0.05)
+		unitTest:assertSnapshot(vt, "society_visualtable.bmp", 0.2)
 
 		local singleFooAgent = Agent{}
 		local cs = CellularSpace{xdim = 10}
@@ -80,7 +80,7 @@ return{
 			target = singleFooAgent
 		}
 
-		unitTest:assertSnapshot(m, "map_single_agent.bmp")
+		unitTest:assertSnapshot(m, "map_single_agent.bmp", 0.03)
 
 		ag = Agent{
 			init = function(self)
@@ -118,7 +118,7 @@ return{
 		cs:notify()
 		cs:notify()
 		cs:notify()
-		unitTest:assertSnapshot(m, "map_society_reproduce.bmp")
+		unitTest:assertSnapshot(m, "map_society_reproduce.bmp", 0.03)
 	end
 }
 

@@ -3,17 +3,45 @@
 --
 -- Pedro R. Andrade
 
-initialTime = os.time(os.date("*t"))
-
-commands = _Gtme.include("commands.lua")
-
-show = false
-
-if commands.show then
-	show = true
+removeIfExists = function(_, value)
+	if isDirectory(value) then
+		_Gtme.print("Removing '"..value.."'")
+		Directory(value):delete()
+	elseif isFile(value) then
+		_Gtme.print("Removing '"..value.."'")
+		File(value):delete()
+	end
 end
 
+printTestOutput = function(result)
+	_Gtme.printNote("Printing the test output")
+
+	count = 1
+
+	forEachElement(result, function(_, value)
+		_Gtme.printWarning(count.."\t"..value)
+		count = count + 1
+	end)
+
+	_Gtme.printNote("End of the test output")
+end
+
+initialTime = os.time(os.date("*t"))
+local s = sessionInfo().separator
+
+initialDir = Directory(sessionInfo().currentFile)
+initialDir:setCurrentDir()
+
+commands = getLuaFile("commands.lua")
+
+show = false
+time = false
+
+if commands.show then show = true end
+if commands.time then time = true end
+
 commands.show = nil
+commands.time = nil
 
 directories = {
 	log = {},
@@ -23,47 +51,41 @@ directories = {
 }
 
 forEachElement(directories, function(idx, value)
+	if idx == "packages" then return end
+
 	forEachFile(idx, function(file)
-		value[file] = false
+		value[file:name()] = false
 	end)
 end)
 
-local s = sessionInfo().separator
 local baseDir = sessionInfo().path
 
-_Gtme.printNote("Creating temporary directory")
-tmpdirectory = tmpDir(".terramerun_XXXXX")
+tmpdirectory = _Gtme.Directory{name = ".terramerun_XXXXX", tmp = true}
+_Gtme.printNote("Temporary directory created in "..tmpdirectory)
 
 _Gtme.printNote("Testing installed packages")
 
 _Gtme.printNote("Cleaning packages")
-forEachFile("packages", function(file)
-	_Gtme.print("Cleaning '"..file.."'")
+forEachDirectory("packages", function(dir)
+	_Gtme.print("Cleaning '"..dir:name().."'")
 
-	local mdir = baseDir..s.."packages"..s..file
+	local mdir = baseDir.."packages"..s..dir
 
-	if isDir(mdir) then
-		rmDir(mdir)
+	if Directory(mdir):exists() then
+		Directory(mdir):delete()
 	end
-end)
-
-_Gtme.printNote("Copying packages")
-forEachFile("packages", function(file)
-	_Gtme.print("Copying '"..file.."'")
-
-	os.execute("cp -pr \"packages"..s..file.."\" \""..baseDir..s.."packages"..s..file.."\"")	
 end)
 
 _Gtme.printNote("Removing files")
-remove = _Gtme.include("remove.lua")
+initialRemove = getLuaFile("remove.lua")
 
-forEachElement(remove.files, function(_, value)
-	_Gtme.print("Removing '"..value.."'")
-	if isDir(value) then
-		result = rmDir(value)
-	elseif isFile(value) then
-		rmFile(value)
-	end
+forEachElement(initialRemove.files, removeIfExists)
+
+_Gtme.printNote("Copying packages")
+forEachDirectory("packages", function(dir)
+	_Gtme.print("Copying '"..dir:name().."'")
+
+	os.execute("cp -pr \"packages"..s..dir:name().."\" \""..baseDir.."packages"..s..dir:name().."\"")	
 end)
 
 local report = {
@@ -82,25 +104,40 @@ local report = {
 local function approximateLine(line)
 	if not line then return 0 end
 	
+	if string.match(line, "Logs")                then return 120 end
+	if string.match(line, "Temporary")           then return 120 end
+	if string.match(line, "Directory")           then return 160 end
 	if string.match(line, "seconds")             then return   5 end
 	if string.match(line, "MD5")                 then return  70 end
-	if string.match(line, "log")                 then return  70 end
+	if string.match(line, "log")                 then return 120 end
+	if string.match(line, "Cannot open")         then return 320 end
 	if string.match(line, "configuration file")  then return   3 end
-	if string.match(line, "or is empty or does") then return  50 end
-	if string.match(line, "does not exist")      then return  50 end
-	if string.match(line, "is unnecessary%.")    then return  50 end
-	if string.match(line, "Error: ")             then return  50 end
-	if string.match(line, "File ")               then return  70 end
-	if string.match(line, "such file")           then return 120 end
+	if string.match(line, "or is empty or does") then return 100 end
+	if string.match(line, "does not exist")      then return 200 end
+	if string.match(line, "projection should ")  then return 200 end
+	if string.match(line, "is unnecessary%.")    then return 130 end
+	if string.match(line, "'%.lua' extension")   then return 130 end
+	if string.match(line, "Error: ")             then return  90 end
+	if string.match(line, "File ")               then return 150 end
+	if string.match(line, "directory")           then return 160 end
+	if string.match(line, "such file")           then return 200 end
 	if string.match(line, "In ")                 then return  50 end
 	if string.match(line, "Error in")            then return  50 end
 	if string.match(line, "Wrong execution")     then return  50 end
-	if string.match(line, "%.terrame")           then return   5 end
+	if string.match(line, "%.terrame")           then return 120 end
 	if string.match(line, "TME_PATH")            then return 120 end
 	if string.match(line, "Lua 5")               then return   3 end
 	if string.match(line, "attempt to")          then return  50 end
 	if string.match(line, "Qt 5")                then return   3 end
 	if string.match(line, "Qwt 6")               then return   3 end
+	if string.match(line, "beta")                then return   2 end
+	if string.match(line, "Processing")          then return   3 end
+	if string.match(line, "Parsing")             then return   1 end
+	if string.match(line, "Checking")            then return   8 end
+	if string.match(line, "Testing")             then return  34 end
+	if string.match(line, "Skipping")            then return  34 end
+	if string.match(line, "Building")            then return   8 end
+	if string.match(line, "should contain only") then return   1 end
 
 	return 0
 end
@@ -112,6 +149,26 @@ forEachOrderedElement(commands, function(idx, group)
 		command = "terrame"
 
 		directories.log[idx.."-"..name..".log"] = true
+
+		if sessionInfo().system == "mac" then
+			if idx == "project" then
+				if name == "errorprojects" or name == "runprojects" then
+					_Gtme.printWarning("Skipping "..name)
+					return
+				end
+			elseif idx == "sketch" then
+				if name == "terralib" then
+					_Gtme.printWarning("Skipping "..name)
+					return
+				end
+			elseif idx == "observer" then
+				if belong(name, {"clock", "textscreen", "visualtable"}) then
+					directories.scripts[args.script] = true
+					_Gtme.printWarning("Skipping "..name)
+					return
+				end
+			end
+		end
 
 		if args.package then
 			directories.packages[args.package] = true
@@ -146,7 +203,24 @@ forEachOrderedElement(commands, function(idx, group)
 			_Gtme.printWarning(command)
 		end
 
+		local testInitialTime = os.time(os.date("*t"))
+
 		result, err = runCommand(command)
+
+		if time then
+			local testFinalTime = os.time(os.date("*t"))
+			local difference = round(testFinalTime - testInitialTime, 1)
+
+			local text = "Test executed in "..difference.." seconds"
+
+			if difference > 30 then
+				_Gtme.print("\027[00;37;41m"..text.."\027[00m")
+			elseif difference > 10 then
+				_Gtme.print("\027[00;37;43m"..text.."\027[00m")
+			elseif difference > 1 then
+				_Gtme.print("\027[00;37;42m"..text.."\027[00m")
+			end
+		end
 
 		report.commands = report.commands + 1
 
@@ -161,17 +235,24 @@ forEachOrderedElement(commands, function(idx, group)
 
 		local lfilename = idx.."-"..name..".log"
 
-		logfile = io.open("log"..s..lfilename, "r")
-		if logfile == nil then
+		local logfile = File("log"..s..lfilename)
+		if not logfile:exists() then
 			_Gtme.printError("Creating log file '".._Gtme.makePathCompatibleToAllOS( "log"..s..lfilename.."'"))
 			report.createdlogs = report.createdlogs + 1
 
-			logfile = io.open("log"..s..lfilename, "w")
 			forEachElement(result, function(_, value)
 				logfile:write(_Gtme.makePathCompatibleToAllOS(value).."\n")
 			end)
+
+			logfile:close()
 		else
-			local resultfile = io.open(tmpdirectory..s..lfilename, "w")
+			logfile:open()
+			local resultfile = File(tmpdirectory..lfilename)
+
+			forEachElement(result, function(_, value)
+				value = _Gtme.makePathCompatibleToAllOS(value)
+				resultfile:write(value.."\n")
+			end)
 			
 			local line = 1
 			local logerror = false
@@ -182,14 +263,14 @@ forEachOrderedElement(commands, function(idx, group)
 				end
 
 				value = _Gtme.makePathCompatibleToAllOS(value)
-				resultfile:write(value.."\n")
 
-				local str = logfile:read()
+				local str = logfile.file:read()
 
 				if not str then
 					_Gtme.printError("Error: Strings do not match (line "..line.."):")
 					_Gtme.printError("Log file: <end of file>")
 					_Gtme.printError("Test: '"..value.."'.")
+					printTestOutput(result)
 
 					logerror = true
 					report.logerrors = report.logerrors + 1
@@ -198,7 +279,7 @@ forEachOrderedElement(commands, function(idx, group)
 
 				local distance2 = approximateLine(str)
 
-				if distance > distance2 then
+				if distance < distance2 then
 					distance = distance2
 				end
 
@@ -206,10 +287,8 @@ forEachOrderedElement(commands, function(idx, group)
 					_Gtme.printError("Error: Strings do not match (line "..line.."):")
 					_Gtme.printError("Log file: '"..str.."'.")
 					_Gtme.printError("Test:     '"..value.."'.")
-
-					if distance > 0 then
-						_Gtme.printError("The distance ("..levenshtein(str, value)..") was greater than the maximum ("..distance..").")
-					end
+					_Gtme.printError("The distance ("..levenshtein(str, value)..") was greater than the maximum ("..distance..").")
+					printTestOutput(result)
 
 					logerror = true
 					report.logerrors = report.logerrors + 1
@@ -219,7 +298,7 @@ forEachOrderedElement(commands, function(idx, group)
 			end)
 
 			if not logerror then
-				local v = logfile:read()
+				local v = logfile.file:read()
 				if v then
 					_Gtme.printError("Test ends but the logfile has string '"..v.."' (line "..line..").")
 					report.logerrors = report.logerrors + 1
@@ -240,37 +319,29 @@ if commands.build then
 		_Gtme.print("Checking "..mfile)
 		report.build = report.build + 1
 
-		if not isFile(mfile) then
+		if not File(mfile):exists() then
 			_Gtme.printError("File does not exist")
 			report.builderrors = report.builderrors + 1
 		else
-			rmFile(mfile)
+			File(mfile):delete()
 		end
 	end)
 end
 
 _Gtme.printNote("Removing packages")
-forEachFile("packages", function(pkg)
-	_Gtme.uninstall(pkg)
+forEachDirectory("packages", function(pkg)
+	_Gtme.uninstall(pkg:name())
 end)
 
 _Gtme.printNote("Testing from local directories")
 
 os.execute("cp config.lua packages")
-chDir("packages")
+Directory(initialDir.."packages"):setCurrentDir()
 
 _Gtme.printNote("Removing files")
-remove = _Gtme.include(".."..s.."remove.lua")
+localRemove = getLuaFile(".."..s.."remove.lua")
 
-forEachElement(remove.files, function(_, value)
-	_Gtme.print("Removing '"..value.."'")
-	if isDir(value) then
-		result = rmDir(value)
-	elseif isFile(value) then
-		rmFile(value)
-	end
-
-end)
+forEachElement(localRemove.files, removeIfExists)
 
 forEachOrderedElement(commands, function(idx, group)
 	_Gtme.printNote("Testing group '"..idx.."'")
@@ -278,7 +349,21 @@ forEachOrderedElement(commands, function(idx, group)
 	forEachOrderedElement(group, function(name, args)
 		command = "terrame"
 
-		if args.package then
+		if sessionInfo().system == "mac" then
+			if idx == "project" then
+				if name == "errorprojects" or name == "runprojects" then
+					_Gtme.printWarning("Skipping "..name)
+					return
+				end
+			elseif idx == "sketch" then
+				if name == "terralib" then
+					_Gtme.printWarning("Skipping "..name)
+					return
+				end
+			end
+		end
+
+		if args.package and args.package ~= "memory" then
 			command = command.." -package "..args.package
 		else
 			return
@@ -306,7 +391,24 @@ forEachOrderedElement(commands, function(idx, group)
 			_Gtme.printWarning(command)
 		end
 
+		local testInitialTime = os.time(os.date("*t"))
+
 		result, err = runCommand(command)
+
+		if time then
+			local testFinalTime = os.time(os.date("*t"))
+			local difference = round(testFinalTime - testInitialTime)
+
+			local text = "Test executed in "..difference.." seconds"
+
+			if difference > 30 then
+				_Gtme.print("\027[00;37;41m"..text.."\027[00m")
+			elseif difference > 10 then
+				_Gtme.print("\027[00;37;43m"..text.."\027[00m")
+			elseif difference > 1 then
+				_Gtme.print("\027[00;37;42m"..text.."\027[00m")
+			end
+		end
 
 		report.commands = report.commands + 1
 
@@ -321,17 +423,22 @@ forEachOrderedElement(commands, function(idx, group)
 
 		local lfilename = idx.."-"..name..".log"
 
-		logfile = io.open(".."..s.."log"..s..lfilename, "r")
-		if logfile == nil then
+		logfile = File(".."..s.."log"..s..lfilename)
+		if not logfile:exists() then
 			_Gtme.printError("Creating log file '".._Gtme.makePathCompatibleToAllOS("log"..s..lfilename.."'"))
 			report.createdlogs = report.createdlogs + 1
 
-			logfile = io.open(".."..s.."log"..s..lfilename, "w")
 			forEachElement(result, function(_, value)
 				logfile:write(value.."\n")
 			end)
 		else
-			local resultfile = io.open(".."..s..tmpdirectory..s..lfilename, "w")
+			logfile:open()
+			local resultfile = File(tmpdirectory..lfilename)
+
+			forEachElement(result, function(_, value)
+				value = _Gtme.makePathCompatibleToAllOS(value)
+				resultfile:write(value.."\n")
+			end)
 			
 			local line = 1
 			local logerror = false
@@ -342,9 +449,8 @@ forEachOrderedElement(commands, function(idx, group)
 				end
 
 				value = _Gtme.makePathCompatibleToAllOS(value)
-				resultfile:write(value.."\n")
 
-				local str = logfile:read()
+				local str = logfile.file:read()
 				local distance2 = approximateLine(str)
 
 				if distance > distance2 then
@@ -355,23 +461,22 @@ forEachOrderedElement(commands, function(idx, group)
 					_Gtme.printError("Error: Strings do not match (line "..line.."):")
 					_Gtme.printError("Log file: <end of file>")
 					_Gtme.printError("Test: '"..value.."'.")
+					printTestOutput(result)
 
 					logerror = true
 					report.logerrors = report.logerrors + 1
 					return false
 				end		
 
-				str = _Gtme.makePathCompatibleToAllOS(str)				
-				value = _Gtme.makePathCompatibleToAllOS(value)				
+				str = _Gtme.makePathCompatibleToAllOS(str)
+				value = _Gtme.makePathCompatibleToAllOS(value)
 				
 				if levenshtein(str, value) > distance then
 					_Gtme.printError("Error: Strings do not match (line "..line.."):")
 					_Gtme.printError("Log file: '"..str.."'.")
 					_Gtme.printError("Test:     '"..value.."'.")
-
-					if distance > 0 then
-						_Gtme.printError("The distance ("..levenshtein(str, value)..") was greater than the maximum ("..distance..").")
-					end
+					_Gtme.printError("The distance ("..levenshtein(str, value)..") was greater than the maximum ("..distance..").")
+					printTestOutput(result)
 
 					report.locallogerrors = report.locallogerrors + 1
 					logerror = true
@@ -381,7 +486,7 @@ forEachOrderedElement(commands, function(idx, group)
 			end)
 
 			if not logerror then
-				local v = logfile:read()
+				local v = logfile.file:read()
 				if v then
 					_Gtme.printError("Test ends but the logfile has string '"..v.."' (line "..line..").")
 					report.logerrors = report.logerrors + 1
@@ -397,13 +502,13 @@ if commands.build then
 	local files = {}
 
 	forEachElement(commands.build, function(package)
-		local version = packageInfo(package).version
+		local version = getLuaFile(sessionInfo().initialDir.."packages/"..package.."/description.lua").version
 
 		local mfile = package.."_"..version..".zip"
 
 		_Gtme.print("Checking "..mfile)
 
-		if not isFile(mfile) then
+		if not File(mfile):exists() then
 			_Gtme.printError("File does not exist")
 			report.localbuilderrors = report.localbuilderrors + 1
 		else
@@ -416,21 +521,21 @@ if commands.build then
 	forEachElement(files, function(package, mfile)
 		os.execute("terrame -install "..mfile)
 
-		local pkgdir = sessionInfo().path..s.."packages"..s..package
+		local pkgdir = Directory(baseDir.."packages"..s..package)
 
-		if isDir(pkgdir) then
-			rmDir(pkgdir)
+		if pkgdir:exists() then
+			pkgdir:delete()
 		else
 			_Gtme.printError("Package could not be installed")
 			report.localbuilderrors = report.localbuilderrors + 1
 		end
 
-		rmFile(mfile)
+		File(mfile):delete()
 	end)
 end
 
-rmFile("config.lua")
-chDir("..")
+File("config.lua"):delete()
+Directory(initialDir..".."):setCurrentDir()
 
 if commands.observer then
 	_Gtme.printNote("Checking observers")
@@ -441,7 +546,7 @@ if commands.observer then
 
 		directories.scripts[tmefile] = true
 
-		tmefile = dofile("scripts"..s..tmefile)
+		tmefile = dofile(initialDir.."scripts"..s..tmefile)
 
 		local names = {"x", "y", "width", "height"}
 
@@ -480,6 +585,10 @@ forEachElement(directories, function(idx, value)
 end)
 
 finalTime = os.time(os.date("*t"))
+
+_Gtme.printNote("Removing files")
+forEachElement(initialRemove.files, removeIfExists)
+forEachElement(localRemove.files, removeIfExists)
 
 print("\nExecution test report:")
 
@@ -547,7 +656,7 @@ if report.forgottenfiles == 0 then
 elseif report.forgottenfiles == 1 then
 	_Gtme.printError("One file or package is not used at least once in the tests.")
 else
-	_Gtme.printError(report.forgottenfiles.." files and/or packages are not used at least once in the tests..")
+	_Gtme.printError(report.forgottenfiles.." files and/or packages are not used at least once in the tests.")
 end
 
 errors = 0

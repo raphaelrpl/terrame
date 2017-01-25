@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------------------
 -- TerraME - a software platform for multiple scale spatially-explicit dynamic modeling.
--- Copyright (C) 2001-2016 INPE and TerraLAB/UFOP -- www.terrame.org
+-- Copyright (C) 2001-2017 INPE and TerraLAB/UFOP -- www.terrame.org
 
 -- This code is part of the TerraME framework.
 -- This framework is free software; you can redistribute it and/or
@@ -79,28 +79,31 @@ return{
 		}
 
 		local ts = TextScreen{target = world}
-		LogFile{target = world, file = "cell.csv"}
+		Log{target = world, file = "cell.csv"}
 		local vt = VisualTable{target = world}
 
 		t:run(15)
 
 		unitTest:assertFile("cell.csv")
 
-		unitTest:assertSnapshot(c1, "chart_cell.bmp", 0.02)
-		unitTest:assertSnapshot(c2, "chart_cell_select.bmp", 0.02)
-		unitTest:assertSnapshot(c3, "chart_cell_style.bmp", 0.02)
-		unitTest:assertSnapshot(c4, "chart_cell_select_pen.bmp", 0.02)
-		unitTest:assertSnapshot(c5, "chart_cell_select_color.bmp", 0.02)
-		unitTest:assertSnapshot(ts, "textscreen_cell.bmp", 0.01)
-		unitTest:assertSnapshot(vt, "cell_visualtable.bmp", 0.059)
+		unitTest:assertSnapshot(c1, "chart_cell.bmp", 0.03)
+		unitTest:assertSnapshot(c2, "chart_cell_select.bmp", 0.04)
+		unitTest:assertSnapshot(c3, "chart_cell_style.bmp", 0.03)
+		unitTest:assertSnapshot(c4, "chart_cell_select_pen.bmp", 0.04)
+		unitTest:assertSnapshot(c5, "chart_cell_select_color.bmp", 0.04)
+		unitTest:assertSnapshot(ts, "textscreen_cell.bmp", 0.06)
+		unitTest:assertSnapshot(vt, "cell_visualtable.bmp", 0.15)
 
 		world:notify(Event{start = 31, action = function() end})
+
+		-- the call to notify() above creates the file again.
+		-- remove the line below after refactoring observer.
+		File("cell.csv"):deleteIfExists()
 
 -- FIXME: bug below
 --[[
 		world = Cell{value = 3, value2 = 5}
 
-		unitTest:clear()
 		c = InternetSender{
 			target = world,
 			select = {"value", "value2"},

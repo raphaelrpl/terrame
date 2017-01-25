@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------------------
 -- TerraME - a software platform for multiple scale spatially-explicit dynamic modeling.
--- Copyright (C) 2001-2016 INPE and TerraLAB/UFOP -- www.terrame.org
+-- Copyright (C) 2001-2017 INPE and TerraLAB/UFOP -- www.terrame.org
 
 -- This code is part of the TerraME framework.
 -- This framework is free software; you can redistribute it and/or
@@ -28,7 +28,7 @@ return {
 			Agent(2)
 		end
 		unitTest:assertError(error_func, tableArgumentMsg())
-	
+
 		error_func = function()
 			Agent{id = 123}
 		end
@@ -83,11 +83,16 @@ return {
 		local ag2 = Agent{}
 
 		test_function = function()
+			ag:walk()
+		end
+		unitTest:assertError(test_function, "Trying to use a function or an attribute of a dead Agent.")
+
+		test_function = function()
 			ag2:message{
 				receiver = ag
 			}
 		end
-		unitTest:assertError(test_function, "Trying to use a function or an attribute of a dead Agent.")
+		unitTest:assertError(test_function, incompatibleTypeMsg("receiver", "Agent", ag))
 	end,
 	enter = function(unitTest)
 		local ag1 = Agent{}
@@ -124,7 +129,7 @@ return {
 		local predator = Agent{}
 
 		local predators = Society{
-			instance = predator, 
+			instance = predator,
 			quantity = 5
 		}
 
@@ -174,15 +179,20 @@ return {
 	end,
 	getCell = function(unitTest)
 		local ag1 = Agent{pl = 2}
-		
+
 		local error_func = function()
+			ag1:getCell()
+		end
+		unitTest:assertError(error_func, "The Agent does not have a default placement. Please call Environment:createPlacement() first.")
+
+		error_func = function()
 			ag1:getCell("pl")
 		end
 		unitTest:assertError(error_func, "Placement 'pl' should be a Trajectory, got number.")
 	end,
 	getCells = function(unitTest)
 		local ag1 = Agent{pl = 2}
-		
+
 		local error_func = function()
 			ag1:getCells("pl")
 		end
@@ -264,7 +274,7 @@ return {
 			local ag = Agent{}
 
 			local sc = Society{instance = ag, quantity = 2}
-			local ag1 = sc.agents[1]		
+			local ag1 = sc.agents[1]
 
 			ag1:message()
 		end
@@ -274,7 +284,7 @@ return {
 			local ag = Agent{}
 
 			local sc = Society{instance = ag, quantity = 2}
-			local ag1 = sc.agents[1]		
+			local ag1 = sc.agents[1]
 
 			ag1:message(123)
 		end
@@ -282,16 +292,16 @@ return {
 
 		local ag = Agent{}
 		local sc = Society{instance = ag, quantity = 2}
-		local ag1 = sc.agents[1]		
+		local ag1 = sc.agents[1]
 		error_func = function()
 			ag1:message{}
 		end
 		unitTest:assertError(error_func, mandatoryArgumentMsg("receiver"))
 
-		ag = Agent{}	
+		ag = Agent{}
 		sc = Society{instance = ag, quantity = 2}
-		ag1 = sc.agents[1]		
-		local ag2 = sc.agents[2]		
+		ag1 = sc.agents[1]
+		local ag2 = sc.agents[2]
 		error_func = function()
 			ag1:message{
 				receiver = ag2,
@@ -305,8 +315,8 @@ return {
 		ag = Agent{}
 
 		sc = Society{instance = ag, quantity = 2}
-		ag1 = sc.agents[1]		
-		ag2 = sc.agents[2]		
+		ag1 = sc.agents[1]
+		ag2 = sc.agents[2]
 		error_func = function()
 			ag1:message{
 				receiver = ag2,
@@ -372,7 +382,7 @@ return {
 
 		c1 = cs.cells[1]
 		ag1:enter(c1, "renting")
-		
+
 		error_func = function()
 			ag1:move(c1, 123)
 		end
@@ -413,6 +423,15 @@ return {
 		end
 		unitTest:assertError(error_func, positiveArgumentMsg(1, -1, true))
 	end,
+	on_message = function(unitTest)
+		local ag1 = Agent{}
+		local ag2 = Agent{}
+
+		local error_func = function()
+			ag1:message{receiver = ag2}
+		end
+		unitTest:assertError(error_func, "Agent 'nil' cannot get a message from 'nil' because it does not implement 'on_message'.")
+	end,
 	randomWalk = function(unitTest)
 		local ag1 = Agent{}
 		local cs = CellularSpace{xdim = 3}
@@ -451,18 +470,38 @@ return {
 		unitTest:assertError(error_func, deprecatedFunctionMsg("setId", ".id"))
 	end,
 	walk = function(unitTest)
-		local ag1 = Agent{}
+		local ag1 = Agent{mvalue = 3}
 		local cs = CellularSpace{xdim = 3}
 		local myEnv = Environment{cs, ag1}
+
+		local error_func = function()
+			ag1:walk()
+		end
+		unitTest:assertError(error_func, "The Agent does not have a default placement. Please call Environment:createPlacement() first.")
+
+		error_func = function()
+			ag1:walk("mvalue")
+		end
+		unitTest:assertError(error_func, "Placement 'mvalue' should be a Trajectory, got number.")
+
+		error_func = function()
+			ag1:walk("placement2")
+		end
+		unitTest:assertError(error_func, "Placement 'placement2' does not exist. Please call Environment:createPlacement() first.")
 
 		myEnv:createPlacement{strategy = "void"}
 		local c1 = cs.cells[1]
 		ag1:enter(c1)
 
-		local error_func = function()
+		error_func = function()
 			ag1:walk()
 		end
-		unitTest:assertError(error_func, valueNotFoundMsg(2, "1"))
+		unitTest:assertError(error_func, "The CellularSpace does not have a default neighborhood. Please call 'CellularSpace:createNeighborhood' first.")
+
+		error_func = function()
+			ag1:walk("placement", "2")
+		end
+		unitTest:assertError(error_func, "Neighborhood '2' does not exist.")
 
 		error_func = function()
 			ag1 = Agent{}
@@ -487,7 +526,7 @@ return {
 		error_func = function()
 			ag1:walk("123")
 		end
-		unitTest:assertError(error_func, valueNotFoundMsg(1, "123"))
+		unitTest:assertError(error_func, "Placement '123' does not exist. Please call Environment:createPlacement() first.")
 	end
 }
 

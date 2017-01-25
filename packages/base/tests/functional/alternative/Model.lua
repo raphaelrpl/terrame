@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------------------
 -- TerraME - a software platform for multiple scale spatially-explicit dynamic modeling.
--- Copyright (C) 2001-2016 INPE and TerraLAB/UFOP -- www.terrame.org
+-- Copyright (C) 2001-2017 INPE and TerraLAB/UFOP -- www.terrame.org
 
 -- This code is part of the TerraME framework.
 -- This framework is free software; you can redistribute it and/or
@@ -60,30 +60,33 @@ return{
 		unitTest:assertError(error_func, "finalTime can only be a Choice with 'number' values, got 'string'.")
 
 		error_func = function()
-			Model{seed = "2"}
+			Model{random = 2}
 		end
-		unitTest:assertError(error_func, incompatibleTypeMsg("seed", "number", "2"))
+		unitTest:assertError(error_func, incompatibleTypeMsg("random", "boolean", 2))
 
 		error_func = function()
-			Model{seed = -2}
+			Model{random = false}
 		end
-		unitTest:assertError(error_func, positiveArgumentMsg("seed", -2, true))
+		unitTest:assertError(error_func, defaultValueMsg("random", false))
 
 		error_func = function()
-			Model{seed = Mandatory("table")}
+			Model{
+				title = "abc",
+				init = function() end,
+				finalTime = 10
+			}
 		end
-		unitTest:assertError(error_func, "seed can only be Mandatory('number'), got Mandatory('table').")
+		unitTest:assertError(error_func, "'title' cannot be an argument for a Model.")
 
 		error_func = function()
-			Model{seed = Choice{"1", "2"}}
+			Model{
+				getParameters = "abc",
+				init = function() end,
+				finalTime = 10
+			}
 		end
-		unitTest:assertError(error_func, "seed can only be a Choice with 'number' values, got 'string'.")
-	
-		error_func = function()
-			Model{seed = Choice{1, 2}}
-		end
-		unitTest:assertError(error_func, mandatoryArgumentMsg("init"))
-	
+		unitTest:assertError(error_func, "'getParameters' cannot be an argument for a Model.")
+
 		local Tube = Model{
 			init = function() end,
 			finalTime = 10
@@ -114,9 +117,9 @@ return{
 
 		Tube = Model{
 			init = function(model)
-				model.t2 = Timer{}
+				model.t = Timer{}
+				model.e = Environment{t2 = Timer{}}
 			end,
-			seed = 5,
 			finalTime = 10
 		}
 
@@ -125,23 +128,6 @@ return{
 		end
 		unitTest:assertError(error_func, "All the arguments must be named.")
 
-		error_func = function()
-			Tube{seed = "2"}
-		end
-		unitTest:assertError(error_func, incompatibleTypeMsg("seed", "number", "2"))
-
-		error_func = function()
-			Tube{seed = -2}
-		end
-		unitTest:assertError(error_func, positiveArgumentMsg("seed", -2, true))
-
-		Tube = Model{
-			init = function(model)
-				model.t = Timer{}
-				model.e = Environment{t2 = Timer{}}
-			end,
-			finalTime = 10
-		}
 
 		error_func = function()
 			Tube{}
@@ -247,7 +233,7 @@ return{
 			Tube{checkZero = 3}
 		end
 		unitTest:assertError(error_func, incompatibleTypeMsg("checkZero", "boolean", 3))
-	
+
 		error_func = function()
 			Tube{initialWater = -5}
 		end
@@ -262,12 +248,12 @@ return{
 			Tube{block = {xmin = false}}
 		end
 		unitTest:assertError(error_func, incompatibleTypeMsg("block.xmin", "number", false))
-			
+
 		Tube = Model{
 			bb = Choice{min = 10, max = 20, step = 1},
 			init = function() end
 		}
-		
+
 		error_func = function()
 			Tube{bb = false}
 		end
@@ -277,7 +263,7 @@ return{
 			Tube{bb = 10.5}
 		end
 		unitTest:assertError(error_func, "Invalid value for argument 'bb' (10.5).")
-	
+
 		error_func = function()
 			Tube{bb = 21.5}
 		end
@@ -341,12 +327,12 @@ return{
 			M{v = {value = "1.4"}}
 		end
 		unitTest:assertError(error_func, incompatibleTypeMsg("v.value", "number", "1.4"))
-	
+
 		error_func = function()
 			M{v = {value = 0}}
 		end
 		unitTest:assertError(error_func, "Argument 'v.value' should be greater than or equal to 1.")
-	
+
 		error_func = function()
 			M{v = {value = 11}}
 		end
@@ -381,14 +367,14 @@ return{
 		unitTest:assertError(error_func, "No file extension for parameter 'file1'. It should be one of '*.csv'.")
 
 		error_func = function()
-			M{file1 = filePath("brazil.gal", "base")}
+			M{file1 = filePath("test/brazil.gal", "base")}
 		end
 		unitTest:assertError(error_func, "Invalid file extension for parameter 'file1'. It should be one of '*.csv'.")
 
 		error_func = function()
 			M{file1 = "agxd.csv"}
 		end
-		unitTest:assertError(error_func, resourceNotFoundMsg(toLabel("file1"), "agxd.csv"))
+		unitTest:assertError(error_func, resourceNotFoundMsg(toLabel("file1"), File("agxd.csv")))
 
 		M = Model{
 			files = {
@@ -413,7 +399,7 @@ return{
 		error_func = function()
 			M{files = {file1 = 2}}
 		end
-		unitTest:assertError(error_func, incompatibleTypeMsg("files.file1", "string", 2))
+		unitTest:assertError(error_func, incompatibleTypeMsg("files.file1", "File", 2))
 
 		error_func = function()
 			M{files = {file1 = "agents"}}
@@ -421,14 +407,14 @@ return{
 		unitTest:assertError(error_func, "No file extension for parameter 'files.file1'. It should be one of '*.csv'.")
 
 		error_func = function()
-			M{files = {file1 = filePath("brazil.gal", "base")}}
+			M{files = {file1 = filePath("test/brazil.gal", "base")}}
 		end
 		unitTest:assertError(error_func, "Invalid file extension for parameter 'files.file1'. It should be one of '*.csv'.")
 
 		error_func = function()
 			M{files = {file1 = "agxd.csv"}}
 		end
-		unitTest:assertError(error_func, resourceNotFoundMsg(toLabel("file1", "files"), "agxd.csv"))
+		unitTest:assertError(error_func, resourceNotFoundMsg(toLabel("file1", "files"), File("agxd.csv")))
 
 		error_func = function()
 			M()

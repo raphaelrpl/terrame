@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------------------
 -- TerraME - a software platform for multiple scale spatially-explicit dynamic modeling.
--- Copyright (C) 2001-2016 INPE and TerraLAB/UFOP -- www.terrame.org
+-- Copyright (C) 2001-2017 INPE and TerraLAB/UFOP -- www.terrame.org
 
 -- This code is part of the TerraME framework.
 -- This framework is free software; you can redistribute it and/or
@@ -26,14 +26,8 @@
 
 import("terralib")
 
-local projName = "amazonia.tview"
-
-if isFile(projName) then
-	rmFile(projName)
-end
-
-local project = Project{
-	file = projName,
+project = Project{
+	file = "amazonia.tview",
 	clean = true,
 	author = "Andrade, P.",
 	title = "Amazonia database",
@@ -56,26 +50,20 @@ cl = Layer{
 cl:fill{
 	operation = "distance",
 	layer = "roads",
-	clean = true,
-	attribute = "distroads",
-	output = "amazonia-dist"
+	attribute = "distroads"
 }
 
 cl:fill{
 	operation = "distance",
 	layer = "portos",
-	clean = true,
-	attribute = "distports",
-	output = "amazonia-dist2"
+	attribute = "distports"
 }
 
 --[[ -- this call below also aborts TerraME (but without showing any error)
 cl:fill{
 	operation = "area",
 	layer = "protected",
-	clean = true,
-	attribute = "marea",
-	output = "amazonia-dist3"
+	attribute = "marea"
 }
 --]]
 
@@ -83,25 +71,21 @@ cl:fill{
 cl:fill{
 	operation = "coverage",
 	layer = "prodes",
-	clean = true,
-	attribute = "prodes",
-	output = "amazonia-dist4"
+	attribute = "prodes"
 }
 
 --[[
 cl:fill{
 	operation = "average",
 	layer = "prodes",
-	clean = true,
 	input = prodes,
-	attribute = "mheight",
-	output = "amazonia-height"
+	attribute = "mheight"
 }
 --]]
 
 cs = CellularSpace{
 	project = project,
-	layer = "amazonia-dist2"
+	layer = "cells"
 }
 
 Map{

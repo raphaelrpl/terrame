@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------------------
 -- TerraME - a software platform for multiple scale spatially-explicit dynamic modeling.
--- Copyright (C) 2001-2016 INPE and TerraLAB/UFOP -- www.terrame.org
+-- Copyright (C) 2001-2017 INPE and TerraLAB/UFOP -- www.terrame.org
 
 -- This code is part of the TerraME framework.
 -- This framework is free software; you can redistribute it and/or
@@ -26,8 +26,10 @@
 
 local observers
 
-local deadObserverMetaTable_ = {__index = function(_, idx)
+local deadObserverMetaTable_ = {__index = function(self, idx)
 	if idx == "type_" then return "<DestroyedObserver>" end
+	if idx == "update" then return function() end end
+	if idx == "parent" then return self end
 
     customError("Trying to call a function of an observer that was destroyed.")
 end}
@@ -81,160 +83,6 @@ function clone(mtable)
 	end)
 
 	return result
-end
-
---- Parse a single CSV line. It returns a vector of strings with the i-th value in the position i.
--- This function was taken froom http://lua-users.org/wiki/LuaCsv.
--- @arg line A string from a CSV file.
--- @arg sep A string with the separator. The default value is ','.
--- @arg cline A number with the position of the line in the file. The default value is zero.
--- @usage line = CSVparseLine("2,5,aa", ",")
--- print(line[1])
--- print(line[2])
--- print(line[3])
-function CSVparseLine(line, sep, cline)
-	mandatoryArgument(1, "string", line)
-	optionalArgument(2, "string", sep)
-	optionalArgument(3, "number", cline)
-
-	if cline == nil then cline = 0 end
-
-	local res = {}
-	local pos = 1
-	sep = sep or ','
-	while true do 
-		local c = string.sub(line, pos, pos)
-		if c == "" then break end
-		if c == '"' then
-			-- quoted value (ignore separator within)
-			local txt = ""
-			repeat
-				local startp, endp = string.find(line, '^%b""', pos)
-				txt = txt..string.sub(line, startp + 1, endp - 1)
-				pos = endp + 1
-				c = string.sub(line, pos, pos)
-				if c == '"' then txt = txt..'"' end 
-				-- check first char AFTER quoted string, if it is another
-				-- quoted string without separator, then append it
-				-- this is the way to "escape" the quote char in a quote. example:
-				-- value1,"blub""blip""boing",value3 will result in blub"blip"boing for the middle
-			until (c ~= '"')
-			table.insert(res, txt)
-			verify(c == sep or c == "", "Line "..cline.." ('"..line.."') is invalid.")
-			pos = pos + 1
-		else
-			-- no quotes used, just look for the first separator
-			local startp, endp = string.find(line, sep, pos)
-			if startp then 
-				table.insert(res,string.sub(line, pos, startp - 1))
-				pos = endp + 1
-			else
-				-- no separator found -> use rest of string and terminate
-				table.insert(res, string.sub(line, pos))
-				break
-			end 
-		end
-	end
-
-	for i = 1, #res do
-		res[i] = res[i]:match("^%s*(.-)%s*$")
-	end
-
-	return res
-end
-
---- Read a CSV file. It returns a vector (whose indexes are line numbers)
--- containing named tables (whose indexes are attribute names).
--- The first line of the file list the attribute names.
--- @arg filename A string with the location of the CSV file.
--- @arg sep A string with the separator. The default value is ','.
--- @usage mytable = CSVread(filePath("agents.csv", "base"))
---
--- print(mytable[1].name) -- john
--- print(mytable[2].age) -- 18
-function CSVread(filename, sep)
-	mandatoryArgument(1, "string", filename)
-	optionalArgument(2, "string", sep)
-
-	local data = {}
-	local file = io.open(filename, "r")
-
-	if not file then
-		resourceNotFoundError(1, filename)
-	end
-
-	local fields = CSVparseLine(file:read(), sep)
-	local line = file:read()
-	local cline = 1
-	while line do
-		local element = {}
-		local tuple = CSVparseLine(line, sep)
-		if #tuple == #fields then
-			for k, v in ipairs(fields) do
-				element[v] = tonumber(tuple[k]) or tuple[k]
-			end
-			table.insert(data, element)
-		else
-			customError("Line "..cline.." ('"..line.."') should contain "..#fields.." attributes but has "..#tuple..".")
-		end
-		line = file:read()
-		cline = cline + 1
-	end
-	io.close(file)
-	return data
-end
-
---- Write a given table into a CSV file.
--- The first line of the file will list the attributes of each table.
--- @arg data A table to be saved. It must be a vector (whose indexes are line numbers)
--- containing named-tables (whose indexes are attribute names).
--- @arg filename A string with the location of the CSV file.
--- @arg sep A string with the separator. The default value is ','.
--- @usage mytable = {
---     {age = 1, wealth = 10, vision = 2},
---     {age = 3, wealth =  8, vision = 1},
---     {age = 3, wealth = 15, vision = 2}
--- }
---
--- CSVwrite(mytable, "file.csv", ";")
--- rmFile("file.csv")
-function CSVwrite(data, filename, sep)
-	mandatoryArgument(1, "table", data)
-	mandatoryArgument(2, "string", filename)
-	optionalArgument(3, "string", sep)
-
-	sep = sep or ","
-	local file = io.open(filename, "w")
-	local fields = {}
-
-	if data[1] == nil then
-		customError("#1 does not have position 1.")
-	elseif #data ~= getn(data) then
-		customError("#1 should be a vector.")
-	end
-
-	for k in pairs(data[1]) do
-		if type(k) ~= "string" then
-			customError("All attributes should be string, got "..type(k)..".")
-		end
-		table.insert(fields, k)
-	end
-	file:write(table.concat(fields, sep))
-	file:write("\n")
-	for _, tuple in ipairs(data) do
-		local line = {}
-		for _, k in ipairs(fields) do
-			local value = tuple[k]
-			local t = type(value)
-			if t ~= "number" then
-				value = "\""..tostring(value) .."\""
-			end
-			table.insert(line, value)
-		end
-		file:write(table.concat(line, sep))
-		file:write("\n")
-	end
-	io.close(file)
 end
 
 --- Return whether a given value belong to a table.
@@ -322,7 +170,7 @@ function d(data)
 	if data == nil then data = {} end
 
 	local sizedata = getn(data)
-	if sizedata < 4 then 
+	if sizedata < 4 then
 		local str = "Error: bad arguments in diferential equation constructor \"d{arguments}\". "..
 		"TerraME has found ".. #data.." arguments.\n"..
 		" - the first attribute of a differential equantion must be a function which return a number. "..
@@ -339,7 +187,7 @@ function d(data)
 	end
 
 	if type(data[1]) == "table" then
-		if #data[1] ~= #data[2] then 
+		if #data[1] ~= #data[2] then
 			customError("You should provide the same number of differential equations and initial conditions.")
 		end
 	end
@@ -391,8 +239,6 @@ function disableGraphics()
 		TextScreen = TextScreen,
 		VisualTable = VisualTable
 	}
-
-
 
 	local setConstructor = function(mtype)
 		local indexFunction = function(_, func)
@@ -457,7 +303,7 @@ end
 -- @arg obj A Society, Group, or Cell. Cells need to have a placement in order to execute
 -- this function.
 -- @arg _sof_ A function that takes one single Agent as argument. If some call to it returns
--- false, forEachAgent() stops and does not process any other Agent. 
+-- false, forEachAgent() stops and does not process any other Agent.
 -- This function can optionally get a second argument with a positive number representing the
 -- position of the Agent in the vector of Agents.
 -- @usage ag = Agent{age = Random{min = 0, max = 2}}
@@ -465,7 +311,7 @@ end
 --     instance = ag,
 --     quantity = 5
 -- }
--- 
+--
 -- forEachAgent(soc, function(agent)
 --     agent.age = agent.age + 1
 -- end)
@@ -479,7 +325,7 @@ function forEachAgent(obj, _sof_)
 	end
 
 	local ags = obj.agents
-	if ags == nil then 
+	if ags == nil then
 		customError("Could not get agents from the "..type(obj)..".")
 	end
 	-- forEachAgent needs to be different from the other forEachs because the
@@ -495,7 +341,7 @@ function forEachAgent(obj, _sof_)
 	return true
 end
 
---- Second order function to transverse a given CellularSpace, Trajectory, or Agent,
+--- Second order function to traverse a given CellularSpace, Trajectory, or Agent,
 -- applying a given function to each of its Cells. If any of the function calls returns
 -- false, forEachCell() stops and returns false, otherwise it returns true.
 -- @arg cs A CellularSpace, Trajectory, or Agent. Agents need to have a placement
@@ -505,7 +351,7 @@ end
 -- the Cell in the vector of Cells. If it returns false when processing a given Cell,
 -- forEachCell() stops and does not process any other Cell.
 -- @usage cellularspace = CellularSpace{xdim = 10}
--- 
+--
 -- forEachCell(cellularspace, function(cell)
 --     cell.water = 0
 -- end)
@@ -524,7 +370,7 @@ function forEachCell(cs, _sof_)
 	return true
 end
 
---- Second order function to transverse two CellularSpaces with the same resolution and
+--- Second order function to traverse two CellularSpaces with the same resolution and
 -- size. It applies a function that gets two Cells as arguments, one from each
 -- CellularSpace. Both Cells share the same (x, y) location.
 -- It returns true if no call to the function taken as argument returns false, otherwise
@@ -563,12 +409,12 @@ function forEachCellPair(cs1, cs2, _sof_)
 	return true
 end
 
---- Second order function to transverse the connections of a given Agent, applying a function to
+--- Second order function to traverse the connections of a given Agent, applying a function to
 -- each of them. It returns true if no call to the function taken as argument returns false,
 -- otherwise it returns false.
 -- There are two ways of using this function because the second argument is optional.
 -- @arg agent An Agent.
--- @arg name (Optional) A string with the name of the SocialNetwork to be transversed. The default value is "1".
+-- @arg name (Optional) A string with the name of the SocialNetwork to be traversed. The default value is "1".
 -- @arg _sof_ A function that takes three arguments: the Agent itself, its connection, and the
 -- connection weight. If some call to f returns false, forEachConnection() stops and does not
 -- process any other connection. In the case where the second argument is missing, this
@@ -581,7 +427,7 @@ end
 -- soc = Society{instance = ag, quantity = 10}
 --
 -- soc:createSocialNetwork{quantity = 3}
--- 
+--
 -- forEachConnection(soc:sample(), function(ag1, ag2)
 --     ag1:message{receiver = ag2}
 -- end)
@@ -611,10 +457,10 @@ function forEachConnection(agent, name, _sof_)
 	return true
 end
 
---- Second order function to transverse a given object, applying a function to each of its
--- elements. It can be used for instance to transverse all the elements of an Agent or an
+--- Second order function to traverse a given object, applying a function to each of its
+-- elements. It can be used for instance to traverse all the elements of an Agent or an
 -- Environment. According to the current Lua version, if one uses this function twice, Lua
--- does not guarantee that the objects will be transversed in the same order. If you need to
+-- does not guarantee that the objects will be traversed in the same order. If you need to
 -- guarantee this, it is recommended to use Utils:forEachOrderedElement() instead.
 -- This function returns true if no call to the function taken as argument returns false,
 -- otherwise it returns false.
@@ -641,6 +487,14 @@ function forEachElement(obj, _sof_)
 		incompatibleTypeError(2, "function", _sof_)
 	end
 
+	if type(obj) == "DataFrame" then
+		local rows = obj:rows()
+
+		return forEachOrderedElement(rows, function(idx)
+			if _sof_(idx, obj[idx], "table") == false then return false end
+		end)
+	end
+
 	for k, ud in pairs(obj) do
 		local t = type(ud)
 		if _sof_(k, ud, t) == false then return false end
@@ -649,9 +503,9 @@ function forEachElement(obj, _sof_)
 	return true
 end
 
---- Second order function to transverse a given directory,
+--- Second order function to traverse a given directory,
 -- applying a given function on each of its files. Internal directories are
--- also considered files. If any of the function calls returns
+-- ignored. If any of the function calls returns
 -- false, forEachFile() stops and returns false, otherwise it returns true.
 -- @arg directory A string with the path to a directory, or a vector of files.
 -- @arg _sof_ A user-defined function that takes a file name as argument. Note that
@@ -659,34 +513,167 @@ end
 -- @usage forEachFile(packageInfo("base").path, function(file)
 --     print(file)
 -- end)
--- @see FileSystem:dir
+-- @see Directory:list
 function forEachFile(directory, _sof_)
-	if type(directory) == "string" then
-		if not isDir(directory) then
-			customError("Directory '"..directory.."' is not valid or does not exist.")
-		end
+	if type(directory) == "string" then directory = Directory(directory) end
 
-		if not pcall(function() directory = dir(directory) end) then
-			return true
-		end
-	end
-
-	mandatoryArgument(1, "table", directory)
+	mandatoryArgument(1, "Directory", directory)
 	mandatoryArgument(2, "function", _sof_)
 
-	for i = 1, #directory do
-		if _sof_(directory[i]) == false then return false end
+	if not directory:exists() then
+		customError("Directory '"..directory.."' is not valid or does not exist.")
 	end
+
+	local files
+
+	if not pcall(function() files = directory:list() end) then
+		return true
+	end
+
+	local directoryIdx = {}
+
+	for i = 1, #files do
+		directoryIdx[files[i]] = true
+	end
+
+	return forEachOrderedElement(directoryIdx, function(file)
+		if isFile(directory..file) then
+			if _sof_(File(directory..file)) == false then return false end
+		end
+	end)
+end
+
+--- Second order function to traverse a given directory,
+-- applying a given function on each of its internal directories.
+-- If any of the function calls returns
+-- false, forEachDirectory() stops and returns false, otherwise it returns true.
+-- @arg directory A string with the path to a directory, or a vector of files.
+-- @arg _sof_ A user-defined function that takes a file name as argument. Note that
+-- the name does not include the directory where the file is placed.
+-- @usage forEachDirectory(packageInfo("base").path, function(dir)
+--     print(dir)
+-- end)
+-- @see Directory:list
+function forEachDirectory(directory, _sof_)
+	if type(directory) == "string" then directory = Directory(directory) end
+
+	mandatoryArgument(1, "Directory", directory)
+	mandatoryArgument(2, "function", _sof_)
+
+	if not directory:exists() then
+		customError("Directory '"..directory.."' is not valid or does not exist.")
+	end
+
+	local files
+	if not pcall(function() files = directory:list() end) then
+		return true
+	end
+
+	local directoryIdx = {}
+
+	for i = 1, #files do
+		directoryIdx[files[i]] = true
+	end
+
+	return forEachOrderedElement(directoryIdx, function(file)
+		if isDirectory(directory..file) then
+			if _sof_(Directory(directory..file)) == false then return false end
+		end
+	end)
+end
+
+local function getFilesRecursively(directory)
+	local files = {}
+
+	if not directory:exists() then return files end
+
+	_Gtme.forEachDirectory(directory, function(dir)
+		for _, v in ipairs(getFilesRecursively(dir)) do
+			table.insert(files, v)
+		end
+	end)
+
+	_Gtme.forEachFile(directory, function(file)
+		table.insert(files, file)
+	end)
+
+	return files
+end
+
+--- Second order function to traverse a given directory recursively,
+-- applying a given function on each of its internal files.
+-- If any of the function calls returns
+-- false, forEachRecursiveDirectory() stops and returns false, otherwise it returns true.
+-- @arg directory A string with the path to a directory, or a base::Directory.
+-- @arg _sof_ A user-defined function that takes a file path as argument.
+-- @usage forEachRecursiveDirectory(packageInfo("base").path.."data", function(file)
+--     print(file)
+-- end)
+function forEachRecursiveDirectory(directory, _sof_)
+	local dir = directory
+
+	if type(dir) ~= "Directory" then
+		if type(dir) == "string" then
+			dir = Directory(dir)
+		else
+			customError("Argument '#1' must be a 'Directory' or 'string' path.")
+		end
+	end
+
+	return forEachElement(getFilesRecursively(dir), function(_, file)
+		if _sof_(file) == false then return false end
+	end)
+end
+
+--- Second order function to traverse the instances of Models within a given Environment.
+-- It applies a given function on each of its instances. If any of the function calls returns
+-- false, forEachModel() stops and returns false, otherwise it returns true.
+-- @arg env An Environment.
+-- @arg _sof_ A user-defined function that takes an instance of Model as first argument and
+-- its name within the Environment as second argument.
+-- @usage MyTube = Model{
+--     water = 200,
+--     sun = Choice{min = 0, default = 10},
+--     init = function(model)
+--         model.finalTime = 100
+--
+--         model.timer = Timer{
+--             Event{action = function()
+--                 -- ...
+--             end}
+--         }
+--     end
+-- }
+--
+-- e = Environment{
+--     scenario0 = MyTube{},
+--     scenario1 = MyTube{water = 100},
+--     scenario2 = MyTube{water = 100, sun = 5},
+--     scenario3 = MyTube{water = 100, sun = 10}
+-- }
+--
+-- forEachModel(e, function(model, name)
+--     print(name.."  "..model:title())
+-- end)
+function forEachModel(env, _sof_)
+	mandatoryArgument(1, "Environment", env)
+	mandatoryArgument(2, "function", _sof_)
+
+	forEachOrderedElement(env, function(idx, value)
+		if isModel(value) then
+			if _sof_(value, idx) == false then return false end
+		end
+	end)
 
 	return true
 end
 
---- Second order function to transverse a given Neighborhood of a Cell, applying a
+--- Second order function to traverse a given Neighborhood of a Cell, applying a
 -- function in each of its neighbors. It returns true if no call to the function taken as
 -- argument returns false, otherwise it returns false.
 -- There are two ways of using this function because the second argument is optional.
 -- @arg cell A Cell.
--- @arg name (Optional) A string with the name of the Neighborhood to be transversed.
+-- @arg name (Optional) A string with the name of the Neighborhood to be traversed.
 -- The default value is "1".
 -- @arg _sof_ A user-defined function that takes three arguments: the Cell itself, the neighbor
 -- Cell, and the connection weight. If some call to it returns false, forEachNeighbor() stops
@@ -732,7 +719,11 @@ function forEachNeighbor(cell, name, _sof_)
 
 	local neighborhood = cell:getNeighborhood(name)
 	if neighborhood == nil then
-		customError("Neighborhood '"..name.."' does not exist.")
+		if name == "1" then
+				customError("The CellularSpace does not have a default neighborhood. Please call 'CellularSpace:createNeighborhood' first.")
+		else
+			customError("Neighborhood '"..name.."' does not exist.")
+		end
 	end
 
 	neighborhood.cObj_:first()
@@ -747,7 +738,52 @@ function forEachNeighbor(cell, name, _sof_)
 	return true
 end
 
---- Second order function to transverse all Neighborhoods of a Cell, applying a given function
+--- Second order function to traverse the Agents within the neighbor Cells fom the
+-- current location of a given Agent, applying a function to each of them.
+-- This function requires that the Agent has a default placement ("placement") and
+-- its Cell has a default Neighborhood ("1"). More complex placements and neighborhoods
+-- need to be traversed manually using Agent:getCell() and Cell:getNeighborhood().
+-- It returns true if no call to the function taken as argument returns false,
+-- otherwise it returns false.
+-- @arg agent An Agent.
+-- @arg _sof_ A function that takes one single Agent as argument. This function is called
+-- once for each agent within a neighbor cell of the current cell where the Agent belongs.
+-- If some call to it returns false, forEachNeighborAgent() stops and does not process
+-- any other Agent.
+-- @usage ag = Agent{age = Random{min = 0, max = 2}}
+-- soc = Society{
+--     instance = ag,
+--     quantity = 5
+-- }
+--
+-- cs = CellularSpace{xdim = 5}
+-- cs:createNeighborhood{}
+--
+-- env = Environment{soc, cs}
+-- env:createPlacement{}
+--
+-- forEachNeighborAgent(soc:sample(), function(agent)
+--     print("Found Agent "..agent.id)
+-- end)
+-- @see CellularSpace:createNeighborhood
+-- @see Environment:createPlacement
+function forEachNeighborAgent(agent, _sof_)
+	if type(agent) ~= "Agent" then
+		incompatibleTypeError(1, "Agent", agent)
+	elseif type(_sof_) ~= "function" then
+		incompatibleTypeError(2, "function", _sof_)
+	end
+
+	local cell = agent:getCell()
+
+	forEachNeighbor(cell, function(_, neigh)
+		forEachAgent(neigh, function(ag)
+			if _sof_(ag) == false then return false end
+		end)
+	end)
+end
+
+--- Second order function to traverse all Neighborhoods of a Cell, applying a given function
 -- on them. It returns true if no call to the function taken as argument returns false,
 -- otherwise it returns false.
 -- @arg cell A Cell.
@@ -783,8 +819,46 @@ function forEachNeighborhood(cell, _sof_)
 	return true
 end
 
---- Second order function to transverse a given object, applying a function to each of its
--- elements according to their alphabetical order. It can be used for instance to transverse all
+local function greaterString(str1, str2)
+	local countChar = 1
+
+	local size1 = string.len(str1)
+	local size2 = string.len(str2)
+
+	local ch1 = string.sub(str1, countChar, countChar)
+	local ch2 = string.sub(str2, countChar, countChar)
+
+	while countChar <= size1 and countChar <= size2 and ch1 == ch2 do
+		countChar = countChar + 1
+
+		ch1 = string.sub(str1, countChar, countChar)
+		ch2 = string.sub(str2, countChar, countChar)
+	end
+
+	local last1 = string.sub(str1, countChar - 1, countChar - 1)
+	local last2 = string.sub(str2, countChar - 1, countChar - 1)
+
+	local function upper(str)
+		return string.lower(str) ~= str
+	end
+
+	if countChar > size1 then
+		return  last1 == last2
+	elseif countChar > size2 then
+		return last1 ~= last2
+	elseif string.lower(ch1) == string.lower(ch2) then
+		return string.lower(ch1) ~= ch1
+	elseif upper(ch1) and not upper(ch2) then
+		return true
+	elseif not upper(ch1) and upper(ch2) then
+		return false
+	else
+		return ch1 < ch2
+	end
+end
+
+--- Second order function to traverse a given object, applying a function to each of its
+-- elements according to their alphabetical order. It can be used for instance to traverse all
 -- the elements of an Agent or an Environment. This function executes first the positions with
 -- numeric names and then the string ones, with
 -- upper case characters having priority over lower case.
@@ -811,35 +885,26 @@ function forEachOrderedElement(obj, _sof_)
 		incompatibleTypeError(2, "function", _sof_)
 	end
 
-	local strk
 	local sorder = {}
-	local sreference = {}
 	local norder = {}
 	local nreference = {}
 
 	for k in pairs(obj) do
-		if type(k) == "number" then
-			norder[#norder + 1] = k
-			nreference[k] = k
-		else
-			strk = string.lower(tostring(k))
+		if type(k) == "string" then
+			local count = 1
 
-			if sreference[strk] then -- two strings with the same lower case
-				local count = 1
-				local ref = sreference[strk]
-
-				while count <= #ref and ref[count] > k do count = count + 1 end
-
-				table.insert(sreference[strk], count, k)
-			else
-				sreference[strk] = {k}
-				table.insert(sorder, strk)
+			while count <= #sorder and greaterString(sorder[count], k) do
+				count = count + 1
 			end
+
+			table.insert(sorder, count, k)
+		else
+			table.insert(norder, k)
+			nreference[k] = k
 		end
 	end
 
 	table.sort(norder)
-	table.sort(sorder)
 
 	for k = 1, #norder do
 		local idx = nreference[norder[k]]
@@ -847,17 +912,14 @@ function forEachOrderedElement(obj, _sof_)
 	end
 
 	for k = 1, #sorder do
-		local ref = sreference[sorder[k]]
-		for l = 1, #ref do
-			local idx = ref[l]
-			if _sof_(idx, obj[idx], type(obj[idx])) == false then return false end
-		end
+		local ref = sorder[k]
+		if _sof_(ref, obj[ref], type(obj[ref])) == false then return false end
 	end
 
 	return true
 end
 
---- Second order function to transverse all SocialNetworks of an Agent, applying a given function
+--- Second order function to traverse all SocialNetworks of an Agent, applying a given function
 -- on them. It returns true if no call to the function taken as argument returns false,
 -- otherwise it returns false.
 -- @arg agent An Agent.
@@ -870,7 +932,7 @@ end
 --     quantity = 5,
 --     name = "2"
 -- }
--- 
+--
 -- agent = soc:sample()
 -- forEachSocialNetwork(agent, function(idx)
 --     print(idx)
@@ -893,44 +955,57 @@ end
 local config
 
 --- Return a table with the content of the file config.lua, stored in the current directory
--- of the simulation. All the global variables of the file are elements of the returned table. 
+-- of the simulation. All the global variables of the file are elements of the returned table.
 -- Some packages require specific variables in this file in order to be tested or executed.
--- TerraME execution options -imporDb and -exportDb also use this file.
 -- Additional calls to getConfig will return the same output of the first call even
 -- if the current directory changes along the simulation.
 -- @usage getConfig()
 function getConfig()
 	if config then
 		return config
-	elseif not isFile("config.lua") then
-		_Gtme.buildConfig() -- SKIP
-		return getConfig() -- SKIP
+	elseif not File("config.lua"):exists() then
+		customError("There is no 'config.lua' in the current directory.") -- SKIP
 	else
-		config = _Gtme.include("config.lua") -- SKIP
+		config = getLuaFile("config.lua") -- SKIP
 		return config
 	end
 end
 
---- Return the extension of a given file name. It returns the substring after the last dot.
--- If it does not have a dot, an empty string is returned.
--- @arg filename A string with the file name.
--- @usage getExtension("file.txt") -- ".txt"
-function getExtension(filename)
-	mandatoryArgument(1, "string", filename)
 
-	local s = sessionInfo().separator
+-- The following function was implemented using the code available at http://stackoverflow.com/questions/17673657/loading-a-file-and-returning-its-environment
 
-	for i = filename:len() - 1, 1, -1 do
-		local sub = filename:sub(i, i)
-		if sub == "." then
-			return filename:sub(i + 1, filename:len())
-		elseif sub == s or sub == "/" then
-			return ""
-		end
+--- Load a lua file and return its global values as a Lua table.
+-- @arg scriptfile A File or a string with a file name.
+-- @arg basetable An optional table where the new values will be placed.
+-- @usage print(getLuaFile(packageInfo("base").path.."description.lua").version)
+function getLuaFile(scriptfile, basetable)
+	if type(scriptfile) == "string" then
+		scriptfile = File(scriptfile)
 	end
 
-	return ""
+	mandatoryArgument(1, "File", scriptfile)
+	optionalArgument(2, "table", basetable)
+
+	if basetable == nil then
+		basetable = {}
+	end
+
+	local env = setmetatable(basetable, {__index = _G})
+	if not scriptfile:exists() then
+		_Gtme.customError("File '"..scriptfile.."' does not exist.")
+	end
+	local lf = loadfile(tostring(scriptfile), "t", env)
+
+	if lf == nil then
+		_Gtme.printError("Could not load file '"..scriptfile.."'.")
+		dofile(tostring(scriptfile)) -- this line will show the error when parsing the file
+	end
+
+	lf()
+
+	return setmetatable(env, nil)
 end
+
 
 --- Return the number of elements of a table, be them named or not.
 -- It is a substitute for the old Lua function table.getn. It can
@@ -1076,7 +1151,7 @@ function integrate(attrs)
 		mandatoryTableArgument(attrs, "event", "Event")
 		verify(attrs.a == nil, "Argument 'a' should not be used together with argument 'event'.")
 		verify(attrs.b == nil, "Argument 'b' should not be used together with argument 'event'.")
-		attrs.a = attrs.event:getTime() - attrs.event:getPeriod() 
+		attrs.a = attrs.event:getTime() - attrs.event:getPeriod()
 		attrs.b = attrs.event:getTime()
 	end
 
@@ -1293,6 +1368,8 @@ function levenshtein(s, t)
 	mandatoryArgument(1, "string", s)
 	mandatoryArgument(2, "string", t)
 
+	if s == t then return 0 end
+
 	local d, sn, tn = {}, #s, #t
 
 	if sn > tn then -- invert arguments
@@ -1313,93 +1390,6 @@ function levenshtein(s, t)
 	return d[#d]
 end
 
---- Create a table with indexes according to a given configuration.
--- It returns a table with a set of vectors indexed by values
--- defined in the arguments.
--- @arg data.first A number with the first index.
--- @arg data.step A number with the interval between two indexes.
--- @arg data.last A number with the last index. This argument is optional
--- and only used to check whether it is equals to first plus
--- step times the size of the data vectors.
--- @arg data.... Data vectors with the values to be indexed.
--- @usage tab = makeDataTable{
---     first = 2000,
---     step = 10,
---     demand = {7, 8, 9, 10},
---     limit = {0.1, 0.04, 0.3, 0.07}
--- }
---
--- print(tab.demand[2010]) -- 8
--- print(tab.limit[2030]) -- 0.07
-function makeDataTable(data)
-	verifyNamedTable(data)
-
-	mandatoryTableArgument(data, "first", "number")
-	mandatoryTableArgument(data, "step", "number")
-	optionalTableArgument(data, "last", "number")
-
-	local mydata = {}
-
-	forEachOrderedElement(data, function(idx)
-		if not belong(idx, {"first", "step", "last"}) then
-			table.insert(mydata, idx)
-			mandatoryTableArgument(data, idx, "table")
-		end
-	end)
-
-	if data.last then
-		local quantity = (data.last - data.first) / data.step
-
-		local rest = quantity % 1
-		if rest > 0.00001 then
-			local max1 = data.first + (quantity - rest) * data.step
-			local max2 = data.first + (quantity - rest + 1) * data.step
-			customError("Invalid 'last' value ("..data.last.."). It could be "..max1.." or "..max2..".")
-		end
-	end
-
-	if #mydata == 0 then
-		customError("It is not possible to create a table without any data.")
-	end
-
-	local quantity = #data[mydata[1]]
-
-	if data.last then
-		local mquantity = (data.last - data.first) / data.step + 1
-
-		forEachOrderedElement(mydata, function(_, idx)
-			if #data[idx] ~= mquantity then
-				customError("Argument '"..idx.."' should have "..mquantity.." elements, got "..#data[idx]..".")
-			end
-		end)
-	else
-
-		forEachOrderedElement(mydata, function(_, idx)
-			if #data[idx] ~= quantity then
-				customError("Argument '"..idx.."' should have "..quantity.." elements, got "..#data[idx]..".")
-			end
-		end)
-	end
-
-	local result = {}
-
-	forEachOrderedElement(mydata, function(_, idx)
-		local pos = data.first
-
-		local mtable = {}
-		local input = data[idx]
-
-		for i = 1, quantity do
-			mtable[pos] = input[i]
-			pos = pos + data.step
-		end
-
-		result[idx] = mtable
-	end)
-
-	return result
-end
-
 --- Round a number given a precision.
 -- @arg num A number.
 -- @arg idp The number of decimal places to be used. The default value is zero.
@@ -1414,24 +1404,9 @@ function round(num, idp)
 	return math.floor(num * mult + 0.5) / mult
 end
 
---- Return information about the current execution. The result is a table
--- with the following values.
--- @tabular NONE
--- Attribute & Description \
--- dbVersion & A string with the current TerraLib version for databases. \
--- mode & A string with the current mode for warnings ("normal", "debug", or "quiet"). \
--- path & A string with the location of TerraME in the computer. \
--- separator & A string with the directory separator. \
--- silent & A boolean value indicating whether print() calls should not be shown in the
--- screen. This element is true when TerraME is executed with mode "silent".
--- @usage print(sessionInfo().mode)
-function sessionInfo()
-	return info_ -- this is a global variable created when TerraME is initialized
-end
-
 --- Convert a string into a more readable name. It is useful to work
 -- with Model:init() when the model will be available through a graphical interface.
--- In graphical interfaces, if the string contains underscores, it
+-- In graphical interfaces (see OS:sessionInfo()), if the string contains underscores, it
 -- replaces them by spaces and convert the next characters to uppercase.
 -- Otherwise, it adds a space before each uppercase character.
 -- It also converts the first character of the string to uppercase.
@@ -1532,40 +1507,57 @@ function type(data)
 	return t
 end
 
--- This function is taken from https://gist.github.com/lunixbochs/5b0bb27861a396ab7a86
---- Function that returns a string describing the internal content of an object.
--- It converts a table into a string that represents a Lua code that declares such table.
--- @arg o The object to be converted into a string.
--- @arg indent A string to be placed in the beginning of each line of the returning string.
--- @usage vardump{name = "john", age = 20}
--- -- {
--- --     age = 20, 
--- --     name = "john"
--- -- }
-function vardump(o, indent)
+local function recursiveVardump(o, indent, tables)
+	if isTable(o) then
+		if tables[o] then
+			return "\"<copy of another table above>\""
+		end
+
+		tables[o] = true
+	end
+
 	if indent == nil then indent = "" end
 
 	local indent2 = indent.."    "
 	if isTable(o) then
+		if getn(o) == 0 then
+			return "{}"
+		end
+
 		local s = "{".."\n"
+
+		if type(o) ~= "table" then
+			s = type(o)..s
+		end
+
 		local first = true
+		local count = 1
+
 		forEachOrderedElement(o, function(k, v)
-			if first == false then s = s .. ", \n" end
+			if k == "parent" then v = type(v) end
+
+			if first == false then s = s .. ",\n" end
 
 			first = false
 
 			s = s..indent2
 			if type(k) == "string" then
 				local char = string.sub(k, 1, 1)
-				if string.match(k, "%w+") == k and string.match(char, "%a") == char then
-					s = s..tostring(k).." = "..vardump(v, indent2)
+				if string.match(k, "[%w_]+") == k and string.match(char, "%a") == char then
+					s = s..tostring(k).." = "..recursiveVardump(v, indent2, tables)
 				else
-					s = s.."[\""..tostring(k).."\"] = "..vardump(v, indent2)
+					s = s.."[\""..tostring(k).."\"] = "..recursiveVardump(v, indent2, tables)
 				end
 			elseif type(k) == "boolean" then
-				s = s.."["..tostring(k).."] = "..vardump(v, indent2)
+				s = s.."["..tostring(k).."] = "..recursiveVardump(v, indent2, tables)
 			elseif type(k) == "number" then
-				s = s.."["..k.."] = "..vardump(v, indent2)
+				if k ~= count then
+					s = s.."["..k.."] = "
+				else
+					count = count + 1
+				end
+
+				s = s..recursiveVardump(v, indent2, tables)
 			else
 				customError("Function vardump cannot handle an index of type "..type(k)..".")
 			end
@@ -1574,8 +1566,27 @@ function vardump(o, indent)
 		return s.."\n"..indent.."}"
 	elseif type(o) == "number" then
 		return tostring(o)
+	elseif type(o) == "boolean" then
+		return tostring(o)
 	else
-		return "\""..tostring(o).."\""
+		return "\""..string.gsub(tostring(o), "\n", "\\n").."\""
 	end
+end
+
+-- This function is taken from https://gist.github.com/lunixbochs/5b0bb27861a396ab7a86
+--- Function that returns a string describing the internal content of an object.
+-- It converts a table into a string that represents a Lua code that declares such table.
+-- If some internal object is named "parent", it will be converted into a string with the
+-- type of the object. It avoids infinite loops due to the internal cyclic representation
+-- of TerraME.
+-- @arg o The object to be converted into a string.
+-- @arg indent A string to be placed in the beginning of each line of the returning string.
+-- @usage vardump{name = "john", age = 20}
+-- -- {
+-- --     age = 20,
+-- --     name = "john"
+-- -- }
+function vardump(o, indent)
+	return recursiveVardump(o, indent, {})
 end
 

@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------------------
 -- TerraME - a software platform for multiple scale spatially-explicit dynamic modeling.
--- Copyright (C) 2001-2016 INPE and TerraLAB/UFOP -- www.terrame.org
+-- Copyright (C) 2001-2017 INPE and TerraLAB/UFOP -- www.terrame.org
 
 -- This code is part of the TerraME framework.
 -- This framework is free software; you can redistribute it and/or
@@ -30,135 +30,163 @@ return {
 			file = projName,
 			clean = true
 		}
-		
+
 		-- SPATIAL INDEX TEST
-		local filePath1 = filePath("limitePA_polyc_pol.shp", "terralib")
-		local qixFile = string.gsub(filePath1, ".shp", ".qix")
-		rmFile(qixFile)
-		
-		local layerName1 = "limitepa"
+		local filePath1 = filePath("Setores_Censitarios_2000_pol.shp", "terralib")
+		local qixFile = string.gsub(tostring(filePath1), ".shp", ".qix")
+		File(qixFile):delete()
+
+		local layerName1 = "Setores"
 		Layer{
 			project = proj,
 			name = layerName1,
 			file = filePath1,
 			index = false
 		}
-		
-		unitTest:assert(not isFile(qixFile))
-		
+
+		unitTest:assert(not File(qixFile):exists())
+
 		proj = Project {
 			file = projName,
 			clean = true
-		}		
-		
+		}
+
 		Layer{
 			project = proj,
 			name = layerName1,
 			file = filePath1
-		}		
-		
-		unitTest:assert(isFile(qixFile))
-		
-		local clName1 = "PA_Cells50x50"
+		}
+
+		unitTest:assert(File(qixFile):exists())
+
+		local clName1 = "Setores_Cells10x10"
 		local cl1 = Layer{
 			project = proj,
 			source = "shp",
 			clean = true,
 			input = layerName1,
 			name = clName1,
-			resolution = 50000,
+			resolution = 10e3,
 			file = clName1..".shp",
 			index = false
-		}			
-		
+		}
+
 		qixFile = string.gsub(cl1.file, ".shp", ".qix")
-		unitTest:assert(not isFile(qixFile))
-		
-		local clName2 = "PA_Cells60x60"
+		unitTest:assert(not File(qixFile):exists())
+
+		local clName2 = "Setores_Cells9x9"
 		local cl2 = Layer{
 			project = proj,
 			source = "shp",
 			clean = true,
 			input = layerName1,
 			name = clName2,
-			resolution = 60000,
+			resolution = 9e3,
 			file = clName2..".shp"
 		}
-		
-		qixFile = string.gsub(cl2.file, ".shp", ".qix")
-		unitTest:assert(isFile(qixFile))	
 
-		rmFile(cl1.file)
-		rmFile(cl2.file)
-		-- // SPATIAL INDEX
-		
-		rmFile(proj.file)
+		qixFile = string.gsub(cl2.file, ".shp", ".qix")
+		unitTest:assert(File(qixFile):exists())
+
+		File(cl1.file):delete()
+		File(cl2.file):delete()
+
+		-- VERIFY SRID -- TODO(avancinirodrigo): Find a shape which does not have a valid srid
+		-- local customWarningBkp = customWarning
+		-- customWarning = function(msg)
+			-- local _, nchars = string.find(msg, "It was not possible to find the projection of layer 'PA'.\nThe projection should be one of the availables in: ")
+			-- unitTest:assertEquals(109, nchars) -- SKIP
+		-- end
+
+		-- Layer{
+		--	project = proj,
+		--	name = "PA",
+		--	file = filePath("cabecadeboi.shp", "terralib")
+		-- }
+
+		-- customWarning = customWarningBkp
+		-- // VERIFY SRID
+
+		proj.file:delete()
+	end,
+	__len = function(unitTest)
+		local projName = "layer_shape_basic.tview"
+
+		local proj = Project{
+			file = projName,
+			setores = filePath("Setores_Censitarios_2000_pol.shp", "terralib"),
+			clean = true
+		}
+
+		unitTest:assertEquals(#proj.setores, 58)
+
+		proj.file:delete()
 	end,
 	fill = function(unitTest)
 		local projName = "cellular_layer_fill_shape.tview"
 
-		local proj = Project {
-			file = projName,
-			clean = true
-		}
+		File(projName):deleteIfExists()
+
+		local customWarningBkp = customWarning
+		customWarning = function(msg)
+			return msg
+		end
 
 		local layerName1 = "limitepa"
-		Layer{
-			project = proj,
-			name = layerName1,
-			file = filePath("limitePA_polyc_pol.shp", "terralib")
-		}
-
 		local protecao = "protecao"
-		Layer{
-			project = proj,
-			name = protecao,
-			file = filePath("BCIM_Unidade_Protecao_IntegralPolygon_PA_polyc_pol.shp", "terralib")
-		}
-
 		local rodovias = "Rodovias"
-		Layer{
-			project = proj,
-			name = rodovias,
-			file = filePath("BCIM_Trecho_RodoviarioLine_PA_polyc_lin.shp", "terralib")	
+		local portos = "Portos"
+		local amaz = "limiteamaz"
+
+		local proj = Project{
+			file = projName,
+			clean = true,
+			[layerName1] = filePath("test/limitePA_polyc_pol.shp", "terralib"),
+			[protecao] = filePath("BCIM_Unidade_Protecao_IntegralPolygon_PA_polyc_pol.shp", "terralib"),
+			[rodovias] = filePath("BCIM_Trecho_RodoviarioLine_PA_polyc_lin.shp", "terralib"),
+			[portos] = filePath("PORTOS_AMZ_pt.shp", "terralib"),
+			[amaz] = filePath("LIMITE_AMZ_pol.shp", "terralib")
 		}
 
-		local portos = "Portos"
-		Layer{
-			project = proj,
-			name = portos,
-			file = filePath("PORTOS_AMZ_pt.shp", "terralib")	
-		}
-		
 		local municipios = "municipios"
 		Layer{
 			project = proj,
 			name = municipios,
-			file = filePath("municipiosAML_ok.shp", "terralib")	
+			file = filePath("test/municipiosAML_ok.shp", "terralib")
 		}
-		
-		local clName1 = "cells"
-		
+
+		local clName1 = "CellsShp"
+
 		local shapes = {}
-		
+
 		local shp0 = clName1..".shp"
 		table.insert(shapes, shp0)
-		if isFile(shp0) then
-			rmFile(shp0)
-		end
-		
+		File(shp0):deleteIfExists()
+
 		local cl = Layer{
 			project = proj,
 			source = "shp",
 			clean = true,
 			input = layerName1,
 			name = clName1,
-			resolution = 50000,
+			resolution = 70000,
 			file = clName1..".shp"
 		}
-		
+
+		table.insert(shapes, "CellsAmaz.shp")
+		File("CellsAmaz.shp"):deleteIfExists()
+
+		local clamaz = Layer{
+			project = proj,
+			source = "shp",
+			clean = true,
+			input = amaz,
+			name = "CellsAmaz",
+			resolution = 200000,
+			file = "CellsAmaz.shp"
+		}
+
 		-- MODE
-		
 		cl:fill{
 			operation = "mode",
 			layer = municipios,
@@ -185,14 +213,13 @@ return {
 		local map = Map{
 			target = cs,
 			select = "polmode",
-			value = {"0", "53217", "37086", "14302"}, 
+			value = {"0", "53217", "37086", "14302"},
 			color = {"red", "green", "blue", "yellow"}
 		}
 
 		unitTest:assertSnapshot(map, "polygons-mode.png")
 
 		-- MODE (area = true)
-
 		cl:fill{
 			operation = "mode",
 			layer = municipios,
@@ -218,7 +245,6 @@ return {
 		unitTest:assertSnapshot(map, "polygons-mode-2.png")
 
 		-- AREA
-
 		cl:fill{
 			operation = "area",
 			layer = protecao,
@@ -239,10 +265,9 @@ return {
 			color = {"red", "green"}
 		}
 
-		unitTest:assertSnapshot(map, "polygons-area.png")
+		unitTest:assertSnapshot(map, "polygons-area.png", 0.05)
 
 		-- DISTANCE
-
 		cl:fill{
 			operation = "distance",
 			layer = rodovias,
@@ -287,7 +312,7 @@ return {
 
 		unitTest:assertSnapshot(map, "polygons-distance.png")
 
-		cl:fill{
+		clamaz:fill{
 			operation = "distance",
 			layer = portos,
 			attribute = "pointdist"
@@ -295,14 +320,14 @@ return {
 
 		cs = CellularSpace{
 			project = proj,
-			layer = cl.name
+			layer = clamaz.name
 		}
 
 		map = Map{
 			target = cs,
 			select = "pointdist",
 			min = 0,
-			max = 900000,
+			max = 2000000,
 			slices = 8,
 			color = {"green", "red"}
 		}
@@ -310,7 +335,6 @@ return {
 		unitTest:assertSnapshot(map, "points-distance.png")
 
 		-- PRESENCE
-
 		cl:fill{
 			operation = "presence",
 			layer = rodovias,
@@ -351,7 +375,7 @@ return {
 
 		unitTest:assertSnapshot(map, "polygons-presence.png")
 
-		cl:fill{
+		clamaz:fill{
 			operation = "presence",
 			layer = portos,
 			attribute = "pointpres"
@@ -359,7 +383,7 @@ return {
 
 		cs = CellularSpace{
 			project = proj,
-			layer = cl.name
+			layer = clamaz.name
 		}
 
 		map = Map{
@@ -376,9 +400,7 @@ return {
 
 		local shp1 = clName2..".shp"
 		table.insert(shapes, shp1)
-		if isFile(shp1) then
-			rmFile(shp1)
-		end
+		File(shp1):deleteIfExists()
 
 		local cl2 = Layer{
 			project = proj,
@@ -389,7 +411,7 @@ return {
 			file = clName2..".shp"
 		}
 
-		cl2:fill{
+		clamaz:fill{
 			operation = "count",
 			layer = portos,
 			attribute = "pointcount"
@@ -397,7 +419,7 @@ return {
 
 		cs = CellularSpace{
 			project = proj,
-			layer = cl2.name
+			layer = clamaz.name
 		}
 
 		map = Map{
@@ -452,7 +474,6 @@ return {
 		unitTest:assertSnapshot(map, "polygons-count.png")
 
 		-- MAXIMUM
-
 		cl:fill{
 			operation = "maximum",
 			layer = municipios,
@@ -477,7 +498,6 @@ return {
 		unitTest:assertSnapshot(map, "polygons-maximum.png")
 
 		-- MINIMUM
-
 		cl:fill{
 			operation = "minimum",
 			layer = municipios,
@@ -502,7 +522,6 @@ return {
 		unitTest:assertSnapshot(map, "polygons-minimum.png")
 
 		-- AVERAGE
-
 		cl:fill{
 			operation = "average",
 			layer = municipios,
@@ -527,7 +546,6 @@ return {
 		unitTest:assertSnapshot(map, "polygons-average.png")
 
 		-- STDEV
-
 		cl:fill{
 			operation = "stdev",
 			layer = municipios,
@@ -552,7 +570,6 @@ return {
 		unitTest:assertSnapshot(map, "polygons-stdev.png")
 
 		-- LENGTH
-
 		local error_func = function()
 			cl:fill{
 				operation = "length",
@@ -563,29 +580,26 @@ return {
 		unitTest:assertError(error_func, "Sorry, this operation was not implemented in TerraLib yet.")
 
 		-- SUM
+		proj.file:delete()
 
-		rmFile(proj.file)
-		
 		proj = Project {
 			file = "sum_wba.tview",
 			clean = true,
-			setores = filePath("municipiosAML_ok.shp", "terralib")
+			setores = filePath("test/municipiosAML_ok.shp", "terralib")
 		}
 
 		clName1 = "cells_set"
 		local shp2 = clName1..".shp"
 		table.insert(shapes, shp2)
-		if isFile(shp2) then
-			rmFile(shp2)
-		end		
-		
+		File(shp2):deleteIfExists()
+
 		cl = Layer{
 			project = proj,
 			source = "shp",
 			clean = true,
 			input = "setores",
 			name = clName1,
-			resolution = 50000,
+			resolution = 300000,
 			file = shp2
 		}
 
@@ -606,7 +620,7 @@ return {
 		forEachCell(cs, function(cell)
 			sum1 = sum1 + cell.POPULACAO_
 		end)
-	
+
 		cs = CellularSpace{
 			project = proj,
 			layer = cl.name
@@ -623,7 +637,7 @@ return {
 			target = cs,
 			select = "polsuma",
 			min = 0,
-			max = 1300000,
+			max = 4000000,
 			slices = 20,
 			color = {"red", "green"}
 		}
@@ -631,9 +645,8 @@ return {
 		unitTest:assertSnapshot(map, "polygons-sum-area.png")
 
 		-- AVERAGE (area = true)
-		
-		rmFile(proj.file)
-		
+		proj.file:delete()
+
 		projName = "cellular_layer_fill_avg_area.tview"
 
 		proj = Project {
@@ -646,10 +659,8 @@ return {
 		local shp3 = clName1..".shp"
 		table.insert(shapes, shp3)
 
-		if isFile(shp3) then
-			rmFile(shp3)
-		end
-		
+		File(shp3):deleteIfExists()
+
 		cl = Layer{
 			project = proj,
 			source = "shp",
@@ -683,46 +694,59 @@ return {
 		}
 
 		unitTest:assertSnapshot(map, "polygons-average-area.png")
-				
 
 		forEachElement(shapes, function(_, value)
-			rmFile(value)
+			File(value):delete()
 		end)
 
-		unitTest:assertFile(projName)
+		-- unitTest:assertFile(projName) -- SKIP #1242
+		proj.file:delete() -- #1242
+
+		customWarning = customWarningBkp
 	end,
 	projection = function(unitTest)
-		local projName = "layer_shape_basic.tview"
-
 		local proj = Project {
-			file = projName,
+			file = "layer_shape_basic.tview",
 			clean = true
 		}
-		
-		local filePath1 = filePath("Setores_Censitarios_2000_pol.shp", "terralib")
-	
-		local layerName1 = "setores"
+
 		local layer = Layer{
 			project = proj,
-			name = layerName1,
-			file = filePath1,
+			name = "setores",
+			file = filePath("Setores_Censitarios_2000_pol.shp", "terralib"),
 			index = false
-		}	
-		
-		unitTest:assertEquals(layer:projection(), "SAD69 / UTM zone 21S. SRID: 29191.0. PROJ4: +proj=utm +zone=21 +south +ellps=aust_SA +towgs84=-66.87,4.37,-38.52,0,0,0,0 +units=m +no_defs ")
-		
-		rmFile(proj.file)
+		}
+
+		unitTest:assertEquals(layer:projection(), "'SAD69 / UTM zone 21S', with SRID: 29191.0 (PROJ4: '+proj=utm +zone=21 +south +ellps=aust_SA +towgs84=-66.87,4.37,-38.52,0,0,0,0 +units=m +no_defs ').")
+
+		local customWarningBkp = customWarning
+		customWarning = function(msg)
+			return msg
+		end
+
+		layer = Layer{
+			project = proj,
+			name = "PA",
+			file = filePath("test/limitePA_polyc_pol.shp", "terralib"),
+			index = false
+		}
+
+		unitTest:assertEquals(layer:projection(), "'SAD69 / Brazil Polyconic', with SRID: 29101.0 (PROJ4: '+proj=poly +lat_0=0 +lon_0=-54 +x_0=5000000 +y_0=10000000 +ellps=aust_SA +towgs84=-66.87,4.37,-38.52,0,0,0,0 +units=m +no_defs ').")
+
+		customWarning = customWarningBkp
+
+		proj.file:delete()
 	end,
-	properties = function(unitTest)
+	attributes = function(unitTest)
 		local projName = "layer_shape_basic.tview"
 
 		local proj = Project {
 			file = projName,
 			clean = true
 		}
-		
+
 		local filePath1 = filePath("Setores_Censitarios_2000_pol.shp", "terralib")
-	
+
 		local layerName1 = "setores"
 		local layer = Layer{
 			project = proj,
@@ -731,16 +755,85 @@ return {
 			index = false
 		}
 
-		local propNames = layer:properties()
-		
+		local propNames = layer:attributes()
+
 		for i = 1, #propNames do
-			unitTest:assert((propNames[i] == "FID") or (propNames[i] == "SPRAREA") or 
+			unitTest:assert((propNames[i] == "FID") or (propNames[i] == "SPRAREA") or
 						(propNames[i] == "SPRPERIMET") or (propNames[i] == "SPRROTULO") or
 						(propNames[i] == "Populacao") or (propNames[i] == "objet_id_8") or
 						(propNames[i] == "Densde_Pop") or (propNames[i] == "Area"))
 		end
-		
-		rmFile(proj.file)
+
+		proj.file:delete()
+	end,
+	export = function(unitTest)
+		local projName = "layer_shape_basic.tview"
+
+		local proj = Project {
+			file = projName,
+			clean = true
+		}
+
+		local filePath1 = filePath("Setores_Censitarios_2000_pol.shp", "terralib")
+
+		local layerName1 = "setores"
+		local layer = Layer{
+			project = proj,
+			name = layerName1,
+			file = filePath1
+		}
+
+		local overwrite = true
+
+		local geojson = "setores.geojson"
+		local data1 = {
+			file = geojson,
+			overwrite = overwrite
+		}
+
+		layer:export(data1)
+		unitTest:assert(File(geojson):exists())
+
+		-- OVERWRITE AND CHANGE SRID
+		data1.srid = 4326
+		layer:export(data1)
+
+		local layerName2 = "GJ"
+		local layer2 = Layer{
+			project = proj,
+			name = layerName2,
+			file = geojson
+		}
+
+		unitTest:assertEquals(layer2.srid, data1.srid)
+		unitTest:assert(layer.srid ~= data1.srid)
+
+		local shp = "setores.shp"
+		local data2 = {
+			file = shp,
+			overwrite = overwrite
+		}
+
+		layer:export(data2)
+		unitTest:assert(File(shp):exists())
+
+		-- OVERWRITE AND CHANGE SRID
+		data2.srid = 4326
+		layer:export(data2)
+
+		local layerName3 = "SHP"
+		local layer3 = Layer{
+			project = proj,
+			name = layerName3,
+			file = shp
+		}
+
+		unitTest:assertEquals(layer3.srid, data2.srid)
+		unitTest:assert(layer.srid ~= data2.srid)
+
+		File(geojson):delete()
+		File(shp):delete()
+		proj.file:delete()
 	end
 }
 

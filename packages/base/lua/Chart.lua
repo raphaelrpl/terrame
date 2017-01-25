@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------------------
 -- TerraME - a software platform for multiple scale spatially-explicit dynamic modeling.
--- Copyright (C) 2001-2016 INPE and TerraLAB/UFOP -- www.terrame.org
+-- Copyright (C) 2001-2017 INPE and TerraLAB/UFOP -- www.terrame.org
 
 -- This code is part of the TerraME framework.
 -- This framework is free software; you can redistribute it and/or
@@ -58,72 +58,69 @@ local colors = {
 }
 
 local function chartFromData(attrTab)
-	local indexes = {}
-
-	local data = attrTab.data
-	attrTab.data = nil
+	local columns = attrTab.target:columns()
+	local rows = attrTab.target:rows()
 
 	forEachElement(attrTab.select, function(_, idx)
-		mandatoryTableArgument(data, idx, "table")
-	end)
-
-
-	forEachOrderedElement(data[attrTab.select[1]], function(idx)
-		table.insert(indexes, idx)
-	end)
-
-	local size = getn(data[attrTab.select[1]])
-
-	-- verify if they have the same size
-	forEachElement(attrTab.select, function(_, idx)
-		if getn(data[idx]) ~= size then
-			customError("Argument 'data."..idx.."' should have "..size.." elements, got "..getn(data[idx])..".")
+		if not columns[idx] then
+			customError("Selected column '"..idx.."' does not exist in the DataFrame.")
 		end
 	end)
 
-	if attrTab.xAxis then
-		mandatoryTableArgument(data, attrTab.xAxis, "table")
-
-		if getn(data[attrTab.xAxis]) ~= size then
-			customError("Argument 'data."..attrTab.xAxis.."' should have "..size.." elements, got "..getn(data[attrTab.xAxis])..".")
-		end
+	if attrTab.xAxis and not columns[attrTab.xAxis] then
+		customError("Selected column '"..attrTab.xAxis.."' for argument 'xAxis' does not exist in the DataFrame.")
 	end
 
+	local cell = Cell(clone(columns))
+	local df = attrTab.target
+
 	local function updateValues(time)
+		local mrow = df[time]
 		forEachElement(attrTab.select, function(_, value)
-			attrTab.target[value] = data[value][time]
+			cell[value] = mrow[value]
 		end)
 
 		if attrTab.xAxis then
-			attrTab.target[attrTab.xAxis] = data[attrTab.xAxis][time]
+			cell[attrTab.xAxis] = mrow[attrTab.xAxis]
 		end
 	end
-
-	updateValues(indexes[1])
 
 	if attrTab.yLabel == "" then attrTab.yLabel = nil end
 	if attrTab.title == "" then attrTab.title = nil end
 
-	if attrTab.xAxis then
-		if attrTab.xLabel == _Gtme.stringToLabel(attrTab.xAxis) then
-			attrTab.xLabel = nil
-		end
-	elseif attrTab.xLabel == "Time" then
-		attrTab.xLabel = nil
-	end
-
+	local begin = getNames(rows)[1]
+	updateValues(begin)
+	attrTab.target = cell
 	local chart = Chart(attrTab)
 
-	for i = 1, #indexes do
-		updateValues(indexes[i])
-		attrTab.target:notify(indexes[i])
-	end
+	forEachOrderedElement(rows, function(idx)
+		updateValues(idx)
+		chart:update(idx)
+	end)
 
 	return chart
 end
 
 Chart_ = {
 	type_ = "Chart",
+	--- Return a DataFrame with the values got from all its updates.
+	-- @usage cs = CellularSpace{
+	--     xdim = 10,
+	--     value1 = 5,
+	--     value2 = 7
+	-- }
+	--
+	-- chart = Chart{target = cs}
+	--
+	-- chart:update(1)
+	-- chart:update(2)
+	-- chart:update(3)
+	--
+	-- data = chart:getData()
+	-- print(tostring(data))
+	getData = function(self)
+		return self.values
+	end,
 	--- Save a Chart into a file. Supported extensions are bmp, jpg, png, and tiff.
 	-- @arg file A string with the file name.
 	-- @usage cs = CellularSpace{
@@ -138,7 +135,7 @@ Chart_ = {
 	-- chart:update(2)
 	-- chart:update(3)
 	-- chart:save("file.bmp")
-	-- rmFile("file.bmp")
+	-- File("file.bmp"):delete()
 	save = function(self, file)
 		local _, extension = string.match(file, "(.-)([^%.]+)$")
 
@@ -167,6 +164,18 @@ Chart_ = {
 	-- chart:update(1)
 	-- chart:update(2)
 	update = function(self, modelTime)
+		if type(modelTime) == "Event" then
+			modelTime = modelTime:getTime()
+		end
+
+		local values = {}
+
+		forEachElement(self.select, function(_, key)
+			values[key] = self.target[key]
+		end)
+
+		self.values[modelTime] = values
+
 		self.target:notify(modelTime)
 	end
 }
@@ -174,15 +183,31 @@ Chart_ = {
 metaTableChart_ = {__index = Chart_}
 
 --- Create a line chart showing the variation of one or more attributes (y axis) of an
--- object. X axis values come from the single argument of notify().
--- @arg attrTab.target An Agent, Cell, CellularSpace, Society, table, or instance of a Model.
+-- object. As default, x axis values come from the single argument of Chart:update().
+-- A Chart behaves according to its target's type. See the table below.
+-- @tabular NONE
+-- Type of the target & Behavior & Compulsory & Unnecessary \
+-- "Agent", "Cell", instance of a Model & Plots how attributes change over time. & target & value \
+-- "CellularSpace" & If the selected attributes belong to the CellularSpace, it plots how attributes change over time. If only one attribute is selected and it belongs to the Cells, then it plots the sum of the attribute values in the whole CellularSpace. & select, target &  \
+-- "Map" & Works as a Chart created from a CellularSpace, copying the values of arguments target, select, value, color, and label from the Map to itself. It only works if the Map was created using grouping "uniquevalue". If some of the colors is white, the respective attribute value will be ignored by the Chart. & target & color, label, select, value \
+-- "Environment" & Plot how a given attribute from different Models. & select, target & value \
+-- "Society" & Plot how attributes change over time. If no attribute is selected, it will plot the amount of Agents along the simulation. & target &  \
+-- "DataFrame" & Plot a set of values at once, without needing to call Chart:update(). & target & value \
 -- @arg attrTab.select A vector of strings with the name of the attributes to be observed. If it is only a
--- single value then it can also be described as a string. 
+-- single value then it can also be described as a string.
 -- As default, it selects all the user-defined number attributes of the target.
 -- In the case of Society, if it does not have any numeric attributes then it will use
 -- the number of agents in the Society as attribute.
 -- The positions of the vector define the plot order. It draws starting from the first
 -- until the last position.
+-- When using an Environment as target, it is possible to use only one attribute name. The selected
+-- attribute must belong to the Model instances it contains. Chart will then create one line for
+-- each Model instance. In this case, the selected attribute will be the default title for the Chart and the
+-- default labels will be the names of the Model instances in the Environment (if they are named) or else their Model:title() values.
+-- @arg attrTab.target The object to be observed.
+-- @arg attrTab.value A vector of strings with the values to be observed. It is necessary when observing
+-- automatic functions from CellularSpace or Society that are created from string attributes. In this case,
+-- Chart will plot the quantity of each value described in this argument.
 -- @arg attrTab.xLabel Name of the x-axis. It shows "Time" as default.
 -- @arg attrTab.yLabel Name of the y-axis. It does not show any label as default.
 -- @arg attrTab.label Vector of the same size of select that indicates the labels for each
@@ -195,12 +220,13 @@ metaTableChart_ = {__index = Chart_}
 -- "yellow", "brown", "cyan", "gray", "magenta", "orange", "purple", and their light and dark
 -- compositions, such as "lightGray" and "darkGray"), or as tables with three integer numbers
 -- representing RGB compositions.
--- @arg attrTab.data An optional table with a complete description of the data to be drawn in the Chart.
--- It must be a Utils:isTable() with a set of vectors, each one with a name. The names of these vectors can be
+-- @arg attrTab.data A table with a complete description of the data to be drawn in the Chart.
+-- It must be a valid Utils:isTable() with a set of vectors, each one with a name. The names of these vectors can be
 -- used in arguments select and xAxis. If not using xAxis, it will draw the time according to the
 -- positions of the values. When using data, argument target becomes unnecessary. This argument
 -- will automatically be converted to a Cell, in order to allow using Cell:notify().
--- @arg attrTab.title An overall title to the Chart.
+-- @arg attrTab.title An overall title to the Chart. The default value is "". In the case of
+-- instances of Models, the default is Model:title().
 -- @arg attrTab.symbol The symbol to be used to draw the points of the Chart. It can be a string to
 -- be used by all lines, or a vector of strings, describing the symbol for each line. The available
 -- values are: "square", "diamond", "triangle", "ltriangle" (left), "dtriangle" (downwards triangle),
@@ -239,7 +265,7 @@ metaTableChart_ = {__index = Chart_}
 --     color = {"red", "green", "blue"}
 -- }
 --
--- tab = makeDataTable{
+-- data = DataFrame{
 --     first = 2000,
 --     step = 10,
 --     demand = {7, 8, 9, 10},
@@ -247,7 +273,7 @@ metaTableChart_ = {__index = Chart_}
 -- }
 --
 -- Chart{
---     data = tab,
+--     target = data,
 --     select = "limit",
 --     color = "blue"
 -- }
@@ -290,12 +316,49 @@ function Chart(attrTab)
 
 	verifyUnnecessaryArguments(attrTab, {
 		"target", "select", "yLabel", "xLabel",
-		"title", "label", "pen", "color", "xAxis",
-		"width", "symbol", "style", "size", "data"
+		"title", "label", "pen", "color", "xAxis", "value",
+		"width", "symbol", "style", "size"
 	})
 
+	if type(attrTab.target) == "Map" then
+		local value = {}
+		local color = {}
+		local label = {}
+
+		if type(attrTab.target.value) ~= "table" or type(attrTab.target.color) ~= "table" then
+			customError("Charts can only be created from Maps that use grouping 'uniquevalue'.")
+		end
+
+		forEachElement(attrTab.target.color, function(idx, mcolor)
+			if mcolor[1] == 255 and mcolor[2] == 255 and mcolor[3] == 255 then return end
+
+			table.insert(value, attrTab.target.value[idx])
+			table.insert(label, attrTab.target.label[idx])
+			table.insert(color, mcolor)
+		end)
+
+		attrTab.select = attrTab.target.select
+		attrTab.target = attrTab.target.target
+		attrTab.label = attrTab.target.label
+		attrTab.value = value
+		attrTab.color = color
+
+		return Chart(attrTab)
+	end
+
+	if attrTab.value then
+		if not belong(type(attrTab.target), {"CellularSpace", "Society"}) then
+			customError("Argument 'value' can only be used with CellularSpace or Society, got "..type(attrTab.target)..".")
+		end
+	end
+
 	defaultTableValue(attrTab, "yLabel", "")
-	defaultTableValue(attrTab, "title",  "")
+
+	if isModel(attrTab.target) then
+		defaultTableValue(attrTab, "title",  attrTab.target:title())
+	else
+		defaultTableValue(attrTab, "title",  "")
+	end
 
 	optionalTableArgument(attrTab, "xAxis", "string")
 
@@ -305,37 +368,49 @@ function Chart(attrTab)
 	optionalTableArgument(attrTab, "select", "table")
 	optionalTableArgument(attrTab, "label", "table")
 
-	if attrTab.data then
-		if not isTable(attrTab.data) then
-			customError(incompatibleTypeMsg("data", "table", attrTab.data))
-		end
+	if type(attrTab.target) == "Environment" then
+		local c = Cell{}
+		local select = {}
 
 		mandatoryTableArgument(attrTab, "select", "table")
 
-		if attrTab.target then
-			customWarning(unnecessaryArgumentMsg("target"))
-		end
+		verify(#attrTab.select == 1, "It is not possible to select more than one attribute when creating a Chart from an Environment.")
 
-		attrTab.target = {}
+		local mselect = attrTab.select[1]
+		local labels = {}
 
-		forEachElement(attrTab.data, function(idx)
-			attrTab.target[idx] = 0
-			-- they are put zero just to pass the checks before calling 
-		end)
+		forEachModel(attrTab.target, function(value, idx)
+			local midx = tostring(idx)
+			c[midx] = function() return value[mselect] end
+			table.insert(select, midx)
 
-		forEachElement(attrTab.select, function(_, idx)
-			if type(attrTab.data[idx]) ~= "table" then
-				customError(incompatibleTypeMsg("data."..idx, "table", attrTab.data[idx]))
+			if type(idx) ~= "string" then
+				table.insert(labels, value:title())
 			end
 		end)
 
-		if attrTab.xAxis and type(attrTab.data[attrTab.xAxis]) ~= "table" then
-			customError(incompatibleTypeMsg("data."..attrTab.xAxis, "table", attrTab.data[attrTab.xAxis]))
+		if #select == 0 then
+			customError("There is no Model instance within the Environment.")
 		end
+
+		if attrTab.label == nil and #select == #labels then
+			attrTab.label = labels
+		end
+
+		attrTab.target = c
+		attrTab.select = select
+
+		if attrTab.title  == "" then attrTab.title  = nil end
+
+		defaultTableValue(attrTab, "title", _Gtme.stringToLabel(mselect))
+
+		if attrTab.yLabel == "" then attrTab.yLabel = nil end
+
+		return Chart(attrTab)
 	else
 		mandatoryTableArgument(attrTab, "target")
 
-		if not belong(type(attrTab.target), {"Cell", "CellularSpace", "Agent", "Society"}) and not isTable(attrTab.target) then
+		if not belong(type(attrTab.target), {"Cell", "CellularSpace", "Agent", "Society", "DataFrame"}) and not isModel(attrTab.target) then
 			customError("Invalid type. Charts only work with Cell, CellularSpace, Agent, Society, table, and instance of Model, got "..type(attrTab.target)..".")
 		end
 	end
@@ -349,7 +424,7 @@ function Chart(attrTab)
 			forEachOrderedElement(attrTab.target, function(idx, _, mtype)
 				if mtype == "number" and idx ~= "x" and idx ~= "y" and string.sub(idx, -1, -1) ~= "_" then
 					if not attrTab.xAxis or idx ~= attrTab.xAxis then
-						attrTab.select[#attrTab.select + 1] = idx
+						table.insert(attrTab.select, idx)
 					end
 				end
 			end)
@@ -357,7 +432,7 @@ function Chart(attrTab)
 			forEachOrderedElement(attrTab.target, function(idx, _, mtype)
 				if mtype == "number" and string.sub(idx, -1, -1) ~= "_" then
 					if not attrTab.xAxis or idx ~= attrTab.xAxis then
-						attrTab.select[#attrTab.select + 1] = idx
+						table.insert(attrTab.select, idx)
 					end
 				end
 			end)
@@ -365,7 +440,7 @@ function Chart(attrTab)
 			forEachOrderedElement(attrTab.target, function(idx, _, mtype)
 				if mtype == "number" and not belong(idx, {"xMin", "xMax", "yMin", "yMax", "ydim", "xdim"}) and string.sub(idx, -1, -1) ~= "_" then
 					if not attrTab.xAxis or idx ~= attrTab.xAxis then
-						attrTab.select[#attrTab.select + 1] = idx
+						table.insert(attrTab.select, idx)
 					end
 				end
 			end)
@@ -373,7 +448,7 @@ function Chart(attrTab)
 			forEachOrderedElement(attrTab.target, function(idx, _, mtype)
 				if mtype == "number" and not belong(idx, {"autoincrement", "observerId"}) and string.sub(idx, -1, -1) ~= "_"  then
 					if not attrTab.xAxis or idx ~= attrTab.xAxis then
-						attrTab.select[#attrTab.select + 1] = idx
+						table.insert(attrTab.select, idx)
 					end
 				end
 			end)
@@ -381,18 +456,21 @@ function Chart(attrTab)
 			if #attrTab.select == 0 then
 				attrTab.select = {"#"}
 			end
+		elseif type(attrTab.target) == "DataFrame" then
+			local columns = attrTab.target:columns()
+			local row = getNames(attrTab.target:rows())[1]
+
+			forEachOrderedElement(columns, function(idx)
+				if type(attrTab.target[idx][row]) == "number" then
+					table.insert(attrTab.select, idx)
+				end
+			end)
 		elseif isModel(attrTab.target) then
 			forEachOrderedElement(attrTab.target, function(idx, _, mtype)
 				if mtype == "number" and not belong(idx, {"finalTime", "seed"}) and string.sub(idx, -1, -1) ~= "_" then
 					if not attrTab.xAxis or idx ~= attrTab.xAxis then
-						attrTab.select[#attrTab.select + 1] = idx
+						table.insert(attrTab.select, idx)
 					end
-				end
-			end)
-		else -- isTable
-			forEachOrderedElement(attrTab.target, function(idx, _, mtype)
-				if mtype == "number" then
-					attrTab.select[#attrTab.select + 1] = idx
 				end
 			end)
 		end
@@ -402,6 +480,10 @@ function Chart(attrTab)
 		attrTab.select = {attrTab.select}
 	else
 		optionalTableArgument(attrTab, "select", "table")
+	end
+
+	if type(attrTab.target) == "DataFrame" then
+		return chartFromData(attrTab)
 	end
 
 	forEachElement(attrTab.select, function(_, value)
@@ -414,15 +496,77 @@ function Chart(attrTab)
 				attrTab.target.obsattrs_["quantity_"] = true
 				attrTab.target.quantity_ = #attrTab.target
 			else
-				customError("Selected element '"..value.."' does not belong to the target.")
+				local suggestions = {}
+
+				forEachElement(attrTab.target, function(idx, _, mtype)
+					if mtype == "number" then
+						suggestions[idx] = true
+					end
+				end)
+
+				local sug = suggestion(value, suggestions)
+
+				local err = "Selected element '"..value.."' does not belong to the target."
+
+				if sug then
+					err = err.." Do you mean '"..sug.."'?"
+				end
+
+				customError(err)
 			end
 		elseif type(attrTab.target[value]) == "function" then
 			if attrTab.target.obsattrs_ == nil then
 				attrTab.target.obsattrs_ = {}
 			end
 
-			attrTab.target.obsattrs_[value] = true
+			local output = attrTab.target[value](attrTab.target)
 
+			if type(output) == "table" then
+				if not belong(type(attrTab.target), {"CellularSpace", "Society"}) then
+					customError("It is only possible to observe functions that return tables using CellularSpace or Society, got "..type(attrTab.target)..".")
+				end
+
+				local set
+
+				if type(attrTab.target) == "CellularSpace" then
+					set = attrTab.target.cells
+				else
+					set = attrTab.target.agents
+				end
+
+				if not attrTab.value then
+					customError("Argument 'value' is mandatory when observing a function that returns a table.")
+				end
+
+				mandatoryTableArgument(attrTab, "value", "table")
+
+				forEachElement(attrTab.value, function(_, mvalue)
+					if type(mvalue) ~= "string" then
+						customError("Argument 'value' should contain only strings, got "..type(mvalue)..".")
+					end
+
+					attrTab.target[mvalue] = function()
+						local count = 0
+						forEachElement(set, function(_, element)
+							if element[value] == mvalue then
+								count = count + 1
+							end
+						end)
+
+						return count
+					end
+
+					attrTab.target.obsattrs_[mvalue] = true
+				end)
+
+				if type(attrTab.color) == "table" then
+					verify(#attrTab.value == #attrTab.color, "Arguments 'value' and 'color' should have the same size, got "..#attrTab.value.." and "..#attrTab.color..".")
+				end
+
+				attrTab.select = attrTab.value
+			else
+				attrTab.target.obsattrs_[value] = true
+			end
 		elseif type(attrTab.target[value]) ~= "number" then
 			incompatibleTypeError(value, "number or function", attrTab.target[value])
 		end
@@ -469,7 +613,7 @@ function Chart(attrTab)
 					if s then
 						customError(switchInvalidArgumentSuggestionMsg(value, "color", s))
 					else
-						customError("Color '"..value.."' not found. Check the name or use a table with an RGB description.")
+						customError("Color '"..value.."' was not found. Check the name or use a table with an RGB description.")
 					end
 				end
 			elseif type(value) == "table" then
@@ -490,12 +634,17 @@ function Chart(attrTab)
 		if belong(attrTab.xAxis, attrTab.select) then
 			customError("Attribute '"..attrTab.xAxis.."' cannot belong to argument 'select' as it was already selected as 'xAxis'.")
 		end
+
+		if type(attrTab.target[attrTab.xAxis]) == "function" then
+			if attrTab.target.obsattrs_ == nil then
+				attrTab.target.obsattrs_ = {}
+			end
+
+			attrTab.target.obsattrs_[attrTab.xAxis] = true
+			attrTab.xAxis = attrTab.xAxis.."_"
+		end
 	else
 		defaultTableValue(attrTab, "xLabel", "Time")
-	end
-
-	if attrTab.data then
-		return chartFromData(attrTab)
 	end
 
 	local observerType
@@ -508,6 +657,14 @@ function Chart(attrTab)
 
 	local observerParams = {}
 	local target = attrTab.target
+
+	local attributes = {}
+
+	forEachElement(attrTab.select, function(_, value)
+		attributes[value] = {}
+	end)
+
+	attrTab.values = DataFrame(attributes)
 
 	table.insert(observerParams, attrTab.title)
 	table.insert(observerParams, attrTab.xLabel)
@@ -547,14 +704,6 @@ function Chart(attrTab)
 	optionalTableArgument(attrTab, "pen",    "table")
 	optionalTableArgument(attrTab, "size",   "table")
 	optionalTableArgument(attrTab, "color",  "table")
-
-	if isTable(attrTab.target) and not isModel(attrTab.target) and not belong(type(attrTab.target), {"Cell", "CellularSpace", "Agent", "Society"}) then
-		if attrTab.target.cobj_ == nil then
-			attrTab.target.type_ = nil
-			setmetatable(attrTab.target, nil)
- 			attrTab.target = Cell(attrTab.target)
-		end
-	end
 
 	if attrTab.size then
 		forEachElement(attrTab.size, function(_, value)
@@ -673,7 +822,7 @@ function Chart(attrTab)
 
 	attrTab.cObj_ = chart
 	attrTab.id = id
-	
+
 	setmetatable(attrTab, metaTableChart_)
     table.insert(_Gtme.createdObservers, attrTab)
 	return attrTab

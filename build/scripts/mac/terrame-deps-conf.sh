@@ -1,6 +1,6 @@
 #!/bin/bash
 # TerraME - a software platform for multiple scale spatially-explicit dynamic modeling.
-# Copyright (C) 2001-2016 INPE and TerraLAB/UFOP -- www.terrame.org
+# Copyright (C) 2001-2017 INPE and TerraLAB/UFOP -- www.terrame.org
 #
 # This code is part of the TerraME framework.
 # This framework is free software; you can redistribute it and/or
@@ -21,31 +21,9 @@
 # of this software and its documentation.
 ############################################################################################
 
-LUA_PATH=/Users/developer/terralib/3rdparty/libs
-BUILD_TYPE=Release
-
 mkdir "build"
 cd "build"
-mkdir "libqtlua-build"
-cd "libqtlua-build"
 
-cmake -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=${BUILD_TYPE} -DCMAKE_INSTALL_PREFIX=../../install -DLUA_LIBRARY=${LUA_PATH}/lib/liblua.dylib -DLUA_INCLUDE_DIR=${LUA_PATH}/include ../../libqtlua
-
-make -j4
-make install
-
-cd ".."
-mkdir "qtluae-build"
-cd "qtluae-build"
-
-cmake -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=${BUILD_TYPE} -DCMAKE_INSTALL_PREFIX=../../install -DLUA_LIBRARY=${LUA_PATH}/lib/liblua.dylib -DLUA_INCLUDE_DIR=${LUA_PATH}/include -DQTLUA_INCLUDE_DIR=../../install/include -DQTLUA_LIBRARY=../../install/lib/libqtlua.dylib ../../qtluae/build/cmake
-
-make -j4
-make install
-
-cp -a ../../install/lib/libqtluae.dylib ../../install/lib/qtluae.dylib
-
-cd ".."
 mkdir "protobuf-build"
 cd "protobuf-build"
 
@@ -53,3 +31,8 @@ cmake -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=${BUILD_TYPE} -DCMAKE_INSTALL_PREFI
 
 make -j4
 make install
+
+cd ".."
+cd ".."
+mkdir -p install/luacheck
+cp -rv "luacheck/src" "install/luacheck"

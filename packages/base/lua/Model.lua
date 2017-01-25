@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------------------
 -- TerraME - a software platform for multiple scale spatially-explicit dynamic modeling.
--- Copyright (C) 2001-2016 INPE and TerraLAB/UFOP -- www.terrame.org
+-- Copyright (C) 2001-2017 INPE and TerraLAB/UFOP -- www.terrame.org
 
 -- This code is part of the TerraME framework.
 -- This framework is free software; you can redistribute it and/or
@@ -67,6 +67,23 @@ Model_ = {
 	--     end
 	-- }
 	execute = function()
+	end,
+	--- Return if a Model uses random numbers. This can be configured with the argument random
+	-- while creating a Model.
+	-- @usage RandomModel = Model{
+	--     random = true,
+	--     finalTime = 10,
+	--     init = function(model)
+	--         model.timer = Timer{
+	--             Event{action = function()
+	--                 print(Random():number())
+	--             end}
+	--        }
+	--     end
+	-- }
+	--
+	-- print(RandomModel:isRandom())
+	isRandom = function()
 	end,
 	--- Run the Model instance. It requires that the Model instance has attribute finalTime.
 	-- @usage Tube = Model{
@@ -165,7 +182,7 @@ Model_ = {
 	-- In the example below, the first column of the graphical interface will show the string
 	-- argument in the top ("mapFile") and the three arguments of "agents" in the bottom of the
 	-- first column. The second column will contain the arguments of "block" in the top and the
-	-- boolean argument ("showGraphics") in the bottom. The elements that do not belong to the 
+	-- boolean argument ("showGraphics") in the bottom. The elements that do not belong to the
 	-- table will not be shown in the graphical interface (in the example, "season").
 	-- Note that all Compulsory arguments must belong to the graphical interface to allow
 	-- instantiate Model instances properly.
@@ -232,10 +249,36 @@ Model_ = {
 	-- scenario1:run()
 	notify = function(self, modelTime)
 		self.cObj_:notify(modelTime) -- SKIP
+	end,
+	--- Return a title for the Model instance according to its parameters.
+	-- It uses only the parameters that are different from the default values.
+	-- If the Model was instantiated without any parameter, its title will be "default".
+	-- @usage Tube = Model{
+	--     water = 200,
+	--     init = function(model)
+	--         model.finalTime = 100
+	--
+	--         Chart{
+	--             target = model,
+	--             select = "water"
+	--         }
+	--
+	--         model.timer = Timer{
+	--             Event{action = function(ev)
+	--                 model.water = model.water - 1
+	--                 model:notify(ev)
+	--             end}
+	--         }
+	--     end
+	-- }
+	--
+	-- scenario1 = Tube{water = 100}
+	-- print(scenario1:title()) -- "water = 100"
+	title = function()
 	end
 }
 
---- Type that defines a model. The user can use Model to describe the arguments of a model 
+--- Type that defines a model. The user can use Model to describe the arguments of a model
 -- and how it can be built. The returning value of a Model is an object that can be used
 -- directly to simulate (as long as it does not have any Mandatory parameter) or used to create
 -- as many instances as needed to simulate the Model with different parameters.
@@ -243,7 +286,8 @@ Model_ = {
 --  http://github.com/pedro-andrade-inpe/terrame/wiki/Models.
 -- @arg attrTab.finalTime A number with the final time of the simulation.
 -- If the Model does not have this as argument, it must be defined within function Model:init().
--- @arg attrTab.seed A number with the initial seed for Random. This argument is optional.
+-- @arg attrTab.random An optional boolean value indicating that the model uses random numbers.
+-- The default value is false.
 -- @arg attrTab.init A mandatory function to describe how an instance of Model is created.
 -- @arg attrTab.execute An optional function to define the changes of the Model in each time step.
 -- it the Model does not have a Timer after Model:init() but it has this function, a Timer will
@@ -257,7 +301,7 @@ Model_ = {
 -- @tabular ...
 -- Attribute type & Description & Default value \
 -- number or bool & The instance has to belong to such type. & The value itself. \
--- string & The instance has to be a string. If it is in the format "*.a;*.b;...", it 
+-- string & The instance has to be a string. If it is in the format "*.a;*.b;...", it
 -- describes a file extension. The modeler then has to use a filename as argument with one of the
 -- extensions defined by this string. & The value itself. \
 -- Choice & The instance must have a value that belongs to the Choice. & The default value of the Choice. \
@@ -292,6 +336,7 @@ Model_ = {
 --
 -- MyTube = Tube{initialWater = 50} -- ... or create instances using it
 -- print(type(MyTube)) -- "Tube"
+-- print(MyTube:title()) -- "Initial Water = 50"
 -- MyTube:run()
 --
 -- pcall(function() MyTube2 = Tube{initialwater = 100} end)
@@ -368,20 +413,8 @@ function Model(attrTab)
 		end
 	end
 
-	if attrTab.seed ~= nil then
-		local t = type(attrTab.seed)
-		if t == "Choice" then
-			if type(attrTab.seed.default) ~= "number" then
-				customError("seed can only be a Choice with 'number' values, got '"..type(attrTab.seed.default).."'.")
-			end
-		elseif t == "Mandatory" then
-			if attrTab.seed.value ~= "number" then
-				customError("seed can only be Mandatory('number'), got Mandatory('"..attrTab.seed.value.."').")
-			end
-		else
-			optionalTableArgument(attrTab, "seed", "number")
-			positiveTableArgument(attrTab, "seed", true)
-		end
+	if attrTab.random ~= nil then
+		defaultTableValue(attrTab, "random", false)
 	end
 
 	forEachElement(attrTab, function(name, value, mtype)
@@ -400,6 +433,9 @@ function Model(attrTab)
 
 	mandatoryTableArgument(attrTab, "init", "function")
 	optionalTableArgument(attrTab, "execute", "function")
+
+	if attrTab.title then customError("'title' cannot be an argument for a Model.") end
+	if attrTab.getParameters then customError("'getParameters' cannot be an argument for a Model.") end
 
 	local function getExtensions(value)
 		local extensions = {}
@@ -432,6 +468,9 @@ function Model(attrTab)
 		return model(v, debug.getinfo(1).name)
 	end
 
+	local random = attrTab.random
+	attrTab.random = nil
+
 	local indexFunction = function(mmodel, v) -- in this case, the type of this model will be "model"
 		local options = {
 			run = function()
@@ -441,6 +480,9 @@ function Model(attrTab)
 			end,
 			configure = function()
 				_Gtme.configure(attrTab, mmodel) -- SKIP
+			end,
+			isRandom = function()
+				return random
 			end,
 			getParameters = function()
 				local result = {}
@@ -501,8 +543,8 @@ function Model(attrTab)
 				forEachElement(value, function(mname, _, _)
 					if attrTabValue[mname] == nil then
 						local msg = "Argument '"..name.."."..mname.."' is unnecessary."
-
 						local s = suggestion(mname, attrTabValue)
+
 						if s then
 							msg = msg.." Do you mean '"..name.."."..s.."'?"
 						end
@@ -514,7 +556,6 @@ function Model(attrTab)
 		end)
 
 		-- set the default values
-		optionalTableArgument(argv, "seed", "number")
 		optionalTableArgument(argv, "finalTime", "number")
 
 		forEachElement(attrTab, function(name, value, mtype)
@@ -582,14 +623,18 @@ function Model(attrTab)
 				local e = getExtensions(value)
 
 				if #e > 0 then
-					mandatoryTableArgument(argv, name, "string")
-					local ext = getExtension(argv[name])
+					if type(argv[name]) == "string" then
+						argv[name] = File(argv[name])
+					end
+
+					mandatoryTableArgument(argv, name, "File")
+					local ext = argv[name]:extension()
 
 					if ext == "" then
 						customError("No file extension for parameter "..toLabel(name)..". It should be one of '"..value.."'.")
 					elseif not belong(ext, e) then
 						customError("Invalid file extension for parameter "..toLabel(name)..". It should be one of '"..value.."'.")
-					elseif not isFile(argv[name]) then
+					elseif not argv[name]:exists() then
 						resourceNotFoundError(toLabel(name), argv[name])
 					end
 				elseif argv[name] == nil then
@@ -628,23 +673,27 @@ function Model(attrTab)
 					elseif itype == "string" then
 						local e = getExtensions(ivalue)
 
+						if type(iargv[iname]) == "string" then
+							iargv[iname] = File(iargv[iname])
+						end
+
 						if #e > 0 then
-							if type(iargv[iname]) ~= "string" then
+							if type(iargv[iname]) ~= "File" then
 								if iargv[iname] == nil then
 									mandatoryArgumentError(toLabel(iname, name))
 								else
-									incompatibleTypeError(name.."."..iname, "string", iargv[iname])
+									incompatibleTypeError(name.."."..iname, "File", iargv[iname])
 								end
 							end
 
-							mandatoryTableArgument(iargv, iname, "string")
-							local ext = getExtension(iargv[iname])
+							mandatoryTableArgument(iargv, iname, "File")
+							local ext = iargv[iname]:extension()
 
 							if ext == "" then
 								customError("No file extension for parameter "..toLabel(iname, name)..". It should be one of '"..ivalue.."'.")
 							elseif not belong(ext, e) then
 								customError("Invalid file extension for parameter "..toLabel(iname, name)..". It should be one of '"..ivalue.."'.")
-							elseif not isFile(iargv[iname]) then
+							elseif not iargv[iname]:exists() then
 								resourceNotFoundError(toLabel(iname, name), iargv[iname])
 							end
 						elseif iargv[iname] == nil then
@@ -685,9 +734,27 @@ function Model(attrTab)
 			self.cObj_:notify(modelTime)
 		end
 
-		if argv.seed ~= nil then
-			positiveTableArgument(argv, "seed", true)
-			Random{seed = argv.seed}
+		argv.title = function(self)
+			local parameters = self.parent:getParameters()
+			local str = ""
+
+			forEachOrderedElement(parameters, function(idx, value, mtype)
+				if mtype == "Choice" then
+					if self[idx] ~= value.default and idx ~= "finalTime" then
+						str = str.._Gtme.stringToLabel(idx).." = "..vardump(self[idx])..", "
+					end
+				elseif self[idx] ~= value and idx ~= "finalTime" then
+					str = str.._Gtme.stringToLabel(idx).." = "..vardump(self[idx])..", "
+				end
+			end)
+
+			if str == "" then
+				str = "Default"
+			else
+				str = string.sub(str, 1, -3)
+			end
+
+			return str
 		end
 
 		attrTab.init(argv)

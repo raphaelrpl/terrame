@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------------------
 -- TerraME - a software platform for multiple scale spatially-explicit dynamic modeling.
--- Copyright (C) 2001-2016 INPE and TerraLAB/UFOP -- www.terrame.org
+-- Copyright (C) 2001-2017 INPE and TerraLAB/UFOP -- www.terrame.org
 
 -- This code is part of the TerraME framework.
 -- This framework is free software; you can redistribute it and/or
@@ -144,7 +144,7 @@ Trajectory_ = {
 
 		if type(self.select) == "function" then
 			for i, cell in ipairs(self.parent.cells) do
-				if self.select(cell) then 
+				if self.select(cell) then
 					table.insert(self.cells, cell)
 					self.cObj_:add(i, cell.cObj_)
 				end
@@ -202,7 +202,8 @@ Trajectory_ = {
 		end
 	end,
 	--- Rebuild the Trajectory from the CellularSpace used as target.
-	-- It is a shortcut to Trajectory:filter() and then Trajectory:sort().
+	-- It is a shortcut to Trajectory:filter() and then Trajectory:randomize() (if the Trajectory was created
+	-- using random = true) or Trajectory:sort() (otherwise).
 	-- @usage cell = Cell{
 	--     dist = Random{min = 0, max = 50}
 	-- }
@@ -227,7 +228,12 @@ Trajectory_ = {
 	-- print(#traj)
 	rebuild = function(self)
 		self:filter()
-		self:sort()
+
+		if self.random then
+			self:randomize()
+		else
+			self:sort()
+		end
 	end,
 	--- Sort the current CellularSpace subset. It updates the traversing order of the Trajectory.
 	-- @arg f An ordering function (Cell, Cell)->boolean, working in the same way of
@@ -298,6 +304,9 @@ metaTableTrajectory_ = {
 -- should belong to the Trajectory. If this function returns anything but false or nil for a given
 -- Cell, it will be added to the Trajectory. If this argument is missing, all Cells will be
 -- included in the Trajectory.
+-- @arg data.random A boolean value indicating that the Trajectory must be shuffled. The Trajectory will be
+-- shuffled every time one calls Trajectory:rebuild() or when the Trajectory is an action of an Event.
+-- This argument cannot be combined with argument greater.
 -- @arg data.greater A function (Cell, Cell)->boolean to sort the Trajectory. Such function must
 -- return true if the first Cell has priority over the second one. When using this argument,
 -- Trajectory compares each pair of Cells to establish an execution order to be used by
@@ -330,14 +339,14 @@ metaTableTrajectory_ = {
 --         return c.dist < d.dist
 --     end
 -- }
--- 
+--
 -- traj = Trajectory{
 --     target = cs,
 --     greater = function(c, d)
 --         return c.dist < d.dist
 --     end
 -- }
--- 
+--
 -- traj = Trajectory{
 --     target = cs,
 --     build = false
@@ -345,15 +354,15 @@ metaTableTrajectory_ = {
 function Trajectory(data)
 	verifyNamedTable(data)
 
-	verifyUnnecessaryArguments(data, {"target", "build", "select", "greater"})
+	verifyUnnecessaryArguments(data, {"target", "build", "select", "greater", "random"})
+	mandatoryTableArgument(data, "target", {"CellularSpace", "Trajectory"})
 
-	if data.target == nil then
-		mandatoryArgumentError("target")
-	elseif type(data.target) ~= "CellularSpace" and type(data.target) ~= "Trajectory" then
-		incompatibleTypeError("target", "CellularSpace or Trajectory", data.target)
+	if data.greater and data.random then
+		customError("It is not possible to use arguments 'greater' and 'random' at the same time.")
 	end
 
 	defaultTableValue(data, "build", true)
+	defaultTableValue(data, "random", false)
 
 	data.parent = data.target
 
@@ -378,6 +387,7 @@ function Trajectory(data)
 	if data.build then
 		data:filter()
 		if data.greater then data:sort() end
+		if data.random then data:randomize() end
 		data.build = nil
 	end
 

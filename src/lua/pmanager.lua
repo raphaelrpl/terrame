@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------------------
 -- TerraME - a software platform for multiple scale spatially-explicit dynamic modeling.
--- Copyright (C) 2001-2016 INPE and TerraLAB/UFOP -- www.terrame.org
+-- Copyright (C) 2001-2017 INPE and TerraLAB/UFOP -- www.terrame.org
 
 -- This code is part of the TerraME framework.
 -- This framework is free software; you can redistribute it and/or
@@ -22,9 +22,16 @@
 --
 -------------------------------------------------------------------------------------------
 
+-- some qt values
+local qtOk = 2 ^ 10
+local qtYes = 2 ^ 14
+local qtNo = 2 ^ 16
+local qtCancel = 2 ^ 22
+
 local comboboxExamples
 local comboboxModels
 local comboboxPackages
+local comboboxProjects
 local aboutButton
 local configureButton
 local projButton
@@ -35,6 +42,7 @@ local quitButton
 local runButton
 local dialog
 local oldState
+local filesInCurrentDirectory = {}
 
 local function breakLines(str)
 	local result = ""
@@ -47,13 +55,13 @@ local function breakLines(str)
 	for word in str:gmatch("%g+") do table.insert(words, word) end
 
 	forEachElement(words, function(_, word)
-    	if string.len(word) + 1 > spaceLeft then
+		if string.len(word) + 1 > spaceLeft then
 			result = result.."\n"..word.." "
 			lines = lines + 1
 			spaceLeft = lineWidth - string.len(word)
-    	else
+		else
 			result = result..word.." "
-        	spaceLeft = spaceLeft - (string.len(word) + 1)
+			spaceLeft = spaceLeft - (string.len(word) + 1)
 		end
 	end)
 	return result, lines
@@ -63,6 +71,7 @@ local function disableAll()
 	oldState = {
 		[comboboxExamples] = comboboxExamples.enabled,
 		[comboboxModels]   = comboboxModels.enabled,
+		[comboboxProjects] = comboboxProjects.enabled,
 		[projButton]       = projButton.enabled,
 		[docButton]        = docButton.enabled,
 		[configureButton]  = configureButton.enabled,
@@ -72,9 +81,10 @@ local function disableAll()
 	comboboxExamples.enabled   = false
 	comboboxModels.enabled     = false
 	comboboxPackages.enabled   = false
+	comboboxProjects.enabled   = false
 	aboutButton.enabled        = false
 	configureButton.enabled    = false
-	projButton.enabled           = false
+	projButton.enabled         = false
 	docButton.enabled          = false
 	installLocalButton.enabled = false
 	installButton.enabled      = false
@@ -85,6 +95,7 @@ end
 local function enableAll()
 	comboboxExamples.enabled = oldState[comboboxExamples]
 	comboboxModels.enabled   = oldState[comboboxModels]
+	comboboxProjects.enabled = oldState[comboboxProjects]
 	configureButton.enabled  = oldState[configureButton]
 	projButton.enabled       = oldState[projButton]
 	docButton.enabled        = oldState[docButton]
@@ -98,23 +109,24 @@ local function enableAll()
 end
 
 local function buildComboboxPackages(default)
-	local s = sessionInfo().separator
 	comboboxPackages:clear()
 	local pos = 0
 	local index = 0
-	local pkgDir = sessionInfo().path..s.."packages"
-	forEachFile(pkgDir, function(file)
-		if file == "luadoc" or not isDir(pkgDir..s..file) then return end
-	
-		qt.combobox_add_item(comboboxPackages, file)
-	
-		if file == default then
+	local pkgDir = sessionInfo().path.."packages"
+	forEachDirectory(pkgDir, function(dir)
+		local name = dir:name()
+		if name == "luadoc" then return end
+
+		qt.combobox_add_item(comboboxPackages, name)
+
+		if name == default then
 			index = pos
 		else
 			pos = pos + 1
 		end
 	end)
-	return index
+
+	comboboxPackages:setCurrentIndex(index)
 end
 
 local function aboutButtonClicked()
@@ -123,7 +135,6 @@ local function aboutButtonClicked()
 	local info = packageInfo(comboboxPackages.currentText)
 
 	msg = msg.."\n\nVersion: "..tostring(info.version)
-	msg = msg.."\n\nDate: "..tostring(info.date)
 	msg = msg.."\n\nAuthors: "..tostring(info.authors)
 	msg = msg.."\n\nContact: "..tostring(info.contact)
 
@@ -141,54 +152,37 @@ local function docButtonClicked()
 	enableAll()
 end
 
-local function projButtonClicked()
-	disableAll()
-	local package = comboboxPackages.currentText
-	local s = _Gtme.sessionInfo().separator
-	local files = _Gtme.projectFiles(package)
-
-	local msg = "The following projects will be created:\n"
-	_Gtme.forEachElement(files, function(_, value)
-		local database = string.sub(value, 1, string.len(value) - 4)
-		msg = msg.."- "..database.."\n"
-	end)
-
-	-- QMessageBox::StandardButton
-	local ok = 1024
-	local cancel = 4194304
-
-	msg = msg.."\nThis operation will take some time. Confirm?"
-	if qt.dialog.msg_question(msg, "Confirm?", ok + cancel, cancel) == ok then
-		local data = _Gtme.packageInfo(package).data..s
-		_Gtme.forEachElement(files, function(_, value)
-			_Gtme.printNote("Processing "..data..value)
-			dofile(data..value)
-			_Gtme.clean()
-		end)
-
-		qt.dialog.msg_information("All "..#files.." projects were successfully created.")
-	end
-	enableAll()
-end
-
 local function configureButtonClicked()
 	disableAll()
 
-    local ok, res = _Gtme.execConfigure(comboboxModels.currentText, comboboxPackages.currentText)
-    if not ok then
-       qt.dialog.msg_critical(res)
-    end	
-	
+	_Gtme.loadedPackages[comboboxPackages.currentText] = nil
+
+	local ok, res = _Gtme.execConfigure(comboboxModels.currentText, comboboxPackages.currentText)
+	if not ok then
+		qt.dialog.msg_critical(res)
+	end
+
 	enableAll()
 end
 
 local function runButtonClicked()
 	disableAll()
 
-    local ok, res = _Gtme.execExample(comboboxExamples.currentText, comboboxPackages.currentText)
-    if not ok then
-       qt.dialog.msg_critical(res)
-    end
+	local ok, res = _Gtme.execExample(comboboxExamples.currentText, comboboxPackages.currentText)
+	if not ok then
+		qt.dialog.msg_critical(res)
+	end
+
+	enableAll()
+end
+
+local function projButtonClicked()
+	disableAll()
+
+	local ok, res = _Gtme.execProject(comboboxProjects.currentText, comboboxPackages.currentText)
+	if not ok then
+		qt.dialog.msg_critical(res)
+	end
 
 	enableAll()
 end
@@ -198,6 +192,8 @@ local function selectPackage()
 	local s = sessionInfo().separator
 	comboboxExamples:clear()
 	comboboxModels:clear()
+	comboboxProjects:clear()
+
 	local models
 
 	local result = xpcall(function() getPackage(comboboxPackages.currentText) end, function(err)
@@ -213,7 +209,7 @@ local function selectPackage()
 			sessionInfo().fullTraceback = true
 			local trace = _Gtme.traceback(err)
 			local merr = "Error: Package '"..comboboxPackages.currentText.."' could not be loaded:\n\n"..trace
-	
+
 			qt.dialog.msg_critical(merr)
 		end)
 	end
@@ -229,9 +225,9 @@ local function selectPackage()
 	end
 
 	local docpath = packageInfo(comboboxPackages.currentText).path
-	docpath = docpath..s.."doc"..s.."index.html"
+	docpath = docpath.."doc"..s.."index.html"
 
-	docButton.enabled = isFile(docpath)
+	docButton.enabled = File(docpath):exists()
 
 	comboboxModels.enabled = #models > 1
 	configureButton.enabled = #models > 0
@@ -250,7 +246,14 @@ local function selectPackage()
 	end)
 
 	local files = _Gtme.projectFiles(comboboxPackages.currentText)
+
+	comboboxProjects.enabled = #files > 1
 	projButton.enabled = #files > 0
+
+	forEachElement(files, function(_, value)
+		local _, file = value:split()
+		qt.combobox_add_item(comboboxProjects, file)
+	end)
 end
 
 local function installButtonClicked()
@@ -277,92 +280,67 @@ local function installButtonClicked()
 	qt.ui.layout_add(mdialog, externalLayout)
 
 	local listPackages = qt.new_qobject(qt.meta.QListWidget)
+	local hasPackageToInstall = false
 
-	local count = 0
-	forEachOrderedElement(packages, function(idx, data)
-		data.file = data.package.."_"..data.version..".zip"
-		data.newversion = true
+	local setPackagesListWidget = function(pkgs)
+		listPackages:clear()
+		local count = 0
+		forEachOrderedElement(pkgs, function(idx, data)
+			data.file = data.package.."_"..data.version..".zip"
+			data.newversion = true
 
-		pkgsTab[count] = data
+			pkgsTab[count] = data
 
-		local ok, info = pcall(function() return packageInfo(idx) end)
-		local package = idx
+			local ok, info = pcall(function() return packageInfo(idx) end)
+			local package = idx
 
-		if ok then
-			packages[info.package].currentVersion = info.version
+			if ok then
+				pkgs[info.package].currentVersion = info.version
 
-        	if _Gtme.verifyVersionDependency(info.version, ">=", data.version) then
-				package = package.." (already installed)"
-				pkgsTab[count].newversion = false
-			else
-				package = package.." (version "..data.version.." available)"
+				if _Gtme.verifyVersionDependency(info.version, ">=", data.version) then
+					package = package.." (already installed)"
+					pkgsTab[count].newversion = false
+				else
+					package = package.." (version "..data.version.." available)"
+					hasPackageToInstall = true
+				end
+			elseif not hasPackageToInstall then
+				hasPackageToInstall = true
 			end
-		end
 
-		count = count + 1
-		qt.listwidget_add_item(listPackages, package)
-	end)
+			count = count + 1
+			qt.listwidget_add_item(listPackages, package)
+		end)
+	end
+
+	setPackagesListWidget(packages)
 
 	local installButton2 = qt.new_qobject(qt.meta.QPushButton)
 	installButton2.text = "Install"
-	qt.connect(installButton2, "clicked()", function()
-		local tmpdirectory = tmpDir()
-		local cdir = currentDir()
+	installButton2.enabled = false
 
-		_Gtme.chDir(tmpdirectory)
+	local installAllButton = qt.new_qobject(qt.meta.QPushButton)
+	installAllButton.text = "Install All"
+	installAllButton.enabled = hasPackageToInstall
+
+	local cancelButton = qt.new_qobject(qt.meta.QPushButton)
+	cancelButton.text = "Close"
+	qt.connect(cancelButton, "clicked()", function()
+		enableAll()
+		mdialog:done(0)
+	end)
+
+	qt.connect(installButton2, "clicked()", function()
+		installButton2.enabled = false
+		installAllButton.enabled = false
+		cancelButton.enabled = false
 
 		local mpkgfile = pkgsTab[listPackages.currentRow].file
-		local installed = {}
-
-		local installRecursive
-
-		installRecursive = function(pkgfile)
-			_Gtme.print("Downloading "..pkgfile)
-			_Gtme.downloadPackage(pkgfile)
-			_Gtme.print("Installing "..pkgfile)
-			local package = string.sub(pkgfile, 1, string.find(pkgfile, "_") - 1)
-
-    		os.execute("unzip -oq \""..pkgfile.."\"")
-
-    		_Gtme.print("Verifying dependencies")
-
-    		local pinfo = packageInfo(package)
-
-    		if pinfo.tdepends then
-		    	forEachElement(pinfo.tdepends, function(_, dtable)
-					if dtable.package == "terrame" or dtable.package == "base" then return end
-
-					_Gtme.print("Package depends on "..dtable.package)
-		    	    local isInstalled = pcall(function() packageInfo(dtable.package) end)
-
-					if not isInstalled then
-						if not installRecursive(packages[dtable.package].file) then
-							return false
-						end
-
-						installed[dtable.package] = true
-						return true
-					end
-				end)
-			end
-
-			local status, err = pcall(function() _Gtme.installPackage(pkgfile) end)
-
-			if not status then
-				qt.dialog.msg_critical("File "..pkgfile.." could not be installed:\n"..err)
-				return false
-			end
-
-			return true
-		end
-
-		local result = installRecursive(mpkgfile)
+		local result, installed = _Gtme.installRecursive(mpkgfile)
 		local package = string.sub(mpkgfile, 1, string.find(mpkgfile, "_") - 1)
 
 		if result then
-			msg = "Package '"..package.."' successfully installed."
-
-			print(_Gtme.getn(installed))
+			local msg = "Package '"..package.."' successfully installed."
 
 			if _Gtme.getn(installed) == 1 then
 				msg = msg.." One additional dependency package was installed:"
@@ -378,25 +356,49 @@ local function installButtonClicked()
 
 			qt.dialog.msg_information(msg)
 
-			local index = buildComboboxPackages(package)
-			comboboxPackages:setCurrentIndex(index)
+			buildComboboxPackages(package)
 			selectPackage()
-			disableAll()
 		else
 			qt.dialog.msg_critical("Package '"..package.."' could not be installed.")
 		end
 
-		rmFile(mpkgfile)
-
-		_Gtme.chDir(cdir)
-		rmDir(tmpdirectory)
-		mdialog:done(0)
+		setPackagesListWidget(packages)
+		installAllButton.enabled = hasPackageToInstall
+		cancelButton.enabled = true
 	end)
 
-	local cancelButton = qt.new_qobject(qt.meta.QPushButton)
-	cancelButton.text = "Cancel"
-	qt.connect(cancelButton, "clicked()", function()
-		mdialog:done(0)
+	qt.connect(installAllButton, "clicked()", function()
+		installAllButton.enabled = false
+		installButton2.enabled = false
+		cancelButton.enabled = false
+
+		local msg = ""
+
+		for i = 0, _Gtme.getn(pkgsTab) - 1 do
+			if pkgsTab[i].newversion then
+				local mpkgfile = pkgsTab[i].file
+				local result, _ = _Gtme.installRecursive(mpkgfile)
+				local package = string.sub(mpkgfile, 1, string.find(mpkgfile, "_") - 1)
+
+				if result then
+					if msg ~= "" then
+						msg = msg.."\n"
+					end
+
+					msg = msg.."Package '"..package.."' successfully installed."
+				else
+					qt.dialog.msg_critical("Package '"..package.."' could not be installed.")
+				end
+
+				setPackagesListWidget(packages)
+			end
+		end
+
+		if msg ~= "" then
+			qt.dialog.msg_information(msg)
+		end
+
+		cancelButton.enabled = true
 	end)
 
 	local description = qt.new_qobject(qt.meta.QLabel)
@@ -408,8 +410,8 @@ local function installButtonClicked()
 
 		local idx = pkgsTab[listPackages.currentRow].file
 
-        local sep = string.find(idx, "_")
-        local package = string.sub(idx, 1, sep - 1)
+		local sep = string.find(idx, "_")
+		local package = string.sub(idx, 1, sep - 1)
 
 		local lines = 0
 
@@ -457,6 +459,7 @@ local function installButtonClicked()
 
 	internalLayout = qt.new_qobject(qt.meta.QHBoxLayout)
 	qt.ui.layout_add(internalLayout, installButton2)
+	qt.ui.layout_add(internalLayout, installAllButton)
 	qt.ui.layout_add(internalLayout, cancelButton)
 
 	qt.ui.layout_add(externalLayout, internalLayout)
@@ -464,7 +467,7 @@ local function installButtonClicked()
 	mdialog:exec()
 	enableAll()
 end
-	
+
 local function installLocalButtonClicked()
 	disableAll()
 	local s = sessionInfo().separator
@@ -488,18 +491,13 @@ local function installLocalButtonClicked()
 	end
 
 	local currentVersion
-	local packageDir = _Gtme.sessionInfo().path..s.."packages"
-	if isDir(packageDir..s..package) then
+	local packageDir = _Gtme.sessionInfo().path.."packages"
+	if Directory(packageDir..s..package):exists() then
 		currentVersion = packageInfo(package).version
 		_Gtme.printNote("Package '"..package.."' is already installed")
 	else
 		_Gtme.printNote("Package '"..package.."' was not installed before")
 	end
-
-	local tmpdirectory = tmpDir()
-
-	os.execute("cp \""..file.."\" \""..tmpdirectory.."\"")
-	_Gtme.chDir(tmpdirectory)
 
 	os.execute("unzip -oq \""..file.."\"")
 
@@ -510,14 +508,13 @@ local function installLocalButtonClicked()
 			local msg = "New version ("..newVersion..") is older than current one ("
 				..currentVersion..").".."\nDo you really want to install "
 				.."an older version of package '"..package.."'?"
-			local ok = 1024
-			local cancel = 4194304
 
-			if qt.dialog.msg_question(msg, "Confirm?", ok + cancel, cancel) == ok then
+			if qt.dialog.msg_question(msg, "Confirm?", qtOk + qtCancel, qtCancel) == qtOk then
 				_Gtme.printNote("Removing previous version of package")
-				rmDir(packageDir..s..package)
+				Directory(packageDir..s..package):delete()
 			else
-				rmDir(tmpdirectory)
+				if isDirectory(package) then Directory(package):delete() end
+
 				enableAll()
 				return
 			end
@@ -531,15 +528,14 @@ local function installLocalButtonClicked()
 	if pkg then
 		local ok = true
 		xpcall(function() getPackage(package) end, function(err)
-			rmDir(packageInfo(package).path)
+			packageInfo(package).path:delete()
 			qt.dialog.msg_critical(err)
 			ok = false
 		end)
 
 		if ok then
 			qt.dialog.msg_information("Package '"..package.."' successfully installed.")
-			local index = buildComboboxPackages(package)
-			comboboxPackages:setCurrentIndex(index)
+			buildComboboxPackages(package)
 			selectPackage()
 			disableAll()
 		end
@@ -549,11 +545,47 @@ local function installLocalButtonClicked()
 end
 
 local function quitButtonClicked()
+	local createdFiles = {}
+
+	forEachFile(".", function(file)
+		if not filesInCurrentDirectory[file:name()] and file:extension() == "lua" and string.match(tostring(file), "-instance") then
+			createdFiles[file:name()] = true
+		end
+	end)
+
+	local countCreated = getn(createdFiles)
+
+	if countCreated > 0 then
+		local msg
+
+		if countCreated == 1 then
+			msg = "The folowing file was created in directory "..currentDir().." while you run TerraME:"
+		else
+			msg = "The folowing files were created in directory "..currentDir().." while you run TerraME:"
+		end
+
+		forEachOrderedElement(createdFiles, function(idx)
+			msg = msg.."\n - "..idx
+		end)
+
+		if countCreated == 1 then
+			msg = msg.."\n\nDo you want to delete it?"
+		else
+			msg = msg.."\n\nDo you want to delete them?"
+		end
+
+		if qt.dialog.msg_question(msg, "Confirm?", qtYes + qtNo, qtNo) == qtYes then
+			forEachElement(createdFiles, function(idx)
+				File(idx):delete()
+			end)
+		end
+	end
+
 	dialog:done(0)
 end
 
 function _Gtme.packageManager()
-    _Gtme.loadLibraryPath()
+	_Gtme.loadLibraryPath()
 
 	require("qtluae")
 
@@ -576,17 +608,12 @@ function _Gtme.packageManager()
 	docButton.text = "Documentation"
 	qt.connect(docButton, "clicked()", docButtonClicked)
 
-	projButton = qt.new_qobject(qt.meta.QPushButton)
-	projButton.text = "Projects"
-	qt.connect(projButton, "clicked()", projButtonClicked)
-
 	label = qt.new_qobject(qt.meta.QLabel)
 	label.text = "Package:"
 	qt.ui.layout_add(internalLayout, label,            0, 0)
 	qt.ui.layout_add(internalLayout, comboboxPackages, 0, 1)
 	qt.ui.layout_add(internalLayout, aboutButton,      0, 2)
 	qt.ui.layout_add(internalLayout, docButton,        0, 3)
-	qt.ui.layout_add(internalLayout, projButton,       0, 4)
 
 	-- models list + execute button
 	comboboxModels = qt.new_qobject(qt.meta.QComboBox)
@@ -616,8 +643,21 @@ function _Gtme.packageManager()
 	qt.ui.layout_add(internalLayout, comboboxExamples, 2, 1)
 	qt.ui.layout_add(internalLayout, runButton,        2, 2)
 
-	local index = buildComboboxPackages("base")
-	comboboxPackages:setCurrentIndex(index)
+	-- projects list + execute button
+	comboboxProjects = qt.new_qobject(qt.meta.QComboBox)
+
+	label = qt.new_qobject(qt.meta.QLabel)
+	label.text = "Project:"
+
+	projButton = qt.new_qobject(qt.meta.QPushButton)
+	projButton.text = "Create"
+	qt.connect(projButton, "clicked()", projButtonClicked)
+
+	qt.ui.layout_add(internalLayout, label,            3, 0)
+	qt.ui.layout_add(internalLayout, comboboxProjects, 3, 1)
+	qt.ui.layout_add(internalLayout, projButton,       3, 2)
+
+	buildComboboxPackages("base")
 
 	qt.connect(comboboxPackages, "activated(int)", selectPackage)
 
@@ -648,10 +688,13 @@ function _Gtme.packageManager()
 	qt.connect(quitButton, "clicked()", quitButtonClicked)
 
 	qt.ui.layout_add(externalLayout, internalLayout)
-	qt.ui.layout_add(externalLayout, buttonsLayout, 3, 0)
+	qt.ui.layout_add(externalLayout, buttonsLayout, 4, 0)
+
+	forEachFile(".", function(file)
+		filesInCurrentDirectory[file:name()] = true
+	end)
 
 	selectPackage()
 	dialog:show()
 	dialog:exec()
 end
-

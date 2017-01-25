@@ -3,7 +3,7 @@ Parsing configuration file 'config/all.lua'
 
 Testing package 'onerrorbuild'
 Loading configuration file 'config/all.lua'
-Using log directory 'log/mac'
+Using log directory '/Applications/terrame.app/Contents/MacOS/packages/onerrorbuild/log/mac/'
 Loading package 'onerrorbuild'
 Looking for overwritten variables
 Looking for documented functions
@@ -43,6 +43,7 @@ All 3 tested functions exist in the source code of the package.
 No tested function creates or updates any global variable.
 No function prints any text on the screen.
 No assertError() calls have error messages pointing to internal files.
+No file was created along the tests.
 All 2 functions of the package were tested.
 All lines from the source code were executed.
 All 1 examples were successfully executed.
@@ -79,8 +80,6 @@ Building and checking HTML files
 Building doc/index.html
 Building doc/files/Utils.html
 Building doc/files/examples.html
-Building doc/files/data.html
-Building doc/files/font.html
 Building doc/files/models.html
 Checking images
 Checking data.lua
@@ -93,14 +92,15 @@ Checking Utils.lua
 Checking if all Models are documented
 
 Documentation report for package 'onerrorbuild':
-Documentation was built in 1.17 seconds.
-5 HTML files were created.
+Documentation was built in 0.06 seconds.
+4 HTML files were created.
 All files are documented.
 One problem was found in 'description.lua'.
 No problems were found in the documentation of data.
 No problems were found in the documentation of fonts.
 All source code lines starting with --- are valid.
 The single Model is correctly documented.
+All projects were successfully processed.
 All 1 global functions of the package are documented.
 All functions of each file are declared only once.
 All descriptions end with a correct character.

@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------------------
 -- TerraME - a software platform for multiple scale spatially-explicit dynamic modeling.
--- Copyright (C) 2001-2016 INPE and TerraLAB/UFOP -- www.terrame.org
+-- Copyright (C) 2001-2017 INPE and TerraLAB/UFOP -- www.terrame.org
 
 -- This code is part of the TerraME framework.
 -- This framework is free software; you can redistribute it and/or
@@ -32,23 +32,23 @@ local function verifyTest(package, report)
 
 	local baseDir = packageInfo(package).path
 	local s = sessionInfo().separator
-	local testDir = baseDir..s.."tests"
+	local testDir = baseDir.."tests"
 	local internalDirectory = false
+	local dir = Directory(testDir)
 
-	if not isDir(baseDir..s.."lua") then
+	if not Directory(baseDir.."lua"):exists() then
 		_Gtme.print("Package '"..package.."' does not have source code")
 		return
 	end
 
-	if not isDir(testDir) then
+	if not dir:exists() then
 		printWarning("Creating directory 'tests'")
-		mkDir(testDir)
+		dir:create()
 	end
 
-	forEachFile(testDir, function(mfile)
-		if isDir(testDir..s..mfile) then
-			internalDirectory = true
-		end
+	forEachDirectory(testDir, function()
+		internalDirectory = true
+		return false
 	end)
 
 	if internalDirectory then
@@ -60,7 +60,7 @@ local function verifyTest(package, report)
 	local testfunctions = _Gtme.buildCountTable(package)
 
 	forEachOrderedElement(testfunctions, function(idx, value)
-		if isFile(testDir..s..idx) then
+		if File(testDir..s..idx):exists() then
 			print("File '"..idx.."' already exists in the tests")
 			return
 		end
@@ -109,7 +109,7 @@ local function verifyTest(package, report)
 					str = str.."\n"
 				end
 
-				str = str.."\t\tmodel:execute()\n\n"
+				str = str.."\t\tmodel:run()\n\n"
 
 				local countChart = 1
 				countMap = 1
@@ -146,19 +146,18 @@ local function verifyData(package, report)
 	printNote("Verifying data files")
 
 	local baseDir = packageInfo(package).path
-	local s = sessionInfo().separator
-	local dataDir = baseDir..s.."data"
+	local dataDir = Directory(baseDir.."data")
 
-	if not isDir(dataDir) then
+	if not dataDir:exists() then
 		_Gtme.print("Package '"..package.."' does not have a data directory")
 		return
 	end
 
 	local datafiles = {}
-	local datadotlua = baseDir..s.."data.lua"
+	local datadotlua = baseDir.."data.lua"
 
 	forEachFile(dataDir, function(file)
-		datafiles[file] = false
+		datafiles[file:name()] = false
 	end)
 
 	if getn(datafiles) == 0 then
@@ -166,7 +165,7 @@ local function verifyData(package, report)
 		return
 	end
 
-	if isFile(datadotlua) then
+	if File(datadotlua):exists() then
 		local originaldata = data
 		data = function(mdata)
 			if type(mdata.file) == "string" then
@@ -178,7 +177,7 @@ local function verifyData(package, report)
 			end
 		end
 
-		_Gtme.include(datadotlua)
+		_Gtme.getLuaFile(datadotlua)
 		data = originaldata
 	else
 		_Gtme.print("Creating 'data.lua'")
@@ -186,30 +185,87 @@ local function verifyData(package, report)
 
 	local mfile = io.open(datadotlua, "a")
 
+	local tl = getPackage("terralib")
+
+	sessionInfo().mode = "quiet"
+
+	myProject = tl.Project{
+		file = "tmpproj.tview",
+		clean = true
+	}
+
+	counter = 1
+
+	forEachDirectory(dataDir, function(dir)
+		_Gtme.print("Directory '"..dir:name().."' will be ignored")
+	end)
+
 	forEachOrderedElement(datafiles, function(idx, value)
+		local file = filePath(idx, package)
+		local _, name, extension = file:split()
+
 		if value then
 			_Gtme.print("File '"..idx.."' is already documented in 'data.lua'")
-		elseif isDir(dataDir..s..idx) then
-			_Gtme.print("Directory '"..idx.."' will be ignored")
 		elseif _Gtme.ignoredFile(idx) then
 			_Gtme.print("File '"..idx.."' does not need to be documented")
+		elseif extension == "tview" and File(dataDir..name..".lua"):exists() then
+			_Gtme.print("Project file '"..idx.."' does not need to be documented (a Lua file creates it)")
+		elseif extension == "shp" and File(dataDir..name..".lua"):exists() then
+			_Gtme.print("File '"..idx.."' does not need to be documented (a Lua file creates it)")
 		else
 			_Gtme.printWarning("Adding sketch for data file '"..idx.."'")
 			local str = "data{\n"
 				.."\tfile = \""..idx.."\",\n"
-    			.."\tsummary = \"\",\n"
-    			.."\tsource = \"\",\n"
-    			.."\tattributes = {},  -- optional\n"
-    			.."\ttypes = {},       -- optional\n"
-    			.."\tdescription = {}, -- optional\n"
-    			.."\treference = \"\"    -- optional\n"
-				.."}\n\n"
+				.."\tsummary = \"\",\n"
+				.."\tsource = \"\",\n"
+				.."\treference = \"\""
+
+			if extension == "shp" or extension == "geojson" then
+				layer = tl.Layer{
+					project = myProject,
+					file = filePath(idx, package),
+					name = "layer"..counter
+				}
+
+				counter = counter + 1
+
+				str = str..",\n\tattributes = {\n"
+
+				local attributes = layer:attributes()
+
+				forEachElement(attributes, function(_, mvalue)
+					str = str.."\t\t"..mvalue.." = \"\",\n"
+				end)
+
+				str = str.."\t}"
+			elseif extension == "tif" then
+				layer = tl.Layer{
+					project = myProject,
+					file = filePath(idx, package),
+					name = "layer"..counter
+				}
+
+				counter = counter + 1
+
+				str = str..",\n\tattributes = {\n"
+
+				local bands = layer:bands()
+				for i = 0, bands - 1 do
+					str = str.."\t\t[\""..i.."\"] = \"\",\n"
+				end
+
+				str = str.."\t}"
+			end
+
+			str = str.."\n}\n\n"
 			mfile:write(str)
 
 			report.created_data = report.created_data + 1
 		end
 	end)
 
+	sessionInfo().mode = "strict"
+	File("tmpproj.tview"):delete()
 	mfile:close()
 end
 
@@ -217,19 +273,18 @@ local function verifyFont(package, report)
 	printNote("Verifying font files")
 
 	local baseDir = packageInfo(package).path
-	local s = sessionInfo().separator
-	local fontDir = baseDir..s.."font"
+	local fontDir = baseDir.."font"
 
-	if not isDir(fontDir) then
+	if not Directory(fontDir):exists() then
 		_Gtme.print("Package '"..package.."' does not have a font directory")
 		return
 	end
 
 	local fontfiles = {}
-	local fontdotlua = baseDir..s.."font.lua"
+	local fontdotlua = baseDir.."font.lua"
 
 	forEachFile(fontDir, function(file)
-		fontfiles[file] = false
+		fontfiles[file:name()] = false
 	end)
 
 	if getn(fontfiles) == 0 then
@@ -237,7 +292,7 @@ local function verifyFont(package, report)
 		return
 	end
 
-	if isFile(fontdotlua) then
+	if File(fontdotlua):exists() then
 		local originalfont = font
 		font = function(mfont)
 			if type(mfont.file) == "string" then
@@ -245,7 +300,7 @@ local function verifyFont(package, report)
 			end
 		end
 
-		_Gtme.include(fontdotlua)
+		_Gtme.getLuaFile(fontdotlua)
 		font = originalfont
 	else
 		_Gtme.print("Creating 'font.lua'")
@@ -260,10 +315,10 @@ local function verifyFont(package, report)
 			_Gtme.printWarning("Adding sketch for font file '"..idx.."'")
 			local str = "font{\n"
 				.."\tfile = \""..idx.."\",\n"
-    			.."\tname = \"\",    -- optional\n"
-    			.."\tsummary = \"\",\n"
-    			.."\tsource = \"\",\n"
-    			.."\tsymbol = {}\n"
+				.."\tname = \"\",    -- optional\n"
+				.."\tsummary = \"\",\n"
+				.."\tsource = \"\",\n"
+				.."\tsymbol = {}\n"
 				.."}\n\n"
 			mfile:write(str)
 
@@ -294,25 +349,25 @@ function _Gtme.sketch(package)
 	if report.created_files == 0 then
 		printNote("No new test file was necessary.")
 	elseif report.created_files == 1 then
-		printWarning("One test file was created.")
+		printWarning("One sketch to test a file was created.")
 	else
-		printWarning(report.created_files.." test files were created.")
+		printWarning(report.created_files.." sketches to test files were created.")
 	end
 
 	if report.created_data == 0 then
 		printNote("All data is already documented.")
 	elseif report.created_data == 1 then
-		printWarning("One data file was not documented.")
+		printWarning("One sketch for data file was created in 'data.lua'.")
 	else
-		printWarning(report.created_data.." data files were not documented.")
+		printWarning(report.created_data.." sketches for data files were created in 'data.lua'.")
 	end
 
 	if report.created_font == 0 then
 		printNote("All font files are already documented.")
 	elseif report.created_font == 1 then
-		printWarning("One font file was not documented.")
+		printWarning("One sketch for font file was created in 'font.lua'.")
 	else
-		printWarning(report.created_font.." font files were not documented.")
+		printWarning(report.created_font.." sketches for font files were created in 'font.lua'.")
 	end
 
 	local errors = 0

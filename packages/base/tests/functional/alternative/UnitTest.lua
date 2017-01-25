@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------------------
 -- TerraME - a software platform for multiple scale spatially-explicit dynamic modeling.
--- Copyright (C) 2001-2016 INPE and TerraLAB/UFOP -- www.terrame.org
+-- Copyright (C) 2001-2017 INPE and TerraLAB/UFOP -- www.terrame.org
 
 -- This code is part of the TerraME framework.
 -- This framework is free software; you can redistribute it and/or
@@ -94,19 +94,34 @@ return{
 			u:assertEquals("2", "3")
 		end
 
-		unitTest:assertError(error_func, "Values should be equal, but got \n'2' and \n'3'.")
+		unitTest:assertError(error_func, "Values should be equal, but got \n'2' and \n'3'. The maximum tolerance is 0, but got 1.")
 
 		error_func = function()
 			u:assertEquals("2", 3)
 		end
 
 		unitTest:assertError(error_func, "Values should be equal, but they have different types (string and number).")
-	
+
 		error_func = function()
 			u:assertEquals(true, false)
 		end
 
 		unitTest:assertError(error_func, "Values have the same type (boolean) but different values.")
+
+		local expected = [[string [biomassa-manaus.asc] ]]
+		local actual = [[string [/home/jenkins/Documents/ba1c13592dcf65f3d0b2929f8eff266c4e622470/install/bin/packages/terralib/data/biomassa-manaus.asc] ]]
+
+		error_func = function()
+			u:assertEquals(expected, actual, 0, "")
+		end
+
+		unitTest:assertError(error_func, incompatibleTypeMsg(4, "boolean", actual))
+
+		error_func = function()
+			u:assertEquals(expected, "bbb", 0, true)
+		end
+
+		unitTest:assertError(error_func, "Values should be equal, but got \n'"..expected.."' and \n'".."bbb".."'. The maximum tolerance is 0, but got 28.")
 	end,
 	assertError = function(unitTest)
 		local u = UnitTest{unittest = true}
@@ -145,13 +160,13 @@ return{
 		unitTest:assertError(error_func, resourceNotFoundMsg(1, "abcd1234.txt"))
 
 		error_func = function()
-			u:assertFile(sessionInfo().path)
+			u:assertFile(tostring(sessionInfo().path))
 		end
 
 		unitTest:assertError(error_func, "It is not possible to use a directory as #1 for assertFile().")
 
 		local c = Cell{value = 2}
-		LogFile{target = c, file = "mabc.csv"}
+		Log{target = c, file = "mabc.csv"}
 
 		c:notify()
 		unitTest:assertFile("mabc.csv")
@@ -164,7 +179,7 @@ return{
 			str = v
 		end
 
-		LogFile{target = c, file = "mabc.csv"}
+		Log{target = c, file = "mabc.csv"}
 
 		c:notify()
 		unitTest:assertFile("mabc.csv")
@@ -176,7 +191,7 @@ return{
 
 		u = UnitTest{}
 		c = Cell{value = 2}
-		LogFile{target = c, file = "abc.csv"}
+		Log{target = c, file = "abc.csv"}
 
 		c:notify()
 
@@ -184,9 +199,9 @@ return{
 			u:assertFile("abc.csv")
 		end
 
-		u:assertError(error_func, "It is not possible to use assertFile without a log directory location in a configuration file for the tests.")
+		u:assertError(error_func, "It is not possible to use assertFile without a 'log' directory.")
 
-		unitTest:assert(not isFile("abc.csv"))
+		unitTest:assert(not File("abc.csv"):exists())
 	end,
 	assertNil = function(unitTest)
 		local u = UnitTest{unittest = true}
@@ -229,24 +244,24 @@ return{
 		end
 
 		unitTest:assertError(error_func, incompatibleTypeMsg(3, "number", false))
-	
+
 		error_func = function()
 			u:assertSnapshot(ch, "file.bmp", 2)
 		end
 
 		unitTest:assertError(error_func, "Argument #3 should be between 0 and 1, got 2.")
-	
+
 		error_func = function()
 			u:assertSnapshot(ch, "file.bmp", -1)
 		end
 
 		unitTest:assertError(error_func, "Argument #3 should be between 0 and 1, got -1.")
-	
+
 		error_func = function()
 			u:assertSnapshot(ch, "file.bmp")
 		end
 
-		unitTest:assertError(error_func, "It is not possible to use assertSnapshot without a log directory location in a configuration file for the tests.")
+		unitTest:assertError(error_func, "It is not possible to use assertSnapshot without a 'log' directory.")
 	end,
 	assertType = function(unitTest)
 		local u = UnitTest{unittest = true}

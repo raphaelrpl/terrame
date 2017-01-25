@@ -1,18 +1,32 @@
 -- Script to test the package repository.
 -- To use it, just run 'terrame test.lua' within this directory.
 
+sessionInfo().fullTraceback = true
+
 local initialTime = os.time(os.date("*t"))
 local s = sessionInfo().separator
 local baseDir = sessionInfo().path
 local pkgDir = _Gtme.makePathCompatibleToAllOS(baseDir..s.."packages")
 
+printTestOutput = function(result)
+	_Gtme.printNote("Printing the test output")
+
+	count = 1
+
+	forEachElement(result, function(_, value)
+		_Gtme.printWarning(count.."\t"..value)
+		count = count + 1
+	end)
+
+	_Gtme.printNote("End of the test output")
+end
+
 _Gtme.printNote("Creating temporary directory")
-tmpdirectory = tmpDir(".terramerepository_XXXXX")
-chDir(tmpdirectory)
+tmpdirectory = Directory{name = ".terramerepository_XXXXX", tmp = true}
 
 _Gtme.printNote("Copying currently installed packages")
 
-local cpCmd = _Gtme.makePathCompatibleToAllOS("cp -R \""..pkgDir.."\" .")
+local cpCmd = _Gtme.makePathCompatibleToAllOS("cp -R \""..pkgDir.."\" \""..tmpdirectory.."\"")
 os.execute(cpCmd)
 
 local pkgs = _Gtme.downloadPackagesList()
@@ -32,6 +46,12 @@ forEachOrderedElement(pkgs, function(_, data)
 	_Gtme.downloadPackage(pkgfile)
 end)
 
+_Gtme.printNote("Removing packages")
+forEachOrderedElement(pkgs, function(pkgname)
+	_Gtme.print("Uninstalling "..pkgname)
+	_Gtme.uninstall(pkgname)
+end)
+
 _Gtme.printNote("Installing packages")
 forEachOrderedElement(pkgs, function(_, data)
 	pkgfile = data.package.."_"..data.version..".zip"
@@ -41,9 +61,12 @@ end)
 local function approximateLine(line)
 	if not line then return 0 end
 	
-	if string.match(line, "seconds")             then return   5 end
+	if string.match(line, "seconds")             then return  10 end
 	if string.match(line, "MD5")                 then return  70 end
-	if string.match(line, "configuration file")  then return   3 end
+	if string.match(line, "configuration file")  then return 120 end
+	if string.match(line, "Logs were saved")     then return 200 end
+	if string.match(line, "Using log directory") then return 200 end
+	if string.match(line, "Creating log dir")    then return 200 end
 	if string.match(line, "or is empty or does") then return  50 end
 	if string.match(line, "does not exist")      then return  50 end
 	if string.match(line, "is unnecessary%.")    then return  50 end
@@ -58,6 +81,9 @@ local function approximateLine(line)
 	if string.match(line, "Lua 5")               then return   3 end
 	if string.match(line, "Qt 5")                then return   3 end
 	if string.match(line, "Qwt 6")               then return   3 end
+	if string.match(line, "Testing")             then return  34 end
+	if string.match(line, "Processing")          then return  35 end
+	if string.match(line, "Skipping")            then return  34 end
 
 	return 0
 end
@@ -74,17 +100,22 @@ local function execute(command, filename)
 		report.errors = report.errors + 1
 	end
 
-	logfile = io.open(".."..s.."log"..s..filename, "r")
+	logfile = io.open("log"..s..filename, "r")
 	if logfile == nil then
 		_Gtme.printError("Creating log file '".._Gtme.makePathCompatibleToAllOS("log"..s..filename.."'"))
 		report.createdlogs = report.createdlogs + 1
 
-		logfile = io.open(".."..s.."log"..s..filename, "w")
+		logfile = io.open("log"..s..filename, "w")
 		forEachElement(result, function(_, value)
 			logfile:write(value.."\n")
 		end)
 	else
-		local resultfile = io.open(".."..s..tmpdirectory..s..filename, "w")
+		local resultfile = io.open(filename, "w")
+
+		if not resultfile then
+			_Gtme.printError("File '"..filename.."' could not be created")
+			os.exit(1)
+		end
 			
 		local line = 1
 		local logerror = false
@@ -121,10 +152,8 @@ local function execute(command, filename)
 				_Gtme.printError("Error: Strings do not match (line "..line.."):")
 				_Gtme.printError("Log file: '"..str.."'.")
 				_Gtme.printError("Test:     '"..value.."'.")
-
-				if distance > 0 then
-					_Gtme.printError("The distance ("..levenshtein(str, value)..") was greater than the maximum ("..distance..").")
-				end
+				_Gtme.printError("The distance ("..levenshtein(str, value)..") was greater than the maximum ("..distance..").")
+				printTestOutput(result)
 
 				report.locallogerrors = report.locallogerrors + 1
 				logerror = true
@@ -143,25 +172,85 @@ local function execute(command, filename)
 	end
 end
 
+_Gtme.printNote("Creating projects")
+forEachOrderedElement(pkgs, function(package)
+	local docInitialTime = os.time(os.date("*t"))
+
+	_Gtme.print("Creating projects for package '"..package.."'")
+	local command = "terrame -package "..package.." -projects"
+	runCommand(command)
+
+	local docFinalTime = os.time(os.date("*t"))
+	local difference = round(docFinalTime - docInitialTime, 1)
+
+	local text = "Projects created in "..difference.." seconds"
+
+	if difference > 30 then
+		_Gtme.print("\027[00;37;41m"..text.."\027[00m")
+	elseif difference > 10 then
+		_Gtme.print("\027[00;37;43m"..text.."\027[00m")
+	end
+end)
+
 _Gtme.printNote("Executing documentation")
 forEachOrderedElement(pkgs, function(package)
+	local docInitialTime = os.time(os.date("*t"))
+
 	_Gtme.print("Documenting package '"..package.."'")
 	local command = "terrame -package "..package.." -doc"
 	execute(command, "doc-"..package..".log")
+
+	local docFinalTime = os.time(os.date("*t"))
+	local difference = round(docFinalTime - docInitialTime, 1)
+
+	local text = "Documentation executed in "..difference.." seconds"
+
+	if difference > 30 then
+		_Gtme.print("\027[00;37;41m"..text.."\027[00m")
+	elseif difference > 10 then
+		_Gtme.print("\027[00;37;43m"..text.."\027[00m")
+	end
+
 end)
 
 _Gtme.printNote("Executing tests")
 forEachOrderedElement(pkgs, function(package)
+	local testInitialTime = os.time(os.date("*t"))
+
 	_Gtme.print("Testing package '"..package.."'")
+
 	local command = "terrame -package "..package.." -test"
+
 	execute(command, "test-"..package..".log")
+
+	local testFinalTime = os.time(os.date("*t"))
+	local difference = round(testFinalTime - testInitialTime, 1)
+
+	local text = "Test executed in "..difference.." seconds"
+
+	if difference > 30 then
+		_Gtme.print("\027[00;37;41m"..text.."\027[00m")
+	elseif difference > 10 then
+		_Gtme.print("\027[00;37;43m"..text.."\027[00m")
+	end
 end)
 
+_Gtme.printNote("Removing zip files")
+forEachOrderedElement(pkgs, function(_, data)
+	pkgfile = data.package.."_"..data.version..".zip"
+	_Gtme.print("Removing '"..pkgfile.."'")
+
+	File(pkgfile):delete()
+end)
+
+_Gtme.printNote("Removing packages.lua")
+File("packages.lua"):deleteIfExists()
+	
 _Gtme.printNote("Rolling back to previously installed packages")
 
 local rmCmd = _Gtme.makePathCompatibleToAllOS("rm -rf \""..pkgDir.."\"")
 os.execute(rmCmd)
-local cpCmd = _Gtme.makePathCompatibleToAllOS("cp -R \"packages\" \""..pkgDir.."\"")
+local cpCmd = _Gtme.makePathCompatibleToAllOS("cp -R \""..tmpdirectory.."packages\" \""..pkgDir.."\"")
 os.execute(cpCmd)
 
 local finalTime = os.time(os.date("*t"))
@@ -170,7 +259,6 @@ print("\nRepository test report:")
 
 _Gtme.printNote("Tests were executed in "..round(finalTime - initialTime, 2).." seconds.")
 _Gtme.printNote("The repository has "..report.packages.." packages.")
-_Gtme.printNote("Results were saved in '"..tmpdirectory.."'.")
 
 if report.createdlogs == 0 then
 	_Gtme.printNote("No log file was created.")

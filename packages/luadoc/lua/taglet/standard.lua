@@ -13,18 +13,17 @@ local exit = os.exit
 local io, table, string = io, table, string
 local ipairs, pairs = ipairs, pairs
 local printNote, printError, printWarning = _Gtme.printNote, _Gtme.printError, _Gtme.printWarning
-local print, attributes = print, attributes
+local print, attributes = print, function(filepath, attributename) return _Gtme.File(filepath):attributes(attributename) end
 local sessionInfo, belong = sessionInfo, belong
-local include = _Gtme.include
+local getLuaFile = getLuaFile
 local getn = getn
 local forEachElement = forEachElement
 local traceback = _Gtme.traceback
-local forEachFile = forEachFile
 local makepath = _Gtme.makePathCompatibleToAllOS
 
 local s = sessionInfo().separator
-local util = include(sessionInfo().path..s.."packages"..s.."luadoc"..s.."lua"..s.."main"..s.."util.lua")
-local tags = include(sessionInfo().path..s.."packages"..s.."luadoc"..s.."lua"..s.."taglet"..s.."standard"..s.."tags.lua")
+local util = getLuaFile(sessionInfo().path..s.."packages"..s.."luadoc"..s.."lua"..s.."main"..s.."util.lua")
+local tags = getLuaFile(sessionInfo().path..s.."packages"..s.."luadoc"..s.."lua"..s.."taglet"..s.."standard"..s.."tags.lua")
 
 -------------------------------------------------------------------------------
 -- Creates an iterator for an array base on a class type.
@@ -91,7 +90,7 @@ local function check_function(line)
 				__eq = "==",
 				-- __lt = "comparison operator",
 				-- __le = "comparison operator",
-				-- __index = "operator [] (index)"
+				__index = "[]"
 				-- __newindex = "operator [] (index)"
 				--__call = "call"
 			}
@@ -535,7 +534,7 @@ function parse_file(luapath, fileName, doc, doc_report, short_lua_path, silent)
 
 		local a 
 
-		pcall(function() a = include(fullpath) end)
+		pcall(function() a = getLuaFile(fullpath) end)
 
 		if type(a) == "table" then
 			local quant = getn(a) - 1
@@ -634,19 +633,7 @@ end
 -- @arg path directory to search
 -- @arg doc table with documentation
 -- @return table with documentation
-function directory(lua_path, _, doc, short_lua_path, silent)
-	forEachFile(lua_path, function(f)
-		local fullpath = lua_path..f
-		local attr = attributes(fullpath)
-		assert(attr, string.format("error stating file '%s'", fullpath))
-		
-		if attr.mode == "file" then
-			doc = file(lua_path, f, doc, short_lua_path, silent)
-		elseif attr.mode == "directory" and f ~= "." and f ~= ".." then
-			fullpath = fullpath..s
-			doc = directory(fullpath, f, doc, short_lua_path, silent)
-		end
-	end)
+function directory()
 	return doc
 end
 
@@ -810,7 +797,7 @@ local function check_function_usage(files, doc_report)
 				local function_name = functions[j]
 				local usage = functions[function_name].usage
 				if type(usage) == "string" then
-					if not string.match(usage, function_name) then
+					if function_name ~= "[]" and not string.match(usage, function_name) then
 						local message = "%s: '%s' does not call itself in its @usage"
 						printError(message:format(file_name, function_name))
 						doc_report.no_call_itself_usage = doc_report.no_call_itself_usage + 1

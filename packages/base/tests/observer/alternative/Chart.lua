@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------------------
 -- TerraME - a software platform for multiple scale spatially-explicit dynamic modeling.
--- Copyright (C) 2001-2016 INPE and TerraLAB/UFOP -- www.terrame.org
+-- Copyright (C) 2001-2017 INPE and TerraLAB/UFOP -- www.terrame.org
 
 -- This code is part of the TerraME framework.
 -- This framework is free software; you can redistribute it and/or
@@ -49,7 +49,12 @@ return{
 		error_func = function()
 			Chart{target = c, select = "mvalue"}
 		end
-		unitTest:assertError(error_func, "Selected element 'mvalue' does not belong to the target.")
+		unitTest:assertError(error_func, "Selected element 'mvalue' does not belong to the target. Do you mean 'value'?")
+
+		error_func = function()
+			Chart{target = c, select = "abcd"}
+		end
+		unitTest:assertError(error_func, "Selected element 'abcd' does not belong to the target.")
 
 		error_func = function()
 			Chart{target = c, xLabel = 5}
@@ -115,6 +120,11 @@ return{
 			Chart{target = cell, select = {"value1", "value2"}, size = -3}
 		end
 		unitTest:assertError(error_func, positiveArgumentMsg("size", -3))
+
+		error_func = function()
+			Chart{target = Environment{}, select = "value1"}
+		end
+		unitTest:assertError(error_func, "There is no Model instance within the Environment.")
 
 		local symbolTable = {
 			square = 1,
@@ -247,7 +257,7 @@ return{
 		error_func = function()
 			Chart{target = cell, select = {"v1", "v2", "v3"}, color = {"red", "xxx", "green"}}
 		end
-		unitTest:assertError(error_func, "Color 'xxx' not found. Check the name or use a table with an RGB description.")
+		unitTest:assertError(error_func, "Color 'xxx' was not found. Check the name or use a table with an RGB description.")
 
 		error_func = function()
 			Chart{target = cell, select = {"v1", "v2", "v3"}, color = {"red", {0, 0}, "green"}}
@@ -259,8 +269,86 @@ return{
 		end
 		unitTest:assertError(error_func, "All the elements of an RGB composition should be numbers, got 'string' in position 2.")
 
+		error_func = function()
+			Chart{target = cell, select = {"v1", "v2", "v3"}, value = {"abc"}}
+		end
+		unitTest:assertError(error_func, "Argument 'value' can only be used with CellularSpace or Society, got Cell.")
+
+		cell = Cell{
+			value = function() return {a = 2, b = 3, c = 4} end
+		}
+
+		error_func = function()
+			Chart{target = cell, select = "value"}
+		end
+		unitTest:assertError(error_func, "It is only possible to observe functions that return tables using CellularSpace or Society, got Cell.")
+
+		cell = Cell{
+			state = "alive"
+		}
+
+		local cs = CellularSpace{
+			xdim = 10,
+			instance = cell
+		}
+
+		local map = Map{
+			target = cs,
+			select = "x",
+			min = 0,
+			max = 10,
+			color = {"black", "blue"},
+			slices = 5
+		}
+
+		error_func = function()
+			Chart{
+				target = map
+			}
+		end
+		unitTest:assertError(error_func, "Charts can only be created from Maps that use grouping 'uniquevalue'.")
+
+		error_func = function()
+			Chart{
+				target = cs,
+				select = "state",
+				value = {"dead", "alive"},
+				color = {"black"}
+			}
+		end
+		unitTest:assertError(error_func, "Arguments 'value' and 'color' should have the same size, got 2 and 1.")
+
+		error_func = function()
+			Chart{
+				target = cs,
+				select = "state",
+				color = {"black"}
+			}
+		end
+		unitTest:assertError(error_func, "Argument 'value' is mandatory when observing a function that returns a table.")
+
+		error_func = function()
+			Chart{
+				target = cs,
+				select = "state",
+				value = 1,
+				color = {"black"}
+			}
+		end
+		unitTest:assertError(error_func, incompatibleTypeMsg("value", "table", 1))
+
+		error_func = function()
+			Chart{
+				target = cs,
+				select = "state",
+				value = {"dead", 1},
+				color = {"black"}
+			}
+		end
+		unitTest:assertError(error_func, "Argument 'value' should contain only strings, got number.")
+
 		-- chart using data
-		local tab = makeDataTable{
+		local tab = DataFrame{
 			first = 2000,
 			step = 10,
 			demand = {7, 8, 9, 10},
@@ -269,111 +357,30 @@ return{
 
 		error_func = function()
 			Chart{
-			    data = tab,
-			    select = "limit",
-				target = cell,
-			    xAxis = "demand",
-			    color = "blue"
-			}
-		end
-		unitTest:assertError(error_func, unnecessaryArgumentMsg("target"))
-		
-		error_func = function()
-			Chart{
-			    data = "limit",
-			    select = "limit",
-			    xAxis = "demand",
-			    color = "blue"
-			}
-		end
-		unitTest:assertError(error_func, incompatibleTypeMsg("data", "table", "limit"))
-	
-		error_func = function()
-			Chart{
-			    data = tab,
+			    target = tab,
 			    select = "limit",
 			    xAxis = "demand2",
 			    color = "blue"
 			}
 		end
-		unitTest:assertError(error_func, incompatibleTypeMsg("data.demand2", "table"))
-
+		unitTest:assertError(error_func, "Selected column 'demand2' for argument 'xAxis' does not exist in the DataFrame.")
 
 		error_func = function()
 			Chart{
-			    data = tab,
+			    target = tab,
 			    select = "limit2",
 			    xAxis = "demand",
 			    color = "blue"
 			}
 		end
-		unitTest:assertError(error_func, incompatibleTypeMsg("data.limit2", "table"))
-	
-		tab.demand = {7, 8, 9}
-
-		error_func = function()
-			Chart{
-			    data = tab,
-			    select = "limit",
-			    xAxis = "demand",
-			    color = "blue"
-			}
-		end
-		unitTest:assertError(error_func, "Argument 'data.demand' should have 4 elements, got 3.")
-
-		tab = makeDataTable{
-			first = 2000,
-			step = 10,
-			demand = {7, 8, 9, 10},
-			limit = {0.1, 0.04, 0.3, 0.07}
-		}
-
-		tab.limit = "abc"
-
-		error_func = function()
-			Chart{
-			    data = tab,
-			    select = "limit",
-			    xAxis = "demand",
-			    color = "blue"
-			}
-		end
-		unitTest:assertError(error_func, incompatibleTypeMsg("data.limit", "table", "abc"))
-
-		tab = makeDataTable{
-			first = 2000,
-			step = 10,
-			demand = {7, 8, 9, 10},
-			limit = {0.1, 0.04, 0.3, 0.07}
-		}
-
-		tab.limit = {0.1, 0.04, 0.3}
-
-		error_func = function()
-			Chart{
-			    data = tab,
-			    select = {"limit", "demand"},
-			    color = "blue"
-			}
-		end
-		unitTest:assertError(error_func, "Argument 'data.demand' should have 3 elements, got 4.")
-	
-		error_func = function()
-			Chart{
-			    data = tab,
-			    select = "limit",
-			    xAxis = "demand",
-			    color = "blue"
-			}
-		end
-		unitTest:assertError(error_func, "Argument 'data.demand' should have 3 elements, got 4.")
+		unitTest:assertError(error_func, "Selected column 'limit2' does not exist in the DataFrame.")
 	end,
 	save = function(unitTest)
 		local c = Cell{value = 5}
 
 		local chart = Chart{target = c}
 
-		unitTest:clear()
+		clean()
 
 		local error_func = function()
 			chart:save("file.bmp")

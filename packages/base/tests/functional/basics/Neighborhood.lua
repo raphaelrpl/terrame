@@ -95,7 +95,7 @@ return{
 		neigh:add(cell1, 0.5)
 		cell2:addNeighborhood(neigh)
 		unitTest:assertEquals(cell2, neigh:getParent())
-	end,	
+	end,
 	getWeight = function(unitTest)
 		local neigh = Neighborhood()
 		local cell1 = Cell{}
@@ -169,7 +169,10 @@ return{
 		unitTest:assertEquals(type(neigh:sample()), type(cell2))
 
 		neigh:add(cell3)
-		unitTest:assertEquals(type(neigh:sample()), type(cell1))
+
+		for _ = 1, 6 do
+			unitTest:assertEquals(type(neigh:sample()), type(cell1))
+		end
 	end,
 	setWeight = function(unitTest)
 		local neigh = Neighborhood()

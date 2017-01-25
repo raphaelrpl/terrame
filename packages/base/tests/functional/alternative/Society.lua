@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------------------
 -- TerraME - a software platform for multiple scale spatially-explicit dynamic modeling.
--- Copyright (C) 2001-2016 INPE and TerraLAB/UFOP -- www.terrame.org
+-- Copyright (C) 2001-2017 INPE and TerraLAB/UFOP -- www.terrame.org
 
 -- This code is part of the TerraME framework.
 -- This framework is free software; you can redistribute it and/or
@@ -96,7 +96,7 @@ return{
 		unitTest:assertError(error_func, "Attribute 'instance' belongs to both Society and Agent.")
 
 		ag1 = Agent{}
-		
+
 		Society{
 			instance = ag1,
 			quantity = 20
@@ -111,7 +111,7 @@ return{
 		unitTest:assertError(error_func, "The same instance cannot be used by two Societies.")
 
 		ag1 = Agent{enter = function() end}
-		
+
 		error_func = function()
 			sc3 = Society{
 				instance = ag1,
@@ -183,7 +183,7 @@ return{
 			water = 2,
 			exec = function() end
 		}
-    
+
 		local soc = Society{
 			quantity = 10,
 			instance = ag
@@ -258,7 +258,7 @@ return{
 			watts = true,
 			barabasi = true
 		}
-			
+
 		unitTest:assertError(error_func, switchInvalidArgumentMsg("terralab", "strategy", options))
 
 		sc1:createSocialNetwork{
@@ -371,7 +371,7 @@ return{
 			sc1:createSocialNetwork{
 				strategy = "probability",
 				probability = 0.5,
-				quantity = 5	
+				quantity = 5
 			}
 		end
 		unitTest:assertError(error_func, unnecessaryArgumentMsg("quantity"))
@@ -405,8 +405,7 @@ return{
 		error_func = function()
 			sc1:createSocialNetwork{strategy = "cell", name = "c"}
 		end
-
-		unitTest:assertError(error_func, "Society has no placement. Use Environment:createPlacement() first.")
+		unitTest:assertError(error_func, "Society has no placement. Please call Environment:createPlacement() first.")
 
 		local cs = CellularSpace{xdim = 5}
 		ag1 = Agent{}
@@ -417,7 +416,12 @@ return{
 		error_func = function()
 			sc1:createSocialNetwork{strategy = "neighbor", name = "c"}
 		end
-		unitTest:assertError(error_func, "CellularSpace has no Neighborhood named '1'. Use CellularSpace:createNeighborhood() first.")
+		unitTest:assertError(error_func, "CellularSpace has no Neighborhood. Please call CellularSpace:createNeighborhood() first.")
+
+		error_func = function()
+			sc1:createSocialNetwork{strategy = "neighbor", neighborhood = "abc123", name = "c"}
+		end
+		unitTest:assertError(error_func, "CellularSpace has no Neighborhood named 'abc123'. Please call CellularSpace:createNeighborhood() first.")
 
 		ag1 = Agent{}
 		sc1 = Society{instance = ag1, quantity = 20}
@@ -428,7 +432,7 @@ return{
 		error_func = function()
 			sc1:createSocialNetwork{strategy = "neighbor", name = "c"}
 		end
-		unitTest:assertError(error_func, "Society has no placement. Use Environment:createPlacement() first.")
+		unitTest:assertError(error_func, "Society has no placement. Please call Environment:createPlacement() first.")
 
 		env:createPlacement()
 		error_func = function()
@@ -600,7 +604,7 @@ return{
 			sc1:get(-1)
 		end
 		unitTest:assertError(error_func, positiveArgumentMsg(1, -1))
-	
+
 		error_func = function()
 			sc1:get(2.2)
 		end
@@ -669,7 +673,7 @@ return{
 			soc1:remove()
 		end
 		unitTest:assertError(error_func, incompatibleTypeMsg(1, "Agent or function"))
-	
+
 		error_func = function()
 			soc1:remove(ag)
 		end
@@ -688,7 +692,7 @@ return{
 		local error_func = function()
 			soc1:sample()
 		end
-		unitTest:assertError(error_func, "Trying to sample an empty Society.")
+		unitTest:assertError(error_func, "It is not possible to sample from an empty object.")
 	end,
 	size = function(unitTest)
 		local ag1 = Agent{

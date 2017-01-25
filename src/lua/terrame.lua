@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------------------
 -- TerraME - a software platform for multiple scale spatially-explicit dynamic modeling.
--- Copyright (C) 2001-2016 INPE and TerraLAB/UFOP -- www.terrame.org
+-- Copyright (C) 2001-2017 INPE and TerraLAB/UFOP -- www.terrame.org
 
 -- This code is part of the TerraME framework.
 -- This framework is free software; you can redistribute it and/or
@@ -48,16 +48,18 @@ print = function(obj, ...)
 end
 
 function _Gtme.loadLibraryPath()
-    local dyldpath = os.getenv("DYLD_LIBRARY_PATH")
-    if dyldpath then
-        package.cpath = package.cpath..";"..dyldpath.."/?.so"
-                                    ..";"..dyldpath.."/?.dylib"
-    end
+	local dyldpath = os.getenv("DYLD_LIBRARY_PATH")
+	if dyldpath then
+		package.cpath = package.cpath..";"..dyldpath.."/?.so;"
+										..dyldpath.."/?.dylib"
+		package.path = package.path..";"..dyldpath.."/?.lua;"
+	end
 
-    local ldpath = os.getenv("LD_LIBRARY_PATH")
-    if ldpath then
-        package.cpath = package.cpath..";"..ldpath.."/?.so"
-    end
+	local ldpath = os.getenv("LD_LIBRARY_PATH")
+	if ldpath then
+		package.cpath = package.cpath..";"..ldpath.."/?.so"
+		package.path = package.path..";"..ldpath.."/?.lua;"
+	end
 end
 
 _Gtme.loadLibraryPath()
@@ -65,26 +67,35 @@ _Gtme.loadLibraryPath()
 _Gtme.terralib_mod_binding_lua = nil
 
 local function initializeTerraLib()
-    if _Gtme.terralib_mod_binding_lua == nil then
-        require("terralib_mod_binding_lua")
-        local binding = terralib_mod_binding_lua
-        binding.TeSingleton.getInstance():initialize()
-        binding.te.plugin.PluginManager.getInstance():clear()
-        binding.te.plugin.PluginManager.getInstance():loadAll()
-        _Gtme.terralib_mod_binding_lua = terralib_mod_binding_lua
-    end
+	if _Gtme.terralib_mod_binding_lua == nil then
+		require("terralib_mod_binding_lua")
+		local binding = terralib_mod_binding_lua
+		binding.TeSingleton.getInstance():initialize()
+		binding.InitializePluginSystem()
+		binding.LoadAll()
+		_Gtme.terralib_mod_binding_lua = terralib_mod_binding_lua
+	end
 end
 
 local function finalizeTerraLib()
-    if _Gtme.terralib_mod_binding_lua ~= nil then
-        local binding = terralib_mod_binding_lua
-        binding.te.plugin.PluginManager.getInstance():clear()
-        binding.TeSingleton.getInstance():finalize()
-        _Gtme.terralib_mod_binding_lua = nil
-    end
+	if _Gtme.terralib_mod_binding_lua ~= nil then
+		local binding = terralib_mod_binding_lua
+		binding.FinalizePluginSystem()
+		binding.TeSingleton.getInstance():finalize()
+		_Gtme.terralib_mod_binding_lua = nil
+	end
 end
 
 initializeTerraLib()
+
+local function checkUnnecessaryArguments(arguments, argCount)
+	if #arguments > argCount then
+		if belong(arguments[argCount + 1], {">", "2>"}) then return end
+
+		_Gtme.printError("It is not possible to have additional arguments after '"..arguments[argCount].."'.")
+		os.exit(1)
+	end
+end
 
 function _Gtme.printError(value)
 	if sessionInfo().color then
@@ -111,44 +122,21 @@ function _Gtme.printWarning(value)
 end
 
 function _Gtme.fontFiles(package)
-	local s = sessionInfo().separator
-	local fontpath = packageInfo(package).path..s.."font"
+	local fontpath = Directory(packageInfo(package).path.."font")
 
-	if not isDir(fontpath) then
+	if not fontpath:exists() then
 		return {}
 	end
 
-	local files = dir(fontpath)
 	local result = {}
 
-	forEachElement(files, function(_, fname)
-		if string.endswith(fname, ".ttf") then
-			table.insert(result, fname)
+	forEachFile(fontpath, function(file)
+		if file:extension() == "ttf" then
+			table.insert(result, file:name())
 		end
 	end)
+
 	return result
-end
-
--- from http://stackoverflow.com/questions/17673657/loading-a-file-and-returning-its-environment
-function _Gtme.include(scriptfile, basetable)
-	if basetable == nil then
-		basetable = {}
-	end
-
-	local env = setmetatable(basetable, {__index = _G})
-	if not isFile(scriptfile) then
-		_Gtme.customError("File '"..scriptfile.."' does not exist.")
-	end
-	local lf = loadfile(scriptfile, "t", env)
-
-	if lf == nil then
-		_Gtme.printError("Could not load file "..scriptfile..".")
-		dofile(scriptfile) -- this line will show the error when parsing the file
-	end
-
-	lf() 
-
-	return setmetatable(env, nil)
 end
 
 function _Gtme.getVersion(str)
@@ -211,18 +199,20 @@ function _Gtme.buildCountTable(package)
 	local s = _Gtme.sessionInfo().separator
 	local baseDir = _Gtme.packageInfo(package).path
 
-	local load_file = baseDir..s.."load.lua"
+	if not isDirectory(baseDir..s.."lua") then return {} end
+
+	local load_file = baseDir.."load.lua"
 	local load_sequence
 
-	if _Gtme.isFile(load_file) then
-		-- the 'include' below does not need to be inside a xpcall because 
+	if _Gtme.File(load_file):exists() then
+		-- the 'getLuaFile' below does not need to be inside a xpcall because
 		-- the package was already loaded with success
-		load_sequence = _Gtme.include(load_file).files
+		load_sequence = _Gtme.getLuaFile(load_file).files
 	else
 		load_sequence = {}
-		_Gtme.forEachFile(baseDir..s.."lua", function(mfile)
-			if string.endswith(mfile, ".lua") then
-				table.insert(load_sequence, mfile)
+		_Gtme.forEachFile(baseDir.."lua", function(mfile)
+			if mfile:extension() == "lua" then
+				table.insert(load_sequence, mfile:name())
 			end
 		end)
 	end
@@ -252,7 +242,7 @@ function _Gtme.buildCountTable(package)
 	for _, file in ipairs(load_sequence) do
 		testfunctions[file] = {}
 		currentFile = file
-		lf = loadfile(baseDir..s.."lua"..s..file, 't', result)
+		lf = loadfile(baseDir.."lua"..s..file, 't', result)
 
 		if lf ~= nil then
 			lf()
@@ -267,10 +257,10 @@ function _Gtme.projectFiles(package)
 	local files = {}
 	local data_path = _Gtme.packageInfo(package).data
 
-	if not isDir(data_path) then return files end
+	if not data_path:exists() then return files end
 
 	forEachFile(data_path, function(file)
-		if string.endswith(file, ".lua") then
+		if file:extension() == "lua" then
 			table.insert(files, file)
 		end
 	end)
@@ -279,8 +269,6 @@ function _Gtme.projectFiles(package)
 end
 
 function _Gtme.findModels(package)
-	local s = "/"
-	
 	if not _Gtme.isLoaded("base") then
 		_Gtme.import("base")
 	end
@@ -298,18 +286,15 @@ function _Gtme.findModels(package)
 	end
 
 	local packagepath = _Gtme.packageInfo(package).path
-	packagepath = _Gtme.makePathCompatibleToAllOS(packagepath)
 
-	if _Gtme.attributes(packagepath, "mode") ~= "directory" then
+	if not packagepath:exists() then
 		_Gtme.customError("Package '"..package.."' is not installed.")
 	end
 
-	local srcpath = packagepath..s.."lua"..s
-
-	_Gtme.forEachFile(srcpath, function(fname)
+	_Gtme.forEachFile(packagepath.."lua", function(file)
 		found = false
 		local a
-		a = _Gtme.include(srcpath..fname)
+		a = _Gtme.getLuaFile(file)
 
 		if found then
 			_Gtme.forEachElement(a, function(idx, value)
@@ -324,26 +309,25 @@ function _Gtme.findModels(package)
 end
 
 function _Gtme.findExamples(package)
-	local s = _Gtme.sessionInfo().separator
-
 	local examplespath
 
-	xpcall(function() examplespath = _Gtme.packageInfo(package).path..s.."examples" end, function(err)
+	xpcall(function() examplespath = _Gtme.packageInfo(package).path.."examples" end, function(err)
 		_Gtme.printError(err)
 		os.exit(1)
 	end)
 
-	if _Gtme.attributes(examplespath, "mode") ~= "directory" then
+	if _Gtme.Directory(examplespath):attributes("mode") ~= "directory" then
 		return {}
 	end
 
 	local result = {}
 
-	_Gtme.forEachFile(examplespath, function(fname)
-		if string.endswith(fname, ".lua") then
-			table.insert(result, string.sub(fname, 0, string.len(fname) - 4))
-		elseif not string.endswith(fname, ".tme") and not string.endswith(fname, ".log") then
-			_Gtme.printWarning("Test file '"..fname.."' does not have a valid extension")
+	_Gtme.forEachFile(examplespath, function(file)
+		if file:extension() == "lua" then
+			local split = {file:split()}
+			table.insert(result, split[2])
+		elseif file:extension() ~= "tme"then
+			_Gtme.printWarning("Test file '"..file:name().."' does not have a valid extension.")
 		end
 	end)
 	return result
@@ -359,15 +343,18 @@ function _Gtme.showDoc(package)
 		os.exit(1)
 	end)
 
-	docpath = docpath..s.."doc"..s.."index.html"
+	docpath = docpath.."doc"..s.."index.html"
 
-	if not isFile(docpath) then
+	local exists
+	ok, err = pcall(function() exists = File(docpath):exists() end)
+
+	if not ok or not exists then
 		_Gtme.printError("It was not possible to find the documentation of package '"..package.."'.")
 		_Gtme.printError("Please run 'terrame -package "..package.." -doc' to build it.")
 		os.exit(1)
 	end
 
-	if not _Gtme.isWindowsOS() then
+	if _Gtme.sessionInfo().system ~= "windows" then
 		if _Gtme.runCommand("uname")[1] == "Darwin" then
 			_Gtme.runCommand("open "..docpath)
 		else
@@ -380,120 +367,64 @@ function _Gtme.showDoc(package)
 	end
 end
 
-function _Gtme.buildConfig()
-	require("qtluae")
+function _Gtme.installRecursive(pkgfile)
+	local sep = string.find(pkgfile, "_")
 
-	local dialog = qt.new_qobject(qt.meta.QDialog)
-	dialog.windowTitle = "Configure database connection"
-
-	local externalLayout = qt.new_qobject(qt.meta.QVBoxLayout)
-
-	local internalLayout = qt.new_qobject(qt.meta.QGridLayout)
-	internalLayout.spacing = 8
-
-	qt.ui.layout_add(dialog, externalLayout)
-
-	local label = qt.new_qobject(qt.meta.QLabel)
-	label.text = "Host:"
-	qt.ui.layout_add(internalLayout, label, 0, 0)
-	local lineEditHost = qt.new_qobject(qt.meta.QLineEdit)
-	qt.ui.layout_add(internalLayout, lineEditHost, 0, 1)
-	lineEditHost:setText("localhost")
-
-	label = qt.new_qobject(qt.meta.QLabel)
-	label.text = "Port:"
-	qt.ui.layout_add(internalLayout, label, 1, 0)
-	local lineEditPort = qt.new_qobject(qt.meta.QLineEdit)
-	qt.ui.layout_add(internalLayout, lineEditPort, 1, 1)
-	lineEditPort:setText("3306")
-
-	label = qt.new_qobject(qt.meta.QLabel)
-	label.text = "User:"
-	qt.ui.layout_add(internalLayout, label, 2, 0)
-	local lineEditUser = qt.new_qobject(qt.meta.QLineEdit)
-	qt.ui.layout_add(internalLayout, lineEditUser, 2, 1)
-	lineEditUser:setText("root")
-
-	label = qt.new_qobject(qt.meta.QLabel)
-	label.text = "Password:"
-	qt.ui.layout_add(internalLayout, label, 3, 0)
-	local lineEditPassword = qt.new_qobject(qt.meta.QLineEdit)
-	qt.ui.layout_add(internalLayout, lineEditPassword, 3, 1)
-
-	local conf = {}
-
-	if isFile("config.lua") then
-		conf = _Gtme.getConfig()
-
-		if conf.user     then lineEditUser:setText(conf.user)         end
-		if conf.password then lineEditPassword:setText(conf.password) end
-		if conf.port     then lineEditPort:setText(conf.port)         end
-		if conf.host     then lineEditHost:setText(conf.host)         end
+	if not sep then
+		_Gtme.printError("Argument '"..pkgfile.."' is not a valid file.")
+		os.exit(1)
 	end
 
-	local buttonsLayout = qt.new_qobject(qt.meta.QHBoxLayout)
+	local package = string.sub(pkgfile, 1, sep - 1)
+	local installed = {}
 
-	local okButton = qt.new_qobject(qt.meta.QPushButton)
-	okButton.minimumSize = {100, 28}
-	okButton.maximumSize = {110, 28}
-	okButton.text = "OK"
-	qt.ui.layout_add(buttonsLayout, okButton)
+	local packages = _Gtme.downloadPackagesList()
+	_Gtme.printNote("Downloading package '"..package.."'")
+	_Gtme.downloadPackage(pkgfile)
 
-	local returnv
+	os.execute("unzip -oq \""..pkgfile.."\"")
 
-	local m2function = function()
-		local str = ""
+	local pinfo = packageInfo(package)
+	local depends = 0
 
-		if lineEditUser.text ~= "root" then
-			str = str.."user = \""..lineEditUser.text.."\"\n"
-		end
+	if pinfo.tdepends then
+		_Gtme.print("Verifying dependencies")
+		forEachElement(pinfo.tdepends, function(_, dtable)
+			if dtable.package == "terrame" or dtable.package == "base" then return end
 
-		if lineEditHost.text ~= "localhost" then
-			str = str.."host = \""..lineEditHost.text.."\"\n"
-		end
+			_Gtme.print("Package depends on "..dtable.package)
+			depends = depends + 1
+			local isInstalled = pcall(function() packageInfo(dtable.package) end)
 
-		if lineEditPort.text ~= "3306" then
-			str = str.."port = "..lineEditPort.text.."\n"
-		end
+			if not isInstalled then
+				if not _Gtme.installRecursive(dtable.package.."_"..packages[dtable.package].version..".zip") then
+					return false
+				end
 
-		str = str.."password = \""..lineEditPassword.text.."\"\n"
-		str = str.."drop = true\n"
-
-		conf = io.open("config.lua", "w")
-		conf:write(str)
-		conf:close()
-
-		dialog:done(0)
-		returnv = true
-
-		each = nil
-		help = nil
-		qt = nil
-		list = nil
-		plugin = nil
-		qtype = nil
+				installed[dtable.package] = true
+				return true
+			end
+		end)
 	end
 
-	qt.connect(okButton, "clicked()", m2function)
-
-	local quitButton = qt.new_qobject(qt.meta.QPushButton)
-	quitButton.minimumSize = {100, 28}
-	quitButton.maximumSize = {110, 28}
-	quitButton.text = "Cancel"
-	qt.ui.layout_add(buttonsLayout, quitButton)
-
-	m2function = function()
-		returnv = false
-		dialog:done(0)
+	if depends == 0 then
+		_Gtme.print("Package has no dependencies")
 	end
-	qt.connect(quitButton, "clicked()", m2function)
 
-	qt.ui.layout_add(externalLayout, internalLayout)
-	qt.ui.layout_add(externalLayout, buttonsLayout, 3, 0)
+	local status, err = pcall(function() _Gtme.installPackage(pkgfile) end)
 
-	dialog:show()
-	dialog:exec()
-	return returnv
+	File(pkgfile):deleteIfExists()
+
+	if isDirectory(package) then
+		Directory(package):delete()
+	end
+
+	if not status then
+		customError("File "..pkgfile.." could not be installed:\n"..err)
+		return false
+	end
+
+	return true, installed
 end
 
 function _Gtme.uninstall(package)
@@ -501,16 +432,22 @@ function _Gtme.uninstall(package)
 	local s = si.separator
 
 	local arg = si.path..s.."packages"..s..package
+	_Gtme.printNote("Uninstalling package \'"..package.."\'")
 
-	if isDir(arg) then
-		rmDir(arg)
-		if isDir(arg) then
-			_Gtme.print("Package \'"..package.."\' could not be uninstalled (wrong permission).")
+	if package == "base" or package == "terralib" then
+		_Gtme.printError("Package '"..package.."' cannot be removed")
+		os.exit(0)
+	end
+
+	if Directory(arg):exists() then
+		Directory(arg):delete()
+		if Directory(arg):exists() then
+			_Gtme.printError("Package \'"..package.."\' could not be uninstalled (wrong permission)")
 		else
-			_Gtme.print("Package \'"..package.."\' was successfully uninstalled.")
+			_Gtme.printNote("Package \'"..package.."\' was successfully uninstalled")
 		end
 	else
-		_Gtme.printError("Package \'"..package.."\' is not installed.")
+		_Gtme.printWarning("Package \'"..package.."\' is not installed.")
 	end
 end
 
@@ -522,7 +459,7 @@ function _Gtme.verifyDepends(package)
 
 	forEachElement(pinfo.tdepends, function(_, dtable)
 		local currentInfo = packageInfo(dtable.package)
-		
+
 		if not isLoaded(dtable.package) then
 			import(dtable.package)
 		end
@@ -537,7 +474,6 @@ function _Gtme.verifyDepends(package)
 
 	return result
 end
-
 
 function _Gtme.verifyVersionDependency(newVersion, operator, oldVersion)
 	local newVersionT = _Gtme.getVersion(newVersion)
@@ -573,7 +509,7 @@ function _Gtme.verifyVersionDependency(newVersion, operator, oldVersion)
 				return #newVersionT <= #oldVersionT
 			end
 		else
-			_Gtme.customError("Wrong operator: "..operator)
+			_Gtme.customError("Wrong operator: '"..operator.."'.")
 		end
 	end
 end
@@ -582,54 +518,46 @@ function _Gtme.installPackage(file)
 	if file == nil then
 		_Gtme.printError("You need to choose the file to be installed.")
 		return
-	elseif not _Gtme.isFile(file) then
-		_Gtme.printError("No such file: "..file)
+	elseif not _Gtme.File(file):exists() then
+		_Gtme.printError("No such file: '"..file.."'.")
 		return
 	end
-
-	_Gtme.printNote("Installing "..file)
 
 	local s = "/" --_Gtme.sessionInfo().separator
 	local package
 
 	file = _Gtme.makePathCompatibleToAllOS(file)
-	
+
 	local _, pfile = string.match(file, "(.-)([^/]-([^%.]+))$") -- remove path from the file
 
 	xpcall(function() package = string.sub(pfile, 1, string.find(pfile, "_") - 1) end, function()
-		_Gtme.printError(file.." is not a valid file name for a TerraME package")
+		_Gtme.printError(file.." is not a valid file name for a TerraME package.")
 		os.exit(1)
 	end)
 
-	_Gtme.print("Copying package '"..package.."'")
+	_Gtme.printNote("Installing package '"..package.."'")
 
-	local currentDir = _Gtme.currentDir()
-	local packageDir = _Gtme.sessionInfo().path..s.."packages"
+	local cDir = _Gtme.currentDir()
+	local packageDir = _Gtme.sessionInfo().path.."packages"
 
 	if not _Gtme.isLoaded("base") then
 		_Gtme.import("base")
 	end
 
 	local currentVersion
-	if isDir(packageDir..s..package) then
+	if Directory(packageDir..package):exists() then
 		currentVersion = packageInfo(package).version
 		_Gtme.print("Package '"..package.."' is already installed")
 	else
 		_Gtme.print("Package '"..package.."' was not installed before")
 	end
 
-	local tmpdirectory = tmpDir(".terrametmp_XXXXX")
-
-	os.execute("cp \""..file.."\" \""..tmpdirectory.."\"")
-	_Gtme.chDir(tmpdirectory)
-
 	os.execute("unzip -oq \""..file.."\"")
 
 	_Gtme.print("Verifying dependencies")
-
 	_Gtme.verifyDepends(package)
 
-	local newVersion = _Gtme.include(package..s.."description.lua").version
+	local newVersion = _Gtme.getLuaFile(package..s.."description.lua").version
 
 	if currentVersion then
 		if not _Gtme.verifyVersionDependency(newVersion, ">=", currentVersion) then
@@ -639,7 +567,7 @@ function _Gtme.installPackage(file)
 			os.exit(1)
 		else
 			_Gtme.print("Removing previous version of package")
-			rmDir(packageDir..s..package)
+			Directory(packageDir..package):delete()
 		end
 	end
 
@@ -647,17 +575,17 @@ function _Gtme.installPackage(file)
 	local status, err = pcall(function() import(package) end)
 
 	if not status then
-		rmDir(tmpdirectory)
+		Directory(package):delete()
 		_Gtme.customError(err)
 	end
 
 	_Gtme.print("Installing package '"..package.."'")
 	os.execute("cp -r \""..package.."\" \""..packageDir.."\"")
 
-	chDir(currentDir)
+	cDir:setCurrentDir()
 
-	rmDir(tmpdirectory)
-	_Gtme.print("Package '"..package.."' successfully installed")
+	Directory(package):delete()
+	_Gtme.printNote("Package '"..package.."' was successfully installed")
 	return package
 end
 
@@ -672,7 +600,7 @@ local function version()
 	str = str.."\n  Qt "..qt_version
 	str = str.."\n  Qwt "..qwt_version
 
-    local terralib = _Gtme.getPackage("terralib")
+	local terralib = _Gtme.getPackage("terralib")
 	local tlib = terralib.TerraLib{}
 	str = str.."\n  TerraLib "..tlib:getVersion()
 	finalizeTerraLib()
@@ -681,9 +609,13 @@ local function version()
 end
 
 local function usage()
-	print("")
-	print("Usage: TerraME [arguments] [file1.lua file2.lua ...]\n")
-	print("Options: ")
+	print("\nUsage: TerraME [mode] [options] [file1.lua file2.lua ...]")
+	print("\nMode:")
+	print("-debug                  Warnings treated as errors.")
+	print("-normal (default)       Warnings enabled.")
+	print("-quiet                  Warnings disabled.")
+	print("-strict                 Execute additional verifications in the source code.")
+	print("\nOptions: ")
 	print("-autoclose              Automatically close TerraME after simulation.")
 	print("-color                  Show colored output. In Windows, it requires ansicon")
 	print("                        (https://github.com/adoxa/ansicon/releases).")
@@ -694,28 +626,26 @@ local function usage()
 	print("-gui                    Show the player for the application (it works only")
 	print("                        when an Environment or a Timer object is used.")
 	print("-ide                    Configure TerraME for running from IDEs in Windows.")
-	print("-install <f>            Install a package stored in a given file <f>.")
-	print("-mode=debug             Warnings treated as errors.")
-	print("-mode=normal (default)  Warnings enabled.")
-	print("-mode=quiet             Warnings disabled.")
-	print("-mode=strict            Execute additional verifications in the source code.")
-	print("-package <pkg>          Select a given package. If used alone and the package")
-	print("                        has a single model than it runs the graphical interface")
-	print("                        to configure such model. If not package is selected,")
-	print("                        TerraME selects base package. -package can be combined")
+	print("-install <pkg>          Install a package stored in TerraME's repository.")
+	print("                        It can also be a local .zip file.")
+	print("-package <pkg>          Select a given package. If not package is selected,")
+	print("                        TerraME uses base package. -package can be combined")
 	print("                        with the following options:")
-	print("  -build [<f>] [-clean] Build an installer for the package. It executes all")
-	print("                        tests and build the documentation of the package.")
-	print("                        -clean option remove test files and logs.")
+	print("  -build [<f>] [-clean] Test (-test [<f>]), document (-doc) and then build an")
+	print("                        installer for the package. -clean option can be used to")
+	print("                        remove test files and logs.")
+	print("  -check                Analyse Lua source code.")
 	print("  -configure <m>        Visually configure and run Model <m>.")
-	print("  -doc                  Build the documentation.")
+	print("  -doc                  Build the documentation of the package.")
 	print("  -example <exp>        Run example <exp>.")
-	print("  -project              Create the TerraView projects for the package.")
+	print("  -examples             Run all examples.")
+	print("  -project <prj>        Create project <prj>.")
+	print("  -projects             Create the TerraView projects for the package.")
 	print("  -showdoc              Show the documentation in the default browser.")
 	print("  -sketch               Create test scripts for source code files missing")
 	print("                        tests and initial documentation for undocumented files.")
 	print("  -test [<f>]           Execute unit tests for the package. An optional Lua")
-	print("                        file <f> can describe a subset of the tests to be ")
+	print("                        file <f> can describe a subset of the tests to be")
 	print("                        executed.")
 	print("  -uninstall            Remove an installed package.")
 	print("-silent                 print() does not show any text on the screen.")
@@ -737,7 +667,7 @@ end
 function _Gtme.makePathCompatibleToAllOS(path)
 	path = path:gsub("\\\\","/")
 	path = path:gsub("\\", "/")
-	
+
 	return path
 end
 
@@ -756,11 +686,11 @@ function _Gtme.getLevel()
 		end
 
 		local si = _Gtme.sessionInfo()
-		
+
 		local s = "/" -- si.separator
 		local infoSource = _Gtme.makePathCompatibleToAllOS(info.source)
-		local m1 = string.match(infoSource, _Gtme.makePathCompatibleToAllOS(_Gtme.replaceSpecialChars(si.path..s.."lua")))
-		local m2 = string.match(infoSource, _Gtme.makePathCompatibleToAllOS(_Gtme.replaceSpecialChars(si.path..s.."packages"..s.."base"..s.."lua")))
+		local m1 = string.match(infoSource, _Gtme.makePathCompatibleToAllOS(_Gtme.replaceSpecialChars(si.path.."lua")))
+		local m2 = string.match(infoSource, _Gtme.makePathCompatibleToAllOS(_Gtme.replaceSpecialChars(si.path.."packages"..s.."base"..s.."lua")))
 		local m3 = string.match(info.short_src, "%[C%]")
 		local m4 = string.sub(info.short_src, 1, 1) == "["
 
@@ -780,10 +710,13 @@ local function graphicalInterface(package, model)
 	local attrTab
 	local mModel = Model
 	Model = function(attr) attrTab = attr end
-	_Gtme.include(_Gtme.packageInfo(package).path..s.."lua"..s..model..".lua")
+	_Gtme.getLuaFile(_Gtme.packageInfo(package).path..s.."lua"..s..model..".lua")
 	Model = mModel
 
-	_Gtme.configure(attrTab, model, package)
+	local random = attrTab.random
+	attrTab.random = nil
+
+	_Gtme.configure(attrTab, model, package, random)
 end
 
 function _Gtme.traceback(err)
@@ -803,16 +736,9 @@ function _Gtme.traceback(err)
 	local info = debug.getinfo(level)
 	while info ~= nil do
 		local infoSource = _Gtme.makePathCompatibleToAllOS(info.source)
-		local m1
-		
-		if _Gtme.isWindowsOS() then
-			m1 = string.match(infoSource, _Gtme.makePathCompatibleToAllOS(_Gtme.replaceSpecialChars(si.path..s.."lua")))
-		else
-			m1 = string.match(infoSource, _Gtme.makePathCompatibleToAllOS(_Gtme.replaceSpecialChars("MacOS"..s.."lua")))
-		end
-
-		local m2 = string.match(infoSource, _Gtme.makePathCompatibleToAllOS(_Gtme.replaceSpecialChars(si.path..s.."packages")))
-		local mb = string.match(infoSource, _Gtme.makePathCompatibleToAllOS(_Gtme.replaceSpecialChars(si.path..s.."packages"..s.."base")))
+		local m1 = string.match(infoSource, _Gtme.makePathCompatibleToAllOS(_Gtme.replaceSpecialChars(si.path.."lua")))
+		local m2 = string.match(infoSource, _Gtme.makePathCompatibleToAllOS(_Gtme.replaceSpecialChars(si.path.."packages")))
+		local mb = string.match(infoSource, _Gtme.makePathCompatibleToAllOS(_Gtme.replaceSpecialChars(si.path.."packages"..s.."base")))
 		local m3 = string.match(info.short_src, "%[C%]")
 		local m4
 
@@ -857,7 +783,7 @@ function _Gtme.traceback(err)
 				update = false
 			end
 		elseif not func then
-			if last_function then
+			if last_function and string.sub(last_function, 1, 7) ~= "call to" and last_function ~= "main chunk" then
 				func = "call to "..last_function
 			else
 				func = "main chunk"
@@ -868,15 +794,34 @@ function _Gtme.traceback(err)
 			last_function = func
 		end
 
-		if (si.package and not (mb or m1 or m3)) or (not (m1 or m2 or m3 or m4)) then
-			str = str.."\n    File ".._Gtme.makePathCompatibleToAllOS(info.short_src)
+		if not m1 and not m3 then
+			if (si.package and not mb) or (not (m2 or m4)) or (si.package == "base" and mb) then
+				local short = _Gtme.makePathCompatibleToAllOS(info.short_src)
+				local current = sessionInfo().currentFile
+				local currentStr = tostring(current)
+				local equals
 
-			if info.currentline > 0 then
-				str = str..", line "..info.currentline
+				if string.sub(short, 1, 3) == "..." then
+					local subShort = string.sub(short, 4)
+					local cut = string.sub(currentStr, string.len(currentStr) - string.len(subShort) + 1)
+					equals = cut == subShort
+				else
+					equals = currentStr == short
+				end
+
+				if equals then
+					str = str.."\n    File '"..current:name().."'"
+				else
+					str = str.."\n    File '"..short.."'"
+				end
+
+				if info.currentline > 0 then
+					str = str..", line "..info.currentline
+				end
+				str = str..", in "..func
 			end
-			str = str..", in "..func
 		end
-	
+
 		level = level + 1
 		info = debug.getinfo(level)
 	end
@@ -887,6 +832,14 @@ function _Gtme.traceback(err)
 	local file
 
 	if err then
+		local sub = string.sub(err, 2, 3)
+
+		if sub == ":/" or sub == ":\\" then -- if string starts with a windows partition (such as C:/)
+			sub = string.sub(err, 1, 2)
+		else
+			sub = ""
+		end
+
 		local pos = string.find(err, "Error:") -- TerraME error
 
 		if pos then -- error in some package
@@ -896,24 +849,34 @@ function _Gtme.traceback(err)
 			file = string.sub(err, 1, pos - 1)
 			err = string.sub(err, pos + 1)
 			pos = string.find(err, ":") -- remove second ":"
-			line = string.sub(err, 1, pos - 1)
 
-			if tostring(tonumber(line)) ~= line then
-				pos = string.find(err, ":") -- remove first ":"
-				file = string.sub(err, 1, pos - 1)
-				err = string.sub(err, pos + 1)
-				pos = string.find(err, ":") -- remove second ":"
+			if pos then
+
 				line = string.sub(err, 1, pos - 1)
-			end
 
-			err = "Error:"..string.sub(err, pos + 1)
+				if tostring(tonumber(line)) ~= line then
+					pos = string.find(err, ":") -- remove first ":"
+					file = string.sub(err, 1, pos - 1)
+					err = string.sub(err, pos + 1)
+					pos = string.find(err, ":") -- remove second ":"
+					line = string.sub(err, 1, pos - 1)
+				end
+
+				if file and sub then -- if string starts with a windows partition (such as C:/)
+					file = sub..file
+				end
+
+				err = "Error:"..string.sub(err, pos + 1)
+			else
+				err = "Error:"..err
+			end
 		end
 	end
 
 	if str == "Stack traceback:" then
 		if file and line then
 			str = err.."\n"..str
-			str = str.."\n\tFile "..file..", line "..line
+			str = str.."\n    File '"..file.."', line "..line
 		else
 			str = err
 		end
@@ -926,97 +889,225 @@ function _Gtme.traceback(err)
 	return _Gtme.makePathCompatibleToAllOS(str)
 end
 
-local function loadPackgesLibPath()
-	local tmePath = os.getenv("TME_PATH")
-	local packsPath = tmePath.."/packages"
-	local files = dir(packsPath)
-	
-	forEachFile(files, function(file)
-		if isDir(packsPath.."/"..file) then
-			local packPath = packsPath.."/"..file
-			local packDirs = dir(packPath)
-			forEachFile(packDirs, function(d)
-				if d == "lib"  then
-					packLibPath = packPath.."/"..d
-					if isDir(packLibPath) then
-						cpp_putenv(packLibPath)
-						package.cpath = package.cpath..";"..packLibPath.."/?.dll"
-													..";"..packLibPath.."/?.so"
-													..";"..packLibPath.."/?.lib"
-													..";"..packLibPath.."/?.dylib"
-					end
-				end
-			end)
+function _Gtme.loadModules(pkg)
+	pkg = Directory(pkg.."lib")
+
+	if pkg:exists() then
+		package.path = package.path..";"..pkg.."/?.lua"
+		cpp_putenv(tostring(pkg))
+
+		local system = sessionInfo().system
+
+		if system == "windows" then
+			package.cpath = package.cpath..";"..pkg.."/?.dll"
+		elseif system == "linux" then
+			package.cpath = package.cpath..";"..pkg.."/?.so"
+		else -- system == "mac"
+			package.cpath = package.cpath..";"..pkg.."/?.dylib"
 		end
-	end)	
+	end
 end
 
 local function findExample(example, packageName)
-    local file = example
-    local s = package.config:sub(1, 1)
-    local errMsg = nil
-    local exFullPath = ""
+	local file = example
+	local s = package.config:sub(1, 1)
+	local errMsg = nil
+	local exFullPath = ""
 
-    if file then
-        local info
-        xpcall(function() info = packageInfo(packageName).path end, function(err)
-            errMsg = err
-        end)
+	if file then
+		local info
+		xpcall(function() info = packageInfo(packageName).path end, function(err)
+			errMsg = err
+		end)
 
-        if errMsg then
-            return false, errMsg
-        end
+		if errMsg then
+			return false, errMsg
+		end
 
-        exFullPath = info..s.."examples"..s..file..".lua"
+		exFullPath = info..s.."examples"..s..file..".lua"
 
-        if not isFile(exFullPath) then
-            errMsg = "Example '"..file.."' does not exist in package '"..packageName.."'."
-            errMsg = errMsg.."\nPlease use one from the list below:"
-        end
-    elseif packageName == "base" then
-        errMsg = "TerraME has the following examples:"
-    elseif #_Gtme.findExamples(packageName) == 0 then
-        errMsg = "Package '"..packageName.."' has no examples"
-        return false, errMsg
-    else
-        errMsg = "Package '"..packageName.."' has the following examples:"
-    end
+		if not File(exFullPath):exists() then
+			errMsg = "Example '"..file.."' does not exist in package '"..packageName.."'."
+			errMsg = errMsg.."\nPlease use one from the list below:"
+		end
+	elseif packageName == "base" then
+		errMsg = "TerraME has the following examples:"
+	elseif #_Gtme.findExamples(packageName) == 0 then
+		errMsg = "Package '"..packageName.."' has no examples."
+		return false, errMsg
+	else
+		errMsg = "Package '"..packageName.."' has the following examples:"
+	end
 
-    if file and isFile(exFullPath) then
-        -- it only changes the file to point to the package and let it run as it
-        -- was a call such as "TerraME .../package/examples/example.lua"
-        return true, exFullPath
-    else
-        files = _Gtme.findExamples(packageName)
+	if file and File(exFullPath):exists() then
+		-- it only changes the file to point to the package and let it run as it
+		-- was a call such as "TerraME .../package/examples/example.lua"
+		return true, exFullPath
+	else
+		files = _Gtme.findExamples(packageName)
 
-        _Gtme.forEachElement(files, function(_, value)
-            errMsg = errMsg.."\n - "..value
-        end)
-    end
+		_Gtme.forEachElement(files, function(_, value)
+			errMsg = errMsg.."\n - "..value
+		end)
+	end
 
-    return false, errMsg
+	return false, errMsg
+end
+
+local function executeExamples(package)
+	if not isLoaded("base") then
+		import("base")
+	end
+
+	_Gtme.printNote("Running all examples of package '"..package.."'")
+
+	local errors = 0
+
+	local s = _Gtme.sessionInfo().separator
+	local examplespath
+
+	xpcall(function() examplespath = _Gtme.packageInfo(package).path..s.."examples" end, function(err)
+		_Gtme.printError(err)
+		os.exit(1)
+	end)
+
+	_Gtme.forEachFile(examplespath, function(file)
+		if file:extension() == "lua" then
+			print("Running example '"..file:name().."'")
+
+			xpcall(function() dofile(tostring(file)) end, function(err)
+				_Gtme.printError(err)
+				errors = errors + 1
+			end)
+
+			clean()
+		end
+	end)
+
+	return errors
+end
+
+local function runScript(script)
+	if info_.mode ~= "quiet" then
+		checkNilVariables()
+	end
+
+	if not _Gtme.isLoaded("base") then
+		_Gtme.import("base")
+	end
+
+	local displayFile = string.sub(script, 0, string.len(script) - 3).."tme"
+	displayFile = _Gtme.makePathCompatibleToAllOS(displayFile)
+
+	local cObj = TeVisualArrangement()
+	cObj:setFile(displayFile)
+
+	if _Gtme.File(displayFile):exists() then
+		local display = dofile(displayFile)
+
+		_Gtme.forEachElement(display, function(idx, data)
+			cObj:addPosition(idx, data.x, data.y)
+			cObj:addSize(idx, data.width, data.height)
+		end)
+	end
+
+	if isDirectory(script) then
+		_Gtme.printError("Argument '"..script.."' is a directory, and not a Lua file.")
+		os.exit(1)
+	end
+
+	script = File(script)
+
+	if not script:exists() then
+		_Gtme.printError("File '"..script.."' does not exist.")
+		os.exit(1)
+	elseif script:extension() ~= "lua" then
+		_Gtme.printError("Argument '"..script.."' does not have '.lua' extension.")
+		os.exit(1)
+	end
+
+	info_.currentFile = script
+
+	dofile(sessionInfo().path.."lua"..sessionInfo().separator.."check.lua")
+
+	if info_.mode == "strict" then
+		_Gtme.checkFile(tostring(script), "Warning")
+	elseif info_.mode == "debug" then
+		local numIssues = _Gtme.checkFile(tostring(script), "Error")
+		if numIssues > 0 then
+			os.exit(numIssues)
+		end
+	end
+
+	local success, result = _Gtme.myxpcall(function() dofile(tostring(script)) end)
+	if not success then
+		_Gtme.printError(result)
+		os.exit(1)
+	end
 end
 
 function _Gtme.execExample(example, packageName)
-    local ok, res = findExample(example, packageName)
+	local ok, res = findExample(example, packageName)
 
-    if not ok then
-        return false, res
-    end
+	if not ok then
+		return false, res
+	end
 
-    example = res
+	example = res
 
-    local success, result = _Gtme.myxpcall(function() dofile(example) end)
-    if not success then
-        return false, result
-    end
+	local mdialog
+	local description
+	local okButton
 
-    return success, _
+	print = function(value)
+		if not mdialog then
+			mdialog = qt.new_qobject(qt.meta.QDialog)
+			local _, file = File(example):split()
+			mdialog.windowTitle = "Output of example "..file
+
+			local externalLayout = qt.new_qobject(qt.meta.QVBoxLayout)
+			local internalLayout = qt.new_qobject(qt.meta.QHBoxLayout)
+			description = qt.new_qobject(qt.meta.QLabel)
+			description.text = ""
+
+			okButton = qt.new_qobject(qt.meta.QPushButton)
+			okButton.minimumSize = {150, 28}
+			okButton.maximumSize = {160, 28}
+			okButton.text = "Close"
+			okButton.enabled = false
+
+			qt.ui.layout_add(internalLayout, okButton)
+			qt.ui.layout_add(externalLayout, description)
+			qt.ui.layout_add(externalLayout, internalLayout)
+			qt.ui.layout_add(mdialog, externalLayout)
+
+			qt.connect(okButton, "clicked()", function()
+				mdialog:done(0)
+			end)
+
+			mdialog:show()
+		end
+
+		_Gtme.print(value)
+		description.text = description.text.."\n"..value
+	end
+
+	local success, result = _Gtme.myxpcall(function() runScript(example) end)
+	if not success then
+		return false, result
+	end
+
+	if mdialog then
+		okButton.enabled = true
+		mdialog:exec()
+	end
+
+	return success
 end
 
 function _Gtme.execConfigure(model, packageName)
 	local errMsg = nil
-	
+
 	if packageName ~= "base" then
 		import("base")
 	end
@@ -1057,6 +1148,63 @@ function _Gtme.execConfigure(model, packageName)
 	end
 end
 
+local function findProject(project, packageName)
+	local file = project
+	local s = package.config:sub(1, 1)
+	local exFullPath = ""
+	local msg
+
+	local info
+	local ok, errMsg = pcall(function() info = packageInfo(packageName).path end)
+
+	if not ok then
+		return false, errMsg
+	end
+
+	if file then
+		exFullPath = info..s.."data"..s..file..".lua"
+
+		if not File(exFullPath):exists() then
+			msg = "Project '"..file.."' does not exist in package '"..packageName.."'."
+			msg = msg.."\nPlease use one from the list below:"
+		end
+	elseif #_Gtme.projectFiles(packageName) == 0 then
+		msg = "Package '"..packageName.."' has no projects."
+		return false, msg
+	else
+		msg = "Package '"..packageName.."' has the following projects:"
+	end
+
+	if file and File(exFullPath):exists() then
+		return true, exFullPath
+	else
+		files = _Gtme.projectFiles(packageName)
+
+		_Gtme.forEachElement(files, function(_, value)
+			msg = msg .."\n - "..value
+		end)
+	end
+
+	return false, msg
+end
+
+function _Gtme.execProject(project, packageName)
+	local ok, res = findProject(project, packageName)
+
+	if not ok then
+		return false, res
+	end
+
+	project = res
+
+	local success, result = _Gtme.myxpcall(function() dofile(project) end)
+	if not success then
+		return false, result
+	end
+
+	return success, _
+end
+
 function _Gtme.execute(arguments) -- 'arguments' is a vector of strings
 	info_ = { -- this variable is used by Utils:sessionInfo()
 		mode = "normal",
@@ -1064,9 +1212,11 @@ function _Gtme.execute(arguments) -- 'arguments' is a vector of strings
 		separator = package.config:sub(1, 1),
 		silent = false,
 		color = false,
-		path = os.getenv("TME_PATH"), 
+		path = os.getenv("TME_PATH"),
 		fullTraceback = false,
-		autoclose = false
+		autoclose = false,
+		system = string.lower(cpp_getOsName()),
+		round = 1e-5
 	}
 
 	if info_.path == nil or info_.path == "" then
@@ -1078,15 +1228,25 @@ function _Gtme.execute(arguments) -- 'arguments' is a vector of strings
 	local s = info_.separator
 	local path = info_.path..s.."packages"..s.."base"..s.."lua"..s
 	dofile(path.."ErrorHandling.lua", _Gtme)
+	dofile(path.."File.lua", _Gtme)
+	dofile(path.."Directory.lua", _Gtme)
 	dofile(path.."Package.lua", _Gtme)
-	dofile(path.."FileSystem.lua", _Gtme)
+	dofile(path.."OS.lua", _Gtme)
 	dofile(path.."Utils.lua", _Gtme)
 	dofile(info_.path..s.."lua"..s.."utils.lua")
 	dofile(info_.path..s.."lua"..s.."configure.lua")
 
-	info_.version = _Gtme.packageInfo().version
+	local infopath = _Gtme.Directory(info_.path)
+	if tostring(infopath) == tostring(_Gtme.currentDir()) then
+		_Gtme.printError("It is not possible to execute TerraME within its directory. Please, run it from another place.")
+		os.exit(1)
+	end
 
-	if arguments == nil or #arguments < 1 then 
+	info_.path       = _Gtme.Directory(info_.path)
+	info_.initialDir = _Gtme.Directory(tostring(_Gtme.currentDir()))
+	info_.version    = _Gtme.packageInfo().version
+
+	if arguments == nil or #arguments < 1 then
 		dofile(info_.path..s.."lua"..s.."pmanager.lua")
 		_Gtme.packageManager()
 		return true
@@ -1094,13 +1254,12 @@ function _Gtme.execute(arguments) -- 'arguments' is a vector of strings
 
 	local package = "base"
 
-	loadPackgesLibPath()
-
 	local argCount = 1
 	while argCount <= #arguments do
 		arg = arguments[argCount]
 		if string.sub(arg, 1, 1) == "-" then
 			if arg == "-version" then
+				checkUnnecessaryArguments(arguments, argCount)
 				print("TerraME - Terra Modeling Environment")
 				print(version())
 				os.exit(0)
@@ -1116,13 +1275,13 @@ function _Gtme.execute(arguments) -- 'arguments' is a vector of strings
 				info_.fullTraceback = true
 			elseif arg == "-color" then
 				info_.color = true
-			elseif arg == "-mode=normal" then
+			elseif arg == "-normal" then
 				info_.mode = "normal"
-			elseif arg == "-mode=debug" then
+			elseif arg == "-debug" then
 				info_.mode = "debug"
-			elseif arg == "-mode=quiet" then
+			elseif arg == "-quiet" then
 				info_.mode = "quiet"
-			elseif arg == "-mode=strict" then
+			elseif arg == "-strict" then
 				info_.mode = "strict"
 			elseif arg == "-silent" then
 				info_.silent = true
@@ -1157,12 +1316,12 @@ function _Gtme.execute(arguments) -- 'arguments' is a vector of strings
 
 					local description = _Gtme.packageInfo(package).path..s.."description.lua"
 
-					if not isFile(description) then
+					if not File(description):exists() then
 						_Gtme.printError("File '"..package..s.."description.lua' does not exist.")
 						os.exit(1)
 					end
 
-					local data = _Gtme.include(_Gtme.packageInfo(package).path..s.."description.lua")
+					local data = _Gtme.getLuaFile(_Gtme.packageInfo(package).path..s.."description.lua")
 					local date = data.date
 					if not date then date = "(undefined date)" end
 
@@ -1176,7 +1335,7 @@ function _Gtme.execute(arguments) -- 'arguments' is a vector of strings
 							print(" - "..value)
 						end)
 					end
-	
+
 					files = _Gtme.findExamples(package)
 
 					if #files > 0 then
@@ -1190,6 +1349,8 @@ function _Gtme.execute(arguments) -- 'arguments' is a vector of strings
 			elseif arg == "-configure" then
 				argCount = argCount + 1
 				model = arguments[argCount]
+
+				checkUnnecessaryArguments(arguments, argCount)
 
 				if package ~= "base" then
 					import("base")
@@ -1237,42 +1398,53 @@ function _Gtme.execute(arguments) -- 'arguments' is a vector of strings
 				end
 
 				info_.mode = "debug"
-				argCount = argCount + 1
+
+				local file
+				if arguments[argCount + 1] then
+					argCount = argCount + 1
+					file = arguments[argCount]
+				end
+
+				checkUnnecessaryArguments(arguments, argCount)
+
 				dofile(path.."UnitTest.lua")
 
-				dofile(_Gtme.sessionInfo().path..s.."lua"..s.."test.lua")
+				dofile(_Gtme.sessionInfo().path.."lua"..s.."test.lua")
 				local errors = 0
-				xpcall(function() errors = _Gtme.executeTests(package, arguments[argCount]) end, function(err)
-					_Gtme.printError(_Gtme.traceback(err))
+				xpcall(function() errors = _Gtme.executeTests(package, file) end, function(err)
+					_Gtme.printError(err)
 					os.exit(1)
 				end)
 
-                if _Gtme.isWindowsOS() then
-                    finalizeTerraLib()
-                end
-				
+				finalizeTerraLib()
+
 				os.exit(errors)
 			elseif arg == "-sketch" then
 				info_.mode = "debug"
-				argCount = argCount + 1
+				checkUnnecessaryArguments(arguments, argCount)
 
-				dofile(_Gtme.sessionInfo().path..s.."lua"..s.."test.lua")
-				dofile(_Gtme.sessionInfo().path..s.."lua"..s.."doc.lua")
-				dofile(_Gtme.sessionInfo().path..s.."lua"..s.."sketch.lua")
-				xpcall(function() _Gtme.sketch(package, arguments[argCount]) end, function(err)
+				dofile(_Gtme.sessionInfo().path.."lua"..s.."test.lua")
+				dofile(_Gtme.sessionInfo().path.."lua"..s.."doc.lua")
+				dofile(_Gtme.sessionInfo().path.."lua"..s.."sketch.lua")
+				xpcall(function() _Gtme.sketch(package) end, function(err)
 					_Gtme.printError(_Gtme.traceback(err))
 					os.exit(1)
 				end)
+
 				os.exit(0)
-			elseif arg == "-help" then 
+			elseif arg == "-help" then
+				checkUnnecessaryArguments(arguments, argCount)
 				usage()
 				os.exit(0)
 			elseif arg == "-showdoc" then
+				checkUnnecessaryArguments(arguments, argCount)
 				_Gtme.showDoc(package)
 				os.exit(0)
 			elseif arg == "-doc" then
-				info_.mode = "strict"
-				dofile(_Gtme.sessionInfo().path..s.."lua"..s.."doc.lua")
+				checkUnnecessaryArguments(arguments, argCount)
+
+				info_.mode = "debug"
+				dofile(_Gtme.sessionInfo().path.."lua"..s.."doc.lua")
 				local errors = 0
 				local success, result = _Gtme.myxpcall(function() errors = _Gtme.executeDoc(package) end)
 
@@ -1281,52 +1453,102 @@ function _Gtme.execute(arguments) -- 'arguments' is a vector of strings
 				end
 
 				os.exit(errors)
-			elseif arg == "-project" then
-				dofile(_Gtme.sessionInfo().path..s.."lua"..s.."project.lua")
-				_Gtme.myxpcall(function() _Gtme.executeProject(package) end)
-				os.exit(0)
+			elseif arg == "-examples" then
+				checkUnnecessaryArguments(arguments, argCount)
+				local errors
+				_Gtme.myxpcall(function() errors = executeExamples(package) end)
+				errors = errors or 0
+				os.exit(errors)
+			elseif arg == "-projects" then
+				checkUnnecessaryArguments(arguments, argCount)
+				dofile(_Gtme.sessionInfo().path.."lua"..s.."project.lua")
+				local errors
+
+				xpcall(function() packageInfo(package) end, function(err)
+					_Gtme.printError(err)
+					os.exit(1)
+				end)
+
+				import("base")
+				import("terralib")
+
+				_Gtme.myxpcall(function() errors = _Gtme.executeProject(package) end, function(err)
+					_Gtme.printError(err)
+
+					os.exit(1)
+				end)
+
+				os.exit(errors)
 			elseif arg == "-autoclose" then
-				argCount = argCount + 1
 				info_.autoclose = true
 			elseif arg == "-build" then
 				if package == "base" then
 					_Gtme.printError("TerraME cannot be built using -build.")
-				else
-					dofile(sessionInfo().path..s.."lua"..s.."build.lua")
-
-					argCount = argCount + 1
-					local config
-
-					if arguments[argCount] ~= "-clean" then
-						config = arguments[argCount]
-						argCount = argCount + 1
-					end
-
-					local clean
-					if arguments[argCount] ~= nil then
-						if arguments[argCount] == "-clean" then
-							clean = true
-						else
-							_Gtme.printError("Option not recognized: "..arguments[argCount])
-							os.exit(1)
-						end
-					end
-
-					local errors = _Gtme.buildPackage(package, config, clean)
-					os.exit(errors)
+					os.exit(0)
 				end
-				os.exit(0)
+
+				dofile(sessionInfo().path.."lua"..s.."build.lua")
+
+				local config
+
+				if arguments[argCount + 1] and arguments[argCount + 1] ~= "-clean" then
+					argCount = argCount + 1
+					config = arguments[argCount]
+				end
+
+				local clean
+
+				if arguments[argCount + 1] == "-clean" then
+					clean = true
+					argCount = argCount + 1
+				end
+
+				checkUnnecessaryArguments(arguments, argCount)
+
+				local errors = _Gtme.buildPackage(package, config, clean)
+				os.exit(errors)
 			elseif arg == "-install" then
-				xpcall(function() _Gtme.installPackage(arguments[argCount + 1]) end, function(err)
-					_Gtme.printError(err)
+				argCount = argCount + 1
+				checkUnnecessaryArguments(arguments, argCount)
+
+				if package ~= "base" then
+					_Gtme.printError("It is not possible to use -package with -install. Run the following command instead:")
+					_Gtme.printError("terrame -install "..package)
 					os.exit(1)
-				end)
+				elseif not arguments[argCount] then
+					_Gtme.printError("Please use one extra argument with the package name or file to be installed.")
+					os.exit(1)
+				end
+
+				local file = File(arguments[argCount])
+
+				if file:extension() == "zip" then
+					xpcall(function() _Gtme.installPackage(arguments[argCount]) end, function(err)
+						_Gtme.printError(err)
+						os.exit(1)
+					end)
+				else
+					local packages = _Gtme.downloadPackagesList()
+					local pkg = arguments[argCount]
+
+					if not packages[pkg] then
+						_Gtme.printError("Package '"..pkg.."' does not exist in TerraME repository.")
+						os.exit(1)
+					end
+
+					_Gtme.installRecursive(pkg.."_"..packages[pkg].version..".zip")
+				end
+
 				os.exit(0)
 			elseif arg == "-uninstall" then
+				checkUnnecessaryArguments(arguments, argCount)
 				_Gtme.uninstall(package)
 				os.exit(0)
 			elseif arg == "-example" then
-				local file = arguments[argCount + 1]
+				info_.fullTraceback = true
+				argCount = argCount + 1
+				local file = arguments[argCount]
+				checkUnnecessaryArguments(arguments, argCount)
 
 				if file then
 					local info
@@ -1337,24 +1559,23 @@ function _Gtme.execute(arguments) -- 'arguments' is a vector of strings
 
 					arg = info..s.."examples"..s..file..".lua"
 
-					if not isFile(arg) then
+					if File(arg):exists() then
+						runScript(arg)
+					else
 						_Gtme.printError("Example '"..file.."' does not exist in package '"..package.."'.")
 						print("Please use one from the list below:")
+						file = nil
 					end
 				elseif package == "base" then
 					print("TerraME has the following examples:")
 				elseif #_Gtme.findExamples(package) == 0 then
-					_Gtme.printError("Package '"..package.."' has no examples")
+					_Gtme.printError("Package '"..package.."' has no examples.")
 					os.exit(0)
 				else
 					print("Package '"..package.."' has the following examples:")
 				end
 
-				if file and isFile(arg) then
-					-- it only changes the file to point to the package and let it run as it
-					-- was a call such as "TerraME .../package/examples/example.lua"
-					arguments[argCount + 1] = arg
-				else
+				if not file then
 					files = _Gtme.findExamples(package)
 
 					_Gtme.forEachElement(files, function(_, value)
@@ -1362,49 +1583,79 @@ function _Gtme.execute(arguments) -- 'arguments' is a vector of strings
 					end)
 					os.exit(0)
 				end
+			elseif arg == "-project" then
+				argCount = argCount + 1
+				local file = arguments[argCount]
+				checkUnnecessaryArguments(arguments, argCount)
+
+				local info
+				xpcall(function() info = packageInfo(package).path end, function(err)
+					_Gtme.printError(err)
+					os.exit(1)
+				end)
+
+				if file then
+					arg = info..s.."data"..s..file..".lua"
+
+					if not File(arg):exists() then
+						_Gtme.printError("Project '"..file.."' does not exist in package '"..package.."'.")
+						print("Please use one from the list below:")
+					end
+				elseif #_Gtme.projectFiles(package) == 0 then
+					_Gtme.printError("Package '"..package.."' has no projects.")
+					os.exit(1)
+				else
+					print("Package '"..package.."' has the following projects:")
+				end
+
+				if file and File(arg):exists() then
+					-- it only changes the file to point to the package and let it run as it
+					-- was a call such as "TerraME .../package/examples/example.lua"
+					arguments[argCount + 1] = arg
+				else
+					files = _Gtme.projectFiles(package)
+
+					_Gtme.forEachElement(files, function(_, value)
+						value = value:name()
+						print(" - "..value:sub(0, string.len(value) - 4))
+					end)
+
+					os.exit(0)
+				end
+			elseif arg == "-check" then
+				checkUnnecessaryArguments(arguments, argCount)
+				dofile(sessionInfo().path.."lua"..s.."check.lua")
+
+				if info_.package == nil then
+					info_.package = "base"
+				end
+
+				local pkgPath
+				xpcall(function() pkgPath = packageInfo(package).path end, function(err)
+					_Gtme.printError(err)
+					os.exit(1)
+				end)
+
+				local numIssues = _Gtme.checkPackage(package, pkgPath)
+
+				os.exit(numIssues)
 			else
-				_Gtme.printError("Option not recognized: "..arg)
+				_Gtme.printError("Option not recognized: '"..arg.."'.")
 				os.exit(1)
 			end
 		else
-			if info_.mode ~= "quiet" then
-				checkNilVariables()
-			end
-
-			if not _Gtme.isLoaded("base") then
-				_Gtme.import("base")
-			end
-
-			local displayFile = string.sub(arg, 0, string.len(arg) - 3).."tme"
-			displayFile = _Gtme.makePathCompatibleToAllOS(displayFile)
-
-			local cObj = TeVisualArrangement()
-			cObj:setFile(displayFile)
-			
-			if _Gtme.isFile(displayFile) then
-				local display = dofile(displayFile)
-				
-				_Gtme.forEachElement(display, function(idx, data)
-					cObj:addPosition(idx, data.x, data.y)
-					cObj:addSize(idx, data.width, data.height)
-				end)
-			end
-
-			local success, result = _Gtme.myxpcall(function() dofile(arg) end) 
-			if not success then
-				_Gtme.printError(result)
-			end
+			runScript(arg)
 		end
 		argCount = argCount + 1
 	end
 
 	if rawget(_Gtme, "tmpdirectory__") then
-		rmDir(_Gtme.tmpdirectory__)
+		forEachElement(_Gtme.tmpdirectory__, function(_, dir)
+			if dir:exists() then dir:delete() end
+		end)
 	end
 
-    if _Gtme.isWindowsOS() then
-        finalizeTerraLib()
-    end
+	finalizeTerraLib()
 
 	return true
 end
@@ -1413,17 +1664,25 @@ function _Gtme.myxpcall(func)
 	return xpcall(func, function(err)
 		local si = _Gtme.sessionInfo()
 		local s = si.separator
-		local luaDirectory = _Gtme.replaceSpecialChars(si.path..s.."lua")
-		local baseLuaDirectory = _Gtme.replaceSpecialChars(si.path..s.."packages"..s.."base"..s.."lua")
-		local luadocLuaDirectory = _Gtme.replaceSpecialChars(si.path..s.."packages"..s.."luadoc")
-				
+		local luaDirectory = _Gtme.makePathCompatibleToAllOS(_Gtme.replaceSpecialChars(si.path.."lua"))
+		local baseLuaDirectory = _Gtme.makePathCompatibleToAllOS(_Gtme.replaceSpecialChars(si.path.."packages"..s.."base"..s.."lua"))
+		local luadocLuaDirectory = _Gtme.makePathCompatibleToAllOS(_Gtme.replaceSpecialChars(si.path.."packages"..s.."luadoc"))
+
 		local m1 = string.match(err, string.sub(luaDirectory, string.len(luaDirectory) - 25, string.len(luaDirectory)))
 		local m2 = string.match(err, string.sub(baseLuaDirectory, string.len(baseLuaDirectory) - 25, string.len(baseLuaDirectory)))
 		local m3 = string.match(err, string.sub(luadocLuaDirectory, string.len(luadocLuaDirectory) - 25, string.len(luadocLuaDirectory)))
 		local m4 = string.match(err, "%[C%]")
+		local m5 = string.match(err, "attempt to index a nil value %(local 'self'%)")
 
-		if m1 or m2 or m3 or m4 then
-			local str = 
+		if m5 then
+			-- whenever this error uccurs, it is because terrame is trying to use the argument
+			-- self of a function of a type, but it is nil. TerraME never checks if this
+			-- argument exists, and therefore this kind of error must be captured here.
+			err = string.sub(err, 1, -44)
+			err = err.."Trying to index a nil value. Did you forget to use ':' instead of '.'?"
+			return _Gtme.traceback(err)
+		elseif m1 or m2 or m3 or m4 then
+			local str =
 				"*************************************************************\n"..
 				"UNEXPECTED TERRAME INTERNAL ERROR. PLEASE GIVE US A FEEDBACK.\n"..
 				"REPORT THE ERROR AT github.com/TerraME/terrame/issues/new\n"..
@@ -1443,9 +1702,7 @@ function _Gtme.myxpcall(func)
 
 			return str
 		else
-			local msg = _Gtme.traceback(err)
-
-			return msg
+			return _Gtme.traceback(err)
 		end
 	end)
 end
@@ -1461,7 +1718,7 @@ function _Gtme.ft(err)
 		if info.short_src == "[C]" then
 			str = str.."\n    Internal C file"
 		else
-			str = str.."\n    File "..info.short_src
+			str = str.."\n    File '"..info.short_src.."'"
 		end
 
 		if info.currentline > 0 then
@@ -1528,4 +1785,3 @@ function _Gtme.tostring(self)
 
 	return result
 end
-
