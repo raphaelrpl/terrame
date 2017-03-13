@@ -1,5 +1,5 @@
 String prefix = "terrame-testing";
-String environment = "linux-ubuntu-14.04";
+String environment = "-linux-ubuntu-14.04";
 
 String _ROOT_BUILD_DIR =        "/home/jenkins/MyDevel/terrame/ci/";
 String _TERRALIB_BUILD_BASE =   "$_ROOT_BUILD_DIR/terralib"
