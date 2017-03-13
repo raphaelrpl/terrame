@@ -29,9 +29,6 @@ mkdir -p $_TERRAME_SOLUTION_DIR
 cd $_TERRAME_SOLUTION_DIR
 cp $_TERRAME_GIT_DIR/build/scripts/linux/terrame-conf.* .
 
-export _TERRAME_CREATE_INSTALLER=OFF
-export _TERRAME_BUILD_AS_BUNDLE=OFF
-
 ./terrame-conf.sh
 RESULT=$?
 

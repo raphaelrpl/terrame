@@ -42,14 +42,19 @@ git clone -b release-5.2 https://gitlab.dpi.inpe.br/rodrigo.avancini/terralib.gi
 mkdir -p $_TERRAME_GIT_DIR $_TERRAME_TEST_DIR
 
 cd $_TERRAME_GIT_DIR
-# Clone terrame and set PR refspec
-git init
-git config remote.origin.url https://github.com/TerraME/terrame.git
-git fetch --tags --progress https://github.com/TerraME/terrame.git +refs/pull/*:refs/remotes/origin/pr/* --quiet
-git rev-parse $ghprbActualCommit
-git config core.sparsecheckout
-git checkout -f $ghprbActualCommit
-git rev-list $ghprbActualCommit --quiet
+
+if [ "$1" == "daily" ]; then
+  git clone https://github.com/TerraME/terrame.git .
+else
+  # Clone terrame and set PR refspec
+  git init
+  git config remote.origin.url https://github.com/TerraME/terrame.git
+  git fetch --tags --progress https://github.com/TerraME/terrame.git +refs/pull/*:refs/remotes/origin/pr/* --quiet
+  git rev-parse $ghprbActualCommit
+  git config core.sparsecheckout
+  git checkout -f $ghprbActualCommit
+  git rev-list $ghprbActualCommit --quiet
+fi
 
 mkdir -p $_TERRALIB_BUILD_BASE/solution $_TERRAME_BUILD_BASE/solution
 cd $_TERRALIB_BUILD_BASE/solution
