@@ -163,7 +163,7 @@ job(prefix + "doc-terralib" + environment) {
   JobCommons.injectVariables()
 
   steps {
-    shell("build/scripts/linux/ci/doc.sh terralib"))
+    shell("build/scripts/linux/ci/doc.sh terralib")
   }
 }
 job(prefix + "unittest-base") {
