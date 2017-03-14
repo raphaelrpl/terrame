@@ -130,7 +130,7 @@ class JobCommons {
       */
       if (jobSpec.downstreamJob != null) {
         wrappers {
-          xvfb('default') {
+          xvfb('Xvfb') {
             screen('1280x1080x24')
           }
         }
