@@ -28,7 +28,7 @@
 ## Note: For base package, do not pass PACKAGE_NAME
 #
 
-export TME_PATH="$TERRAME_PATH/bin"
+export TME_PATH="$_TERRAME_INSTALL_PATH/bin"
 export PATH=$PATH:$TME_PATH
 export LD_LIBRARY_PATH=$TME_PATH
 
