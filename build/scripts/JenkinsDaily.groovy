@@ -100,7 +100,7 @@ class JobCommons {
       if (jobSpec.downstreamJob != null) {
         publishers {
           downstreamParameterized {
-            trigger(jobSpec.downstreamJob) {
+            trigger(prefix + jobSpec.downstreamJob) {
               condition(jobSpec.conditionName)
               parameters {
                 currentBuild()
@@ -114,68 +114,68 @@ class JobCommons {
 }
 
 JobSpec terralib = new JobSpec("terralilb-build");
-terralib.downstreamJob = prefix + "cpp-syntax-check";
+terralib.downstreamJob = "cpp-syntax-check";
 terralib.bashScript = "build/scripts/linux/ci/build-terralib.sh \"daily\"";
 terralib.triggerCron = "H 2 * * *";
 terralib.conditionName = "SUCCESS";
 new JobCommons().build(this, terralib);
 
 JobSpec syntaxCpp = new JobSpec("cpp-syntax-check");
-syntaxCpp.downstreamJob = prefix + "build";
+syntaxCpp.downstreamJob = "build";
 syntaxCpp.bashScript = "build/scripts/linux/ci/cpp-check.sh";
 syntaxCpp.conditionName = "ALWAYS";
 new JobCommons().build(this, syntaxCpp);
 
 JobSpec terrame = new JobSpec("build");
-terrame.downstreamJob = prefix + "code-analysis-base";
+terrame.downstreamJob = "code-analysis-base";
 terrame.bashScript = "build/scripts/linux/ci/build-terrame.sh";
 terrame.conditionName = "SUCCESS";
 new JobCommons().build(this, terrame);
 
 JobSpec codeAnalysisBase = new JobSpec("code-analysis-base");
-codeAnalysisBase.downstreamJob = prefix + "code-analysis-terralib";
+codeAnalysisBase.downstreamJob = "code-analysis-terralib";
 codeAnalysisBase.bashScript = "build/scripts/linux/ci/code-analysis.sh";
 codeAnalysisBase.conditionName = "ALWAYS";
 new JobCommons().build(this, codeAnalysisBase);
 
 JobSpec codeAnalysisTerralib = new JobSpec("code-analysis-terralib");
-codeAnalysisTerralib.downstreamJob = prefix + "doc-base";
+codeAnalysisTerralib.downstreamJob = "doc-base";
 codeAnalysisTerralib.bashScript = "build/scripts/linux/ci/code-analysis.sh \"terralib\"";
 codeAnalysisTerralib.conditionName = "ALWAYS";
 new JobCommons().build(this, codeAnalysisTerralib);
 
 JobSpec docBase = new JobSpec("doc-base");
-docBase.downstreamJob = prefix + "doc-terralib";
+docBase.downstreamJob = "doc-terralib";
 docBase.bashScript = "build/scripts/linux/ci/doc.sh";
 docBase.conditionName = "ALWAYS";
 new JobCommons().build(this, docBase);
 
 JobSpec docTerralib = new JobSpec("doc-terralib");
-docTerralib.downstreamJob = prefix + "doc-terralib";
+docTerralib.downstreamJob = "doc-terralib";
 docTerralib.bashScript = "build/scripts/linux/ci/doc.sh";
 docTerralib.conditionName = "ALWAYS";
 new JobCommons().build(this, docTerralib);
 
 JobSpec unittestBase = new JobSpec("unittest-base");
-unittestBase.downstreamJob = prefix + "unittest-terralib";
+unittestBase.downstreamJob = "unittest-terralib";
 unittestBase.bashScript = "build/scripts/linux/ci/unittest.sh";
 unittestBase.conditionName = "ALWAYS";
 new JobCommons().build(this, unittestBase);
 
 JobSpec unittestTerralib = new JobSpec("unittest-terralib");
-unittestTerralib.downstreamJob = prefix + "test-execution";
+unittestTerralib.downstreamJob = "test-execution";
 unittestTerralib.bashScript = "build/scripts/linux/ci/unittest.sh";
 unittestTerralib.conditionName = "ALWAYS";
 new JobCommons().build(this, unittestTerralib);
 
 JobSpec testExecution = new JobSpec("test-execution");
-testExecution.downstreamJob = prefix + "repository-test";
+testExecution.downstreamJob = "repository-test";
 testExecution.bashScript = "build/scripts/linux/ci/test-execution.sh";
 testExecution.conditionName = "ALWAYS";
 new JobCommons().build(this, testExecution);
 
 JobSpec repositoryTest = new JobSpec("repository-test");
-repositoryTest.downstreamJob = prefix + "installer";
+repositoryTest.downstreamJob = "installer";
 repositoryTest.bashScript = "build/scripts/linux/ci/repository-test.sh";
 repositoryTest.conditionName = "ALWAYS";
 new JobCommons().build(this, repositoryTest);
