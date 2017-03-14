@@ -37,7 +37,7 @@ if [ $RESULT -eq 0 ]; then
   mkdir -p $_TERRAME_INSTALL_PATH/bin/packages/terralib/log/linux
 else
   # remove dirs
-  rm -rf $_TERRAME_INSTALL_PATH $_TERRAME_OUT_DIR $_TERRAME_GIT_DIR
+  rm -rf $_TERRAME_INSTALL_PATH $_TERRAME_OUT_DIR
 fi
 
 exit $RESULT

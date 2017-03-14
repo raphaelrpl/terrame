@@ -33,7 +33,7 @@ export PATH=$PATH:$TME_PATH
 export LD_LIBRARY_PATH=$TME_PATH
 
 TERRAME_COMMANDS=""
-if [ $1 != "" || $1 != "base" ]; then
+if [ $1 != "" -o $1 != "base" ]; then
   TERRAME_COMMANDS="-package $1"
 fi
 

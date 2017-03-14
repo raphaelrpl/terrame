@@ -133,6 +133,8 @@ class JobCommons {
           xvfb('Xvfb') {
             screen('1280x1080x24')
           }
+
+          colorizeOutput()
         }
 
         publishers {
@@ -189,7 +191,7 @@ new JobCommons().build(this, docBase);
 
 JobSpec docTerralib = new JobSpec("doc-terralib");
 docTerralib.downstreamJob = "unittest-base";
-docTerralib.bashSpec = new BashSpec("build/scripts/linux/ci/doc.sh");
+docTerralib.bashSpec = new BashSpec("build/scripts/linux/ci/doc.sh \"terralib\"");
 docTerralib.conditionName = "ALWAYS";
 new JobCommons().build(this, docTerralib);
 
@@ -201,7 +203,7 @@ new JobCommons().build(this, unittestBase);
 
 JobSpec unittestTerralib = new JobSpec("unittest-terralib");
 unittestTerralib.downstreamJob = "test-execution";
-unittestTerralib.bashSpec = new BashSpec("build/scripts/linux/ci/unittest.sh");
+unittestTerralib.bashSpec = new BashSpec("build/scripts/linux/ci/unittest.sh \"terralib\"");
 unittestTerralib.conditionName = "ALWAYS";
 new JobCommons().build(this, unittestTerralib);
 
