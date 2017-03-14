@@ -28,20 +28,18 @@
 ## Note: For base package, do not pass PACKAGE_NAME
 #
 
-export TME_PATH=$_TERRAME_INSTALL_PATH/bin
+export TME_PATH="$TERRAME_PATH/bin"
 export PATH=$PATH:$TME_PATH
 export LD_LIBRARY_PATH=$TME_PATH
 
-cd $_TERRAME_GIT_DIR/test
+cd $_TERRAME_GIT_DIR/repository
 
 terrame -version
 
-# Execute TerraME doc generation
-terrame -color run.lua 2>/dev/null
-# Retrieve TerraME exit code
+terrame -color test.lua 2> /dev/null
+
 RESULT=$?
 
-# clean up
 rm -rf .terrame*
 
 exit $RESULT

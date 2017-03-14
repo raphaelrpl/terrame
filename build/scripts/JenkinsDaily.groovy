@@ -221,6 +221,6 @@ new JobCommons().build(this, repositoryTest);
 
 _TERRAME_CREATE_INSTALLER = "ON";
 JobSpec installer = new JobSpec("installer");
-installer.bashSpec = new BashSpec("build/scripts/linux/ci/installer.sh");
+installer.bashSpec = new BashSpec("build/scripts/linux/ci/build-terrame.sh");
 installer.publishOverSSH = true;
 new JobCommons().build(this, installer);
