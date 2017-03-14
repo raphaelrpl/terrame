@@ -25,7 +25,6 @@
 ## Remember that it runs after "build-terralib.sh" that compiles terralib and prepare terrame environment.
 #
 
-mkdir -p $_TERRAME_SOLUTION_DIR
 cd $_TERRAME_SOLUTION_DIR
 cp $_TERRAME_GIT_DIR/build/scripts/linux/terrame-conf.* .
 

@@ -111,7 +111,7 @@ class JobCommons {
     String PATH =                      "/opt/cmake-3.5.2/bin:\$PATH"
     // Creating Job
     dsl.job(prefix + jobSpec.name + environment) {
-      label("ubuntu-14.04")
+      label("ubuntu-14.04-terrame")
 
       if (jobSpec.triggerCron != null) {
         // It is important, due the first job must have a build script in order to prepare environment
