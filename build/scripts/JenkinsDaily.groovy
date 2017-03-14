@@ -67,6 +67,8 @@ class JobCommons {
     String _TERRAME_BUILD_AS_BUNDLE =  "OFF";
 
     dsl.job(prefix + jobSpec.name + environment) {
+      label("ubuntu-14.04")
+
       if (jobSpec.triggerCron != null) {
         triggers {
           cron(jobSpec.triggerCron) // Build everyday at 02:00 AM
@@ -111,75 +113,75 @@ class JobCommons {
   }
 }
 
-JobSpec terralib = new JobSpec("terrame-terralilb-build");
-terralib.downstreamJob = "terrame-cpp-syntax-check";
+JobSpec terralib = new JobSpec("terralilb-build");
+terralib.downstreamJob = "cpp-syntax-check";
 terralib.bashScript = "build/scripts/linux/ci/build-terralib.sh \"daily\"";
 terralib.triggerCron = "H 2 * * *";
 terralib.conditionName = "SUCCESS";
 new JobCommons().build(this, terralib);
 
-JobSpec syntaxCpp = new JobSpec("terrame-cpp-syntax-check");
-syntaxCpp.downstreamJob = "terrame-build";
+JobSpec syntaxCpp = new JobSpec("cpp-syntax-check");
+syntaxCpp.downstreamJob = "build";
 syntaxCpp.bashScript = "build/scripts/linux/ci/cpp-check.sh";
 syntaxCpp.conditionName = "ALWAYS";
 new JobCommons().build(this, syntaxCpp);
 
-JobSpec terrame = new JobSpec("terrame-build");
-terrame.downstreamJob = "terrame-code-analysis-base";
+JobSpec terrame = new JobSpec("build");
+terrame.downstreamJob = "code-analysis-base";
 terrame.bashScript = "build/scripts/linux/ci/build-terrame.sh";
 terrame.conditionName = "SUCCESS";
 new JobCommons().build(this, terrame);
 
-JobSpec codeAnalysisBase = new JobSpec("terrame-code-analysis-base");
-codeAnalysisBase.downstreamJob = "terrame-code-analysis-terralib";
+JobSpec codeAnalysisBase = new JobSpec("code-analysis-base");
+codeAnalysisBase.downstreamJob = "code-analysis-terralib";
 codeAnalysisBase.bashScript = "build/scripts/linux/ci/code-analysis.sh";
 codeAnalysisBase.conditionName = "ALWAYS";
 new JobCommons().build(this, codeAnalysisBase);
 
-JobSpec codeAnalysisTerralib = new JobSpec("terrame-code-analysis-terralib");
-codeAnalysisTerralib.downstreamJob = "terrame-doc-base";
+JobSpec codeAnalysisTerralib = new JobSpec("code-analysis-terralib");
+codeAnalysisTerralib.downstreamJob = "doc-base";
 codeAnalysisTerralib.bashScript = "build/scripts/linux/ci/code-analysis.sh \"terralib\"";
 codeAnalysisTerralib.conditionName = "ALWAYS";
 new JobCommons().build(this, codeAnalysisTerralib);
 
-JobSpec docBase = new JobSpec("terrame-doc-base");
-docBase.downstreamJob = "terrame-doc-terralib";
+JobSpec docBase = new JobSpec("doc-base");
+docBase.downstreamJob = "doc-terralib";
 docBase.bashScript = "build/scripts/linux/ci/doc.sh";
 docBase.conditionName = "ALWAYS";
 new JobCommons().build(this, docBase);
 
-JobSpec docTerralib = new JobSpec("terrame-doc-terralib");
-docTerralib.downstreamJob = "terrame-doc-terralib";
+JobSpec docTerralib = new JobSpec("doc-terralib");
+docTerralib.downstreamJob = "doc-terralib";
 docTerralib.bashScript = "build/scripts/linux/ci/doc.sh";
 docTerralib.conditionName = "ALWAYS";
 new JobCommons().build(this, docTerralib);
 
-JobSpec unittestBase = new JobSpec("terrame-unittest-base");
-unittestBase.downstreamJob = "terrame-unittest-terralib";
+JobSpec unittestBase = new JobSpec("unittest-base");
+unittestBase.downstreamJob = "unittest-terralib";
 unittestBase.bashScript = "build/scripts/linux/ci/unittest.sh";
 unittestBase.conditionName = "ALWAYS";
 new JobCommons().build(this, unittestBase);
 
-JobSpec unittestTerralib = new JobSpec("terrame-unittest-terralib");
-unittestTerralib.downstreamJob = "terrame-test-execution";
+JobSpec unittestTerralib = new JobSpec("unittest-terralib");
+unittestTerralib.downstreamJob = "test-execution";
 unittestTerralib.bashScript = "build/scripts/linux/ci/unittest.sh";
 unittestTerralib.conditionName = "ALWAYS";
 new JobCommons().build(this, unittestTerralib);
 
-JobSpec testExecution = new JobSpec("terrame-test-execution");
-testExecution.downstreamJob = "terrame-repository-test";
+JobSpec testExecution = new JobSpec("test-execution");
+testExecution.downstreamJob = "repository-test";
 testExecution.bashScript = "build/scripts/linux/ci/test-execution.sh";
 testExecution.conditionName = "ALWAYS";
 new JobCommons().build(this, testExecution);
 
-JobSpec repositoryTest = new JobSpec("terrame-repository-test");
-repositoryTest.downstreamJob = "terrame-installer";
+JobSpec repositoryTest = new JobSpec("repository-test");
+repositoryTest.downstreamJob = "installer";
 repositoryTest.bashScript = "build/scripts/linux/ci/repository-test.sh";
 repositoryTest.conditionName = "ALWAYS";
 new JobCommons().build(this, repositoryTest);
 
 _TERRAME_CREATE_INSTALLER = "ON";
-JobSpec installer = new JobSpec("terrame-installer");
+JobSpec installer = new JobSpec("installer");
 installer.bashScript = "build/scripts/linux/ci/installer.sh";
 installer.publishOverSSH = true;
 new JobCommons().build(this, installer);
