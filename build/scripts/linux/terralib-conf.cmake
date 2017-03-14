@@ -28,7 +28,7 @@ set(CMAKE_PREFIX_PATH "$ENV{_TERRALIB_3RDPARTY_DIR};$ENV{_TERRALIB_3RDPARTY_DIR}
 
 # Forcing TerraLib modules to 3rdparty dependencies
 set(GEOS_INCLUDE_DIR "$ENV{_TERRALIB_3RDPARTY_DIR}/include" CACHE FILEPATH "Where are the GEOS include?" FORCE)
-set(GEOS_INCLUDE_DIR "$ENV{_TERRALIB_3RDPARTY_DIR}/lib/libgeos.so" CACHE FILEPATH "Where are the GEOS library?" FORCE)
+set(GEOS_LIBRARY "$ENV{_TERRALIB_3RDPARTY_DIR}/lib/libgeos.so" CACHE FILEPATH "Where are the GEOS library?" FORCE)
 set(SWIG_EXECUTABLE "$ENV{_TERRALIB_3RDPARTY_DIR}/bin/swig" CACHE FILEPATH "Where are the SWIG?" FORCE)
 set(LUA_INCLUDE_DIR "$ENV{_TERRALIB_3RDPARTY_DIR}/include" CACHE FILEPATH "Where is Lua Includes?" FORCE)
 set(LUA_LIBRARY "$ENV{_TERRALIB_3RDPARTY_DIR}/lib/liblua.so" CACHE FILEPATH "Where is Lua library?" FORCE)
