@@ -43,12 +43,9 @@ mkdir -p $_TERRAME_GIT_DIR $_TERRAME_TEST_DIR
 
 cd $_TERRAME_GIT_DIR
 # Adapting Script to work with GitHub Pull Requests and Daily execution of branch "master"
-if [ "$1" == "daily" ]; then
-  git clone https://github.com/TerraME/terrame.git .
-else
+git clone https://github.com/TerraME/terrame.git .
+if [ "$ghprbActualCommit" != "" ]; then
   # Clone terrame and set PR refspec
-  git init
-  git config remote.origin.url https://github.com/TerraME/terrame.git
   git fetch --tags --progress https://github.com/TerraME/terrame.git +refs/pull/*:refs/remotes/origin/pr/* --quiet
   git rev-parse $ghprbActualCommit
   git config core.sparsecheckout
