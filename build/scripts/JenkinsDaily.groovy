@@ -1,4 +1,26 @@
 /*
+ TerraME - a software platform for multiple scale spatially-explicit dynamic modeling.
+ Copyright (C) 2001-2017 INPE and TerraLAB/UFOP -- www.terrame.org
+
+ This code is part of the TerraME framework.
+ This framework is free software; you can redistribute it and/or
+ modify it under the terms of the GNU Lesser General Public
+ License as published by the Free Software Foundation; either
+ version 2.1 of the License, or (at your option) any later version.
+
+ You should have received a copy of the GNU Lesser General Public
+ License along with this library.
+
+ The authors reassure the license terms regarding the warranties.
+ They specifically disclaim any warranties, including, but not limited to,
+ the implied warranties of merchantability and fitness for a particular purpose.
+ The framework provided hereunder is on an "as is" basis, and the authors have no
+ obligation to provide maintenance, support, updates, enhancements, or modifications.
+ In no event shall INPE and TerraLAB / UFOP be held liable to any party for direct,
+ indirect, special, incidental, or consequential damages arising out of the use
+ of this software and its documentation.
+*/
+/*
   Structure (See https://github.com/terrame/terrame/wiki for further details):
   - Folder (/path/to/[ci|daily])
     - terralib
@@ -87,11 +109,12 @@ class JobCommons {
     String _TERRAME_CREATE_INSTALLER = jobSpec.installer ? "ON" : "OFF";
     String _TERRAME_BUILD_AS_BUNDLE =  "OFF";
     String PATH =                      "/opt/cmake-3.5.2/bin:\$PATH"
-
+    // Creating Job
     dsl.job(prefix + jobSpec.name + environment) {
       label("ubuntu-14.04")
 
       if (jobSpec.triggerCron != null) {
+        // It is important, due the first job must have a build script in order to prepare environment
         scm {
           git {
             remote {
@@ -104,6 +127,7 @@ class JobCommons {
           cron(jobSpec.triggerCron) // Build everyday at 02:00 AM
         }
       } else {
+        // Setting default jenkins Workspace
         customWorkspace(_TERRAME_GIT_DIR)
       }
       /*
@@ -130,6 +154,19 @@ class JobCommons {
         }
 
         shell(jobSpec.bashSpec.script)
+        // If it is job generates a installer, make it available in website, sending through SSH
+        if (jobSpec.installer) {
+          publishOverSsh {
+            server('Jenkins Slave Linux (Public)') {
+              transferSet {
+                // Relative to Workspace (daily/terrame/git)
+                sourceFiles("../solution/build/terrame*.tar.gz")
+                removePrefix("../solution/build")
+                remoteDirectory("Public/terrame/installers")
+              }
+            }
+          }
+        }
       }
       /*
         If set, it will trigger a specific job with current build parameters based on Condition role (SUCCESS, ALWAYS (Always), etc).
