@@ -1,4 +1,36 @@
-String prefix = "terrame-testing";
+/*
+  Structure (See https://github.com/terrame/terrame/wiki for further details):
+  - Folder (/path/to/[ci|daily])
+    - terralib
+      * 3rdparty
+        - Versions (5.1, 5.2, etc)
+      - solution
+        ! build (terralib_mod_binding_lua)
+        * install
+      * git
+    - terrame
+      + GitHubCommitHash
+        * git
+        * solution
+          * build
+          * install
+        * git
+        * test (With test.lua. The file will be created during TerraLib compilation and should be kept during TerraME lifecycle)
+      - 3rdparty (TODO: change it in order to follow TerraLib style)
+        - build
+        - install
+
+  Where:
+    "-" represents folders that should not remove
+    "*" represents folder that must be removed every job execution
+    "!" represents folder that need removed specific files
+    "+" represents grouped folder based on GitHub Commmit Hash. As GitHub Pull Requests
+        are made from N forks from N branches, it is necessary to group TerraME
+        compilation|installation using hash in to avoid artifacts overwriting.
+
+*/
+
+String prefix = "terrame-testing-ci-";
 String environment = "-linux-ubuntu-14.04";
 
 String _ROOT_BUILD_DIR =        "/home/jenkins/MyDevel/terrame/ci/";
@@ -7,7 +39,7 @@ String _TERRALIB_3RDPARTY_DIR = "$_TERRALIB_BUILD_BASE/3rdparty/5.2";
 String _TERRALIB_GIT_DIR =      "$_TERRALIB_BUILD_BASE/git";
 String _TERRALIB_OUT_DIR =      "$_TERRALIB_BUILD_BASE/solution/build";
 String _TERRALIB_INSTALL_PATH = "$_TERRALIB_BUILD_BASE/solution/install";
-String _TERRAME_BUILD_BASE =    "$_ROOT_BUILD_DIR/terrame/${ghprbActualCommit}";
+String _TERRAME_BUILD_BASE =    "$_ROOT_BUILD_DIR/terrame/\${ghprbActualCommit}";
 String _TERRAME_GIT_DIR =       "$_TERRAME_BUILD_BASE/git";
 String _TERRAME_TEST_DIR =      "$_TERRAME_BUILD_BASE/test;"
 
@@ -16,10 +48,10 @@ job(prefix + "terralib-build" + environment) {
   scm {
       git {
           remote {
-              github("terrame/terrame")
+              github("raphaelrpl/terrame")
               refspec("+refs/pull/*:refs/remotes/origin/pr/*")
           }
-          branch("${ghprbActualCommit}")
+          branch("\${ghprbActualCommit}")
       }
   }
 
@@ -55,7 +87,7 @@ job(prefix + "terralib-build" + environment) {
     env("_TERRAME_GIT_DIR",       _TERRAME_GIT_DIR)
     env("_TERRAME_TEST_DIR",      _TERRAME_TEST_DIR)
 }
-    shell(readFileFromWorkspace("build/scripts/linux/ci/build-terralib.sh"))
+    shell(readFileFromWorkspace("build/scripts/unix/build-terralib.sh"))
   }
 }
 
@@ -84,7 +116,7 @@ job(prefix + "cpp-syntax-check" + environment) {
         env("_TERRAME_GIT_DIR",       _TERRAME_GIT_DIR)
         env("_TERRAME_TEST_DIR",      _TERRAME_TEST_DIR)
     }
-    shell(readFileFromWorkspace("build/scripts/linux/ci/cpp-check.sh"))
+    shell(readFileFromWorkspace("build/scripts/unix/cpp-check.sh"))
   }
 }
 
@@ -112,7 +144,7 @@ job(prefix + "build" + environment) {
       env("_TERRAME_GIT_DIR",       _TERRAME_GIT_DIR)
       env("_TERRAME_TEST_DIR",      _TERRAME_TEST_DIR)
     }
-    shell(readFileFromWorkspace("build/scripts/linux/ci/build-terrame.sh"))
+    shell(readFileFromWorkspace("build/scripts/unix/build-terrame.sh"))
   }
 }
 
@@ -140,7 +172,7 @@ job(prefix + "doc-base" + environment) {
       env("_TERRAME_GIT_DIR",       _TERRAME_GIT_DIR)
       env("_TERRAME_TEST_DIR",      _TERRAME_TEST_DIR)
     }
-    shell(readFileFromWorkspace("build/scripts/linux/ci/doc.sh"))
+    shell(readFileFromWorkspace("build/scripts/unix/doc.sh"))
   }
 }
 
@@ -168,7 +200,7 @@ job(prefix + "doc-terralib" + environment) {
       env("_TERRAME_GIT_DIR",       _TERRAME_GIT_DIR)
       env("_TERRAME_TEST_DIR",      _TERRAME_TEST_DIR)
     }
-    shell("build/scripts/linux/ci/doc.sh terralib")
+    shell("build/scripts/unix/doc.sh terralib")
   }
 }
 job(prefix + "unittest-base") {
@@ -196,7 +228,7 @@ job(prefix + "unittest-base") {
       env("_TERRAME_GIT_DIR",       _TERRAME_GIT_DIR)
       env("_TERRAME_TEST_DIR",      _TERRAME_TEST_DIR)
     }
-    shell(readFileFromWorkspace("build/scripts/linux/ci/unittest.sh"))
+    shell(readFileFromWorkspace("build/scripts/unix/unittest.sh"))
   }
 }
 job(prefix + "unittest-terralib") {
@@ -223,7 +255,7 @@ job(prefix + "unittest-terralib") {
       env("_TERRAME_GIT_DIR",       _TERRAME_GIT_DIR)
       env("_TERRAME_TEST_DIR",      _TERRAME_TEST_DIR)
     }
-    shell("build/scripts/linux/ci/unittest.sh terralib")
+    shell("build/scripts/unix/unittest.sh terralib")
   }
 }
 
@@ -252,6 +284,6 @@ job(prefix + "test-execution") {
       env("_TERRAME_GIT_DIR",       _TERRAME_GIT_DIR)
       env("_TERRAME_TEST_DIR",      _TERRAME_TEST_DIR)
     }
-    shell(readFileFromWorkspace("build/scripts/linux/ci/test-execution.sh"))
+    shell(readFileFromWorkspace("build/scripts/unix/test-execution.sh"))
   }
 }

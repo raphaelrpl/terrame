@@ -42,7 +42,7 @@ git clone -b release-5.2 https://gitlab.dpi.inpe.br/rodrigo.avancini/terralib.gi
 mkdir -p $_TERRAME_GIT_DIR $_TERRAME_TEST_DIR
 
 cd $_TERRAME_GIT_DIR
-
+# Adapting Script to work with GitHub Pull Requests and Daily execution of branch "master"
 if [ "$1" == "daily" ]; then
   git clone https://github.com/TerraME/terrame.git .
 else
@@ -56,7 +56,7 @@ else
   git rev-list $ghprbActualCommit --quiet
 fi
 
-mkdir -p $_TERRALIB_BUILD_BASE/solution $_TERRAME_BUILD_BASE/solution
+mkdir -p $_TERRALIB_BUILD_BASE/solution
 cd $_TERRALIB_BUILD_BASE/solution
 # Copying TerraME TerraLib build scripts into current workspace
 cp $_TERRAME_GIT_DIR/build/scripts/linux/terralib-conf.* .
