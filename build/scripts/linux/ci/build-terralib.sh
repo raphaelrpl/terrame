@@ -36,12 +36,14 @@ rm -rf $_TERRAME_GIT_DIR $_TERRALIB_GIT_DIR
 rm -rf $_TERRALIB_OUT_DIR/terralib_mod_binding_lua $_TERRALIB_INSTALL_PATH
 
 # Cloning a new TerraLib Git Files. Branch: release-5.2
+echo "### TerraLib ###"
 git clone -b release-5.2 https://gitlab.dpi.inpe.br/rodrigo.avancini/terralib.git $_TERRALIB_GIT_DIR
 
 # Creating Target TerraME build dir
 mkdir -p $_TERRAME_GIT_DIR $_TERRAME_TEST_DIR
 
 cd $_TERRAME_GIT_DIR
+echo "### TerraME ###"
 # Adapting Script to work with GitHub Pull Requests and Daily execution of branch "master"
 git clone https://github.com/TerraME/terrame.git .
 if [ "$ghprbActualCommit" != "" ]; then
@@ -58,7 +60,7 @@ cd $_TERRALIB_BUILD_BASE/solution
 # Copying TerraME TerraLib build scripts into current workspace
 cp $_TERRAME_GIT_DIR/build/scripts/linux/terralib-conf.* .
 # Copying TerraME config.lua file used during tests
-cp /home/jenkins/Configs/terrame/tests/files/config.lua $_TERRAME_TEST_DIR
+cp /home/jenkins/MyDevel/terrame/tests/files/config.lua $_TERRAME_TEST_DIR
 
 ./terralib-conf.sh
 

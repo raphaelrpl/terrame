@@ -70,7 +70,7 @@ class JobCommons {
     String _TERRALIB_3RDPARTY_DIR =    "$_TERRALIB_BUILD_BASE/3rdparty/5.2";
     String _TERRALIB_GIT_DIR =         "$_TERRALIB_BUILD_BASE/git";
     String _TERRALIB_OUT_DIR =         "$_TERRALIB_BUILD_BASE/solution/build";
-    String _TERRALIB_INSTALL_PATH =    "$_TERRALIB_BUILD_BASE/soluti'on/install";
+    String _TERRALIB_INSTALL_PATH =    "$_TERRALIB_BUILD_BASE/solution/install";
     String _TERRAME_BUILD_BASE =       "$_ROOT_BUILD_DIR/terrame";
     String _TERRAME_GIT_DIR =          "$_TERRAME_BUILD_BASE/git";
     String _TERRAME_TEST_DIR =         "$_TERRAME_BUILD_BASE/test;"
