@@ -115,11 +115,7 @@ class JobCommons {
           env("PATH",                      PATH)
         }
 
-        // if (jobSpec.bashSpec.isFile) {
-        //   shell(readFileFromWorkspace("build/scripts/unix/build-terralib.sh"))
-        // } else {
-          shell(jobSpec.bashSpec.script)
-        // }
+        shell(jobSpec.bashSpec.script)
       }
       /*
         If set, it will trigger a specific job with current build parameters based on Condition role (SUCCESS, ALWAYS (Always), etc).
@@ -133,12 +129,12 @@ class JobCommons {
                 predefinedProp("", "")
               }
             }
-          }
-        }
-      }
-    }
-  }
-}
+          } // end downstreamParameterized
+        }   // end publishers
+      }     // end if
+    }       // end dsl.job
+  }         // end JobCommons.build
+}           // end class
 
 JobSpec terralib = new JobSpec("terralilb-build");
 terralib.downstreamJob = "cpp-syntax-check";
