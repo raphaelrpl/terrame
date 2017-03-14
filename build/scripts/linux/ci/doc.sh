@@ -43,6 +43,6 @@ if [ $1 != "" || $1 != "base" ]; then
   terrame -color $_TERRAME_PACKAGE -projects 2>/dev/null
 fi
 
-terrame -color $_TERRAME_PACKAGE -check 2>/dev/null
+terrame -color $_TERRAME_PACKAGE -doc 2>/dev/null
 
 exit $?
