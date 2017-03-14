@@ -46,10 +46,16 @@ class JobSpec {
   public String downstreamJob;
   public String conditionName;
   public boolean publishOverSSH;
+  public boolean installer;
+
+  public JobSpec(String jobName, boolean installer) {
+    this.name = jobName;
+    this.installer = installer;
+    this.publishOverSSH = false;
+  }
 
   public JobSpec(String jobName) {
-    this.name = jobName;
-    this.publishOverSSH = false;
+    this(jobName, false);
   }
 }
 
@@ -78,7 +84,7 @@ class JobCommons {
     String _TERRAME_DEPENDS_DIR =      "$_TERRAME_BUILD_BASE/3rdparty/install";
     String _TERRAME_OUT_DIR =          "$_TERRAME_BUILD_BASE/solution/build";
     String _TERRAME_INSTALL_PATH =     "$_TERRAME_BUILD_BASE/solution/install";
-    String _TERRAME_CREATE_INSTALLER = "OFF";
+    String _TERRAME_CREATE_INSTALLER = jobSpec.installer ? "ON" : "OFF";
     String _TERRAME_BUILD_AS_BUNDLE =  "OFF";
     String PATH =                      "/opt/cmake-3.5.2/bin:\$PATH"
 
@@ -219,8 +225,7 @@ repositoryTest.bashSpec = new BashSpec("build/scripts/linux/ci/repository-test.s
 repositoryTest.conditionName = "ALWAYS";
 new JobCommons().build(this, repositoryTest);
 
-_TERRAME_CREATE_INSTALLER = "ON";
-JobSpec installer = new JobSpec("installer");
+JobSpec installer = new JobSpec("installer", true);
 installer.bashSpec = new BashSpec("build/scripts/linux/ci/build-terrame.sh");
 installer.publishOverSSH = true;
 new JobCommons().build(this, installer);
