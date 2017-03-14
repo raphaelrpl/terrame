@@ -185,7 +185,7 @@ class JobCommons {
             trigger(prefix + jobSpec.downstreamJob + environment) {
               condition(jobSpec.conditionName)
               parameters {
-                predefinedProp("", "")
+                predefinedProp("", "") // It is important to set empty values due the wrapper parameters requires a property even blank.
               }
             }
           } // end downstreamParameterized
@@ -263,6 +263,6 @@ repositoryTest.conditionName = "ALWAYS";
 new JobCommons().build(this, repositoryTest);
 
 JobSpec installer = new JobSpec("installer", true);
-installer.bashSpec = new BashSpec("build/scripts/linux/ci/build-terrame.sh");
+installer.bashSpec = new BashSpec("build/scripts/linux/ci/installer.sh");
 installer.publishOverSSH = true;
 new JobCommons().build(this, installer);
