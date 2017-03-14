@@ -129,6 +129,12 @@ class JobCommons {
         If set, it will trigger a specific job with current build parameters based on Condition role (SUCCESS, ALWAYS (Always), etc).
       */
       if (jobSpec.downstreamJob != null) {
+        wrappers {
+          xvfb('default') {
+            screen('1280x1080x24')
+          }
+        }
+
         publishers {
           downstreamParameterized {
             trigger(prefix + jobSpec.downstreamJob + environment) {
