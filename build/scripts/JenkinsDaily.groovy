@@ -151,7 +151,7 @@ docBase.conditionName = "ALWAYS";
 new JobCommons().build(this, docBase);
 
 JobSpec docTerralib = new JobSpec("doc-terralib");
-docTerralib.downstreamJob = "doc-terralib";
+docTerralib.downstreamJob = "unittest-base";
 docTerralib.bashScript = "build/scripts/linux/ci/doc.sh";
 docTerralib.conditionName = "ALWAYS";
 new JobCommons().build(this, docTerralib);
