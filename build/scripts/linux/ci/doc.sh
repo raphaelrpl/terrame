@@ -37,7 +37,7 @@ terrame -version
 cd $_TERRAME_TEST_DIR
 
 _TERRAME_PACKAGE=""
-if [ $1 != "" || $1 != "base" ]; then
+if [ $1 != "" -o $1 != "base" ]; then
   _TERRAME_PACKAGE="-package $1"
   terrame $_TERRAME_PACKAGE -uninstall
   terrame -color $_TERRAME_PACKAGE -projects 2>/dev/null
