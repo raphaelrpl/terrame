@@ -100,7 +100,7 @@ class JobCommons {
       if (jobSpec.downstreamJob != null) {
         publishers {
           downstreamParameterized {
-            trigger(prefix + jobSpec.downstreamJob) {
+            trigger(prefix + jobSpec.downstreamJob + environment) {
               condition(jobSpec.conditionName)
               parameters {
                 currentBuild()
