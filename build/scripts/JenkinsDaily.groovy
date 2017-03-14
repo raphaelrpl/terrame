@@ -71,10 +71,13 @@ class JobCommons {
     String _TERRALIB_GIT_DIR =         "$_TERRALIB_BUILD_BASE/git";
     String _TERRALIB_OUT_DIR =         "$_TERRALIB_BUILD_BASE/solution/build";
     String _TERRALIB_INSTALL_PATH =    "$_TERRALIB_BUILD_BASE/solution/install";
+    String _TERRALIB_MODULES_DIR =     "$_TERRALIB_INSTALL_PATH"
     String _TERRAME_BUILD_BASE =       "$_ROOT_BUILD_DIR/terrame";
     String _TERRAME_GIT_DIR =          "$_TERRAME_BUILD_BASE/git";
     String _TERRAME_TEST_DIR =         "$_TERRAME_BUILD_BASE/test"
     String _TERRAME_DEPENDS_DIR =      "$_TERRAME_BUILD_BASE/3rdparty/install";
+    String _TERRAME_OUT_DIR =          "$_TERRAME_BUILD_BASE/solution/build";
+    String _TERRAME_INSTALL_PATH =     "$_TERRAME_BUILD_BASE/solution/install";
     String _TERRAME_CREATE_INSTALLER = "OFF";
     String _TERRAME_BUILD_AS_BUNDLE =  "OFF";
     String PATH =                      "/opt/cmake-3.5.2/bin:\$PATH"
@@ -108,7 +111,10 @@ class JobCommons {
           env("_TERRALIB_GIT_DIR",         _TERRALIB_GIT_DIR)
           env("_TERRALIB_OUT_DIR",         _TERRALIB_OUT_DIR)
           env("_TERRALIB_INSTALL_PATH",    _TERRALIB_INSTALL_PATH)
+          env("_TERRALIB_MODULES_DIR",     _TERRALIB_MODULES_DIR)
           env("_TERRAME_BUILD_BASE",       _TERRAME_BUILD_BASE)
+          env("_TERRAME_INSTALL_PATH",     _TERRAME_INSTALL_PATH)
+          env("_TERRAME_OUT_DIR",          _TERRAME_OUT_DIR)
           env("_TERRAME_GIT_DIR",          _TERRAME_GIT_DIR)
           env("_TERRAME_TEST_DIR",         _TERRAME_TEST_DIR)
           env("_TERRAME_DEPENDS_DIR",      _TERRAME_DEPENDS_DIR)
