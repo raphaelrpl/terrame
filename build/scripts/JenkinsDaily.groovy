@@ -76,6 +76,7 @@ class JobCommons {
     String _TERRAME_TEST_DIR =         "$_TERRAME_BUILD_BASE/test;"
     String _TERRAME_CREATE_INSTALLER = "OFF";
     String _TERRAME_BUILD_AS_BUNDLE =  "OFF";
+    String PATH =                      "/opt/cmake-3.5.2/bin:\$PATH"
 
     dsl.job(prefix + jobSpec.name + environment) {
       label("ubuntu-14.04")
@@ -111,6 +112,7 @@ class JobCommons {
           env("_TERRAME_TEST_DIR",         _TERRAME_TEST_DIR)
           env("_TERRAME_CREATE_INSTALLER", _TERRAME_CREATE_INSTALLER)
           env("_TERRAME_BUILD_AS_BUNDLE",  _TERRAME_BUILD_AS_BUNDLE)
+          env("PATH",                      PATH)
         }
 
         // if (jobSpec.bashSpec.isFile) {
@@ -128,7 +130,7 @@ class JobCommons {
             trigger(prefix + jobSpec.downstreamJob + environment) {
               condition(jobSpec.conditionName)
               parameters {
-                currentBuild()
+                predefinedProp("", "")
               }
             }
           }
