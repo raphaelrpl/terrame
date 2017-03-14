@@ -41,7 +41,8 @@ String _TERRALIB_OUT_DIR =      "$_TERRALIB_BUILD_BASE/solution/build";
 String _TERRALIB_INSTALL_PATH = "$_TERRALIB_BUILD_BASE/solution/install";
 String _TERRAME_BUILD_BASE =    "$_ROOT_BUILD_DIR/terrame/\${ghprbActualCommit}";
 String _TERRAME_GIT_DIR =       "$_TERRAME_BUILD_BASE/git";
-String _TERRAME_TEST_DIR =      "$_TERRAME_BUILD_BASE/test;"
+String _TERRAME_DEPENDS_DIR =   "$_TERRAME_BUILD_BASE/3rdparty/install";
+String _TERRAME_TEST_DIR =      "$_TERRAME_BUILD_BASE/test"
 
 
 job(prefix + "terralib-build" + environment) {
@@ -86,6 +87,7 @@ job(prefix + "terralib-build" + environment) {
     env("_TERRAME_BUILD_BASE",    _TERRAME_BUILD_BASE)
     env("_TERRAME_GIT_DIR",       _TERRAME_GIT_DIR)
     env("_TERRAME_TEST_DIR",      _TERRAME_TEST_DIR)
+    env("_TERRAME_DEPENDS_DIR",      _TERRAME_DEPENDS_DIR)
 }
     shell(readFileFromWorkspace("build/scripts/unix/build-terralib.sh"))
   }
