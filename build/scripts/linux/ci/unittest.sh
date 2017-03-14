@@ -32,6 +32,8 @@ export TME_PATH=$_TERRAME_INSTALL_PATH/bin
 export PATH=$PATH:$TME_PATH
 export LD_LIBRARY_PATH=$TME_PATH
 
+terrame -version
+
 TERRAME_COMMANDS=""
 if [ $1 != "" -o $1 != "base" ]; then
   TERRAME_COMMANDS="-package $1"
