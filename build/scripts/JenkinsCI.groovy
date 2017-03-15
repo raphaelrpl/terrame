@@ -324,7 +324,7 @@ job(prefix + "doc-terralib" + environment) {
     } // end downstreamParameterized
   }
 }
-job(prefix + "unittest-base") {
+job(prefix + "unittest-base" + environment) {
   wrappers {
       downstreamCommitStatus {
         context("Functional test of package base")
@@ -378,7 +378,7 @@ job(prefix + "unittest-base") {
     } // end downstreamParameterized
   }
 }
-job(prefix + "unittest-terralib") {
+job(prefix + "unittest-terralib" + environment) {
   wrappers {
     downstreamCommitStatus {
       context("Functional test of package terralib")
@@ -432,7 +432,7 @@ job(prefix + "unittest-terralib") {
   }
 }
 
-job(prefix + "test-execution") {
+job(prefix + "test-execution" + environment) {
   wrappers {
     downstreamCommitStatus {
       context("Execution Test")
