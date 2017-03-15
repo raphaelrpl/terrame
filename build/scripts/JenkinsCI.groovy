@@ -33,16 +33,22 @@
 String prefix = "terrame-testing-ci-";
 String environment = "-linux-ubuntu-14.04";
 
-String _ROOT_BUILD_DIR =        "/home/jenkins/MyDevel/terrame/ci/";
-String _TERRALIB_BUILD_BASE =   "$_ROOT_BUILD_DIR/terralib"
-String _TERRALIB_3RDPARTY_DIR = "$_TERRALIB_BUILD_BASE/3rdparty/5.2";
-String _TERRALIB_GIT_DIR =      "$_TERRALIB_BUILD_BASE/git";
-String _TERRALIB_OUT_DIR =      "$_TERRALIB_BUILD_BASE/solution/build";
-String _TERRALIB_INSTALL_PATH = "$_TERRALIB_BUILD_BASE/solution/install";
-String _TERRAME_BUILD_BASE =    "$_ROOT_BUILD_DIR/terrame/\${ghprbActualCommit}";
-String _TERRAME_GIT_DIR =       "$_TERRAME_BUILD_BASE/git";
-String _TERRAME_DEPENDS_DIR =   "$_TERRAME_BUILD_BASE/3rdparty/install";
-String _TERRAME_TEST_DIR =      "$_TERRAME_BUILD_BASE/test"
+String _ROOT_BUILD_DIR =           "/home/jenkins/MyDevel/terrame/ci";
+String _TERRALIB_BUILD_BASE =      "$_ROOT_BUILD_DIR/terralib"
+String _TERRALIB_3RDPARTY_DIR =    "$_TERRALIB_BUILD_BASE/3rdparty/5.2";
+String _TERRALIB_GIT_DIR =         "$_TERRALIB_BUILD_BASE/git";
+String _TERRALIB_OUT_DIR =         "$_TERRALIB_BUILD_BASE/solution/build";
+String _TERRALIB_INSTALL_PATH =    "$_TERRALIB_BUILD_BASE/solution/install";
+String _TERRALIB_MODULES_DIR =     "$_TERRALIB_INSTALL_PATH"
+String _TERRAME_BUILD_BASE =       "$_ROOT_BUILD_DIR/terrame/\${ghprbActualCommit}";
+String _TERRAME_GIT_DIR =          "$_TERRAME_BUILD_BASE/git";
+String _TERRAME_TEST_DIR =         "$_TERRAME_BUILD_BASE/test"
+String _TERRAME_DEPENDS_DIR =      "$_TERRAME_BUILD_BASE/3rdparty/install";
+String _TERRAME_OUT_DIR =          "$_TERRAME_BUILD_BASE/solution/build";
+String _TERRAME_INSTALL_PATH =     "$_TERRAME_BUILD_BASE/solution/install";
+String _TERRAME_CREATE_INSTALLER = "OFF";
+String _TERRAME_BUILD_AS_BUNDLE =  "OFF";
+String PATH =                      "/opt/cmake-3.5.2/bin:\$PATH"
 
 
 job(prefix + "terralib-build" + environment) {
@@ -78,17 +84,23 @@ job(prefix + "terralib-build" + environment) {
 
   steps {
     environmentVariables {
-    env("_ROOT_BUILD_DIR",        _ROOT_BUILD_DIR)
-    env("_TERRALIB_BUILD_BASE",   _TERRALIB_BUILD_BASE)
-    env("_TERRALIB_3RDPARTY_DIR", _TERRALIB_3RDPARTY_DIR)
-    env("_TERRALIB_GIT_DIR",      _TERRALIB_GIT_DIR)
-    env("_TERRALIB_OUT_DIR",      _TERRALIB_OUT_DIR)
-    env("_TERRALIB_INSTALL_PATH", _TERRALIB_INSTALL_PATH)
-    env("_TERRAME_BUILD_BASE",    _TERRAME_BUILD_BASE)
-    env("_TERRAME_GIT_DIR",       _TERRAME_GIT_DIR)
-    env("_TERRAME_TEST_DIR",      _TERRAME_TEST_DIR)
-    env("_TERRAME_DEPENDS_DIR",      _TERRAME_DEPENDS_DIR)
-}
+      env("_ROOT_BUILD_DIR",           _ROOT_BUILD_DIR)
+      env("_TERRALIB_BUILD_BASE",      _TERRALIB_BUILD_BASE)
+      env("_TERRALIB_3RDPARTY_DIR",    _TERRALIB_3RDPARTY_DIR)
+      env("_TERRALIB_GIT_DIR",         _TERRALIB_GIT_DIR)
+      env("_TERRALIB_OUT_DIR",         _TERRALIB_OUT_DIR)
+      env("_TERRALIB_INSTALL_PATH",    _TERRALIB_INSTALL_PATH)
+      env("_TERRALIB_MODULES_DIR",     _TERRALIB_MODULES_DIR)
+      env("_TERRAME_BUILD_BASE",       _TERRAME_BUILD_BASE)
+      env("_TERRAME_INSTALL_PATH",     _TERRAME_INSTALL_PATH)
+      env("_TERRAME_OUT_DIR",          _TERRAME_OUT_DIR)
+      env("_TERRAME_GIT_DIR",          _TERRAME_GIT_DIR)
+      env("_TERRAME_TEST_DIR",         _TERRAME_TEST_DIR)
+      env("_TERRAME_DEPENDS_DIR",      _TERRAME_DEPENDS_DIR)
+      env("_TERRAME_CREATE_INSTALLER", _TERRAME_CREATE_INSTALLER)
+      env("_TERRAME_BUILD_AS_BUNDLE",  _TERRAME_BUILD_AS_BUNDLE)
+      env("PATH",                      PATH)
+    }
     shell(readFileFromWorkspace("build/scripts/unix/build-terralib.sh"))
   }
 }
@@ -108,15 +120,22 @@ job(prefix + "cpp-syntax-check" + environment) {
 
   steps {
     environmentVariables {
-        env("_ROOT_BUILD_DIR",        _ROOT_BUILD_DIR)
-        env("_TERRALIB_BUILD_BASE",   _TERRALIB_BUILD_BASE)
-        env("_TERRALIB_3RDPARTY_DIR", _TERRALIB_3RDPARTY_DIR)
-        env("_TERRALIB_GIT_DIR",      _TERRALIB_GIT_DIR)
-        env("_TERRALIB_OUT_DIR",      _TERRALIB_OUT_DIR)
-        env("_TERRALIB_INSTALL_PATH", _TERRALIB_INSTALL_PATH)
-        env("_TERRAME_BUILD_BASE",    _TERRAME_BUILD_BASE)
-        env("_TERRAME_GIT_DIR",       _TERRAME_GIT_DIR)
-        env("_TERRAME_TEST_DIR",      _TERRAME_TEST_DIR)
+      env("_ROOT_BUILD_DIR",           _ROOT_BUILD_DIR)
+      env("_TERRALIB_BUILD_BASE",      _TERRALIB_BUILD_BASE)
+      env("_TERRALIB_3RDPARTY_DIR",    _TERRALIB_3RDPARTY_DIR)
+      env("_TERRALIB_GIT_DIR",         _TERRALIB_GIT_DIR)
+      env("_TERRALIB_OUT_DIR",         _TERRALIB_OUT_DIR)
+      env("_TERRALIB_INSTALL_PATH",    _TERRALIB_INSTALL_PATH)
+      env("_TERRALIB_MODULES_DIR",     _TERRALIB_MODULES_DIR)
+      env("_TERRAME_BUILD_BASE",       _TERRAME_BUILD_BASE)
+      env("_TERRAME_INSTALL_PATH",     _TERRAME_INSTALL_PATH)
+      env("_TERRAME_OUT_DIR",          _TERRAME_OUT_DIR)
+      env("_TERRAME_GIT_DIR",          _TERRAME_GIT_DIR)
+      env("_TERRAME_TEST_DIR",         _TERRAME_TEST_DIR)
+      env("_TERRAME_DEPENDS_DIR",      _TERRAME_DEPENDS_DIR)
+      env("_TERRAME_CREATE_INSTALLER", _TERRAME_CREATE_INSTALLER)
+      env("_TERRAME_BUILD_AS_BUNDLE",  _TERRAME_BUILD_AS_BUNDLE)
+      env("PATH",                      PATH)
     }
     shell(readFileFromWorkspace("build/scripts/unix/cpp-check.sh"))
   }
@@ -136,15 +155,22 @@ job(prefix + "build" + environment) {
   }
   steps {
     environmentVariables {
-      env("_ROOT_BUILD_DIR",        _ROOT_BUILD_DIR)
-      env("_TERRALIB_BUILD_BASE",   _TERRALIB_BUILD_BASE)
-      env("_TERRALIB_3RDPARTY_DIR", _TERRALIB_3RDPARTY_DIR)
-      env("_TERRALIB_GIT_DIR",      _TERRALIB_GIT_DIR)
-      env("_TERRALIB_OUT_DIR",      _TERRALIB_OUT_DIR)
-      env("_TERRALIB_INSTALL_PATH", _TERRALIB_INSTALL_PATH)
-      env("_TERRAME_BUILD_BASE",    _TERRAME_BUILD_BASE)
-      env("_TERRAME_GIT_DIR",       _TERRAME_GIT_DIR)
-      env("_TERRAME_TEST_DIR",      _TERRAME_TEST_DIR)
+      env("_ROOT_BUILD_DIR",           _ROOT_BUILD_DIR)
+      env("_TERRALIB_BUILD_BASE",      _TERRALIB_BUILD_BASE)
+      env("_TERRALIB_3RDPARTY_DIR",    _TERRALIB_3RDPARTY_DIR)
+      env("_TERRALIB_GIT_DIR",         _TERRALIB_GIT_DIR)
+      env("_TERRALIB_OUT_DIR",         _TERRALIB_OUT_DIR)
+      env("_TERRALIB_INSTALL_PATH",    _TERRALIB_INSTALL_PATH)
+      env("_TERRALIB_MODULES_DIR",     _TERRALIB_MODULES_DIR)
+      env("_TERRAME_BUILD_BASE",       _TERRAME_BUILD_BASE)
+      env("_TERRAME_INSTALL_PATH",     _TERRAME_INSTALL_PATH)
+      env("_TERRAME_OUT_DIR",          _TERRAME_OUT_DIR)
+      env("_TERRAME_GIT_DIR",          _TERRAME_GIT_DIR)
+      env("_TERRAME_TEST_DIR",         _TERRAME_TEST_DIR)
+      env("_TERRAME_DEPENDS_DIR",      _TERRAME_DEPENDS_DIR)
+      env("_TERRAME_CREATE_INSTALLER", _TERRAME_CREATE_INSTALLER)
+      env("_TERRAME_BUILD_AS_BUNDLE",  _TERRAME_BUILD_AS_BUNDLE)
+      env("PATH",                      PATH)
     }
     shell(readFileFromWorkspace("build/scripts/unix/build-terrame.sh"))
   }
@@ -164,15 +190,22 @@ job(prefix + "doc-base" + environment) {
   }
   steps {
     environmentVariables {
-      env("_ROOT_BUILD_DIR",        _ROOT_BUILD_DIR)
-      env("_TERRALIB_BUILD_BASE",   _TERRALIB_BUILD_BASE)
-      env("_TERRALIB_3RDPARTY_DIR", _TERRALIB_3RDPARTY_DIR)
-      env("_TERRALIB_GIT_DIR",      _TERRALIB_GIT_DIR)
-      env("_TERRALIB_OUT_DIR",      _TERRALIB_OUT_DIR)
-      env("_TERRALIB_INSTALL_PATH", _TERRALIB_INSTALL_PATH)
-      env("_TERRAME_BUILD_BASE",    _TERRAME_BUILD_BASE)
-      env("_TERRAME_GIT_DIR",       _TERRAME_GIT_DIR)
-      env("_TERRAME_TEST_DIR",      _TERRAME_TEST_DIR)
+      env("_ROOT_BUILD_DIR",           _ROOT_BUILD_DIR)
+      env("_TERRALIB_BUILD_BASE",      _TERRALIB_BUILD_BASE)
+      env("_TERRALIB_3RDPARTY_DIR",    _TERRALIB_3RDPARTY_DIR)
+      env("_TERRALIB_GIT_DIR",         _TERRALIB_GIT_DIR)
+      env("_TERRALIB_OUT_DIR",         _TERRALIB_OUT_DIR)
+      env("_TERRALIB_INSTALL_PATH",    _TERRALIB_INSTALL_PATH)
+      env("_TERRALIB_MODULES_DIR",     _TERRALIB_MODULES_DIR)
+      env("_TERRAME_BUILD_BASE",       _TERRAME_BUILD_BASE)
+      env("_TERRAME_INSTALL_PATH",     _TERRAME_INSTALL_PATH)
+      env("_TERRAME_OUT_DIR",          _TERRAME_OUT_DIR)
+      env("_TERRAME_GIT_DIR",          _TERRAME_GIT_DIR)
+      env("_TERRAME_TEST_DIR",         _TERRAME_TEST_DIR)
+      env("_TERRAME_DEPENDS_DIR",      _TERRAME_DEPENDS_DIR)
+      env("_TERRAME_CREATE_INSTALLER", _TERRAME_CREATE_INSTALLER)
+      env("_TERRAME_BUILD_AS_BUNDLE",  _TERRAME_BUILD_AS_BUNDLE)
+      env("PATH",                      PATH)
     }
     shell(readFileFromWorkspace("build/scripts/unix/doc.sh"))
   }
@@ -192,15 +225,22 @@ job(prefix + "doc-terralib" + environment) {
   }
   steps {
     environmentVariables {
-      env("_ROOT_BUILD_DIR",        _ROOT_BUILD_DIR)
-      env("_TERRALIB_BUILD_BASE",   _TERRALIB_BUILD_BASE)
-      env("_TERRALIB_3RDPARTY_DIR", _TERRALIB_3RDPARTY_DIR)
-      env("_TERRALIB_GIT_DIR",      _TERRALIB_GIT_DIR)
-      env("_TERRALIB_OUT_DIR",      _TERRALIB_OUT_DIR)
-      env("_TERRALIB_INSTALL_PATH", _TERRALIB_INSTALL_PATH)
-      env("_TERRAME_BUILD_BASE",    _TERRAME_BUILD_BASE)
-      env("_TERRAME_GIT_DIR",       _TERRAME_GIT_DIR)
-      env("_TERRAME_TEST_DIR",      _TERRAME_TEST_DIR)
+      env("_ROOT_BUILD_DIR",           _ROOT_BUILD_DIR)
+      env("_TERRALIB_BUILD_BASE",      _TERRALIB_BUILD_BASE)
+      env("_TERRALIB_3RDPARTY_DIR",    _TERRALIB_3RDPARTY_DIR)
+      env("_TERRALIB_GIT_DIR",         _TERRALIB_GIT_DIR)
+      env("_TERRALIB_OUT_DIR",         _TERRALIB_OUT_DIR)
+      env("_TERRALIB_INSTALL_PATH",    _TERRALIB_INSTALL_PATH)
+      env("_TERRALIB_MODULES_DIR",     _TERRALIB_MODULES_DIR)
+      env("_TERRAME_BUILD_BASE",       _TERRAME_BUILD_BASE)
+      env("_TERRAME_INSTALL_PATH",     _TERRAME_INSTALL_PATH)
+      env("_TERRAME_OUT_DIR",          _TERRAME_OUT_DIR)
+      env("_TERRAME_GIT_DIR",          _TERRAME_GIT_DIR)
+      env("_TERRAME_TEST_DIR",         _TERRAME_TEST_DIR)
+      env("_TERRAME_DEPENDS_DIR",      _TERRAME_DEPENDS_DIR)
+      env("_TERRAME_CREATE_INSTALLER", _TERRAME_CREATE_INSTALLER)
+      env("_TERRAME_BUILD_AS_BUNDLE",  _TERRAME_BUILD_AS_BUNDLE)
+      env("PATH",                      PATH)
     }
     shell("build/scripts/unix/doc.sh terralib")
   }
@@ -220,15 +260,22 @@ job(prefix + "unittest-base") {
 
   steps {
     environmentVariables {
-      env("_ROOT_BUILD_DIR",        _ROOT_BUILD_DIR)
-      env("_TERRALIB_BUILD_BASE",   _TERRALIB_BUILD_BASE)
-      env("_TERRALIB_3RDPARTY_DIR", _TERRALIB_3RDPARTY_DIR)
-      env("_TERRALIB_GIT_DIR",      _TERRALIB_GIT_DIR)
-      env("_TERRALIB_OUT_DIR",      _TERRALIB_OUT_DIR)
-      env("_TERRALIB_INSTALL_PATH", _TERRALIB_INSTALL_PATH)
-      env("_TERRAME_BUILD_BASE",    _TERRAME_BUILD_BASE)
-      env("_TERRAME_GIT_DIR",       _TERRAME_GIT_DIR)
-      env("_TERRAME_TEST_DIR",      _TERRAME_TEST_DIR)
+      env("_ROOT_BUILD_DIR",           _ROOT_BUILD_DIR)
+      env("_TERRALIB_BUILD_BASE",      _TERRALIB_BUILD_BASE)
+      env("_TERRALIB_3RDPARTY_DIR",    _TERRALIB_3RDPARTY_DIR)
+      env("_TERRALIB_GIT_DIR",         _TERRALIB_GIT_DIR)
+      env("_TERRALIB_OUT_DIR",         _TERRALIB_OUT_DIR)
+      env("_TERRALIB_INSTALL_PATH",    _TERRALIB_INSTALL_PATH)
+      env("_TERRALIB_MODULES_DIR",     _TERRALIB_MODULES_DIR)
+      env("_TERRAME_BUILD_BASE",       _TERRAME_BUILD_BASE)
+      env("_TERRAME_INSTALL_PATH",     _TERRAME_INSTALL_PATH)
+      env("_TERRAME_OUT_DIR",          _TERRAME_OUT_DIR)
+      env("_TERRAME_GIT_DIR",          _TERRAME_GIT_DIR)
+      env("_TERRAME_TEST_DIR",         _TERRAME_TEST_DIR)
+      env("_TERRAME_DEPENDS_DIR",      _TERRAME_DEPENDS_DIR)
+      env("_TERRAME_CREATE_INSTALLER", _TERRAME_CREATE_INSTALLER)
+      env("_TERRAME_BUILD_AS_BUNDLE",  _TERRAME_BUILD_AS_BUNDLE)
+      env("PATH",                      PATH)
     }
     shell(readFileFromWorkspace("build/scripts/unix/unittest.sh"))
   }
@@ -247,15 +294,22 @@ job(prefix + "unittest-terralib") {
   }
   steps {
     environmentVariables {
-      env("_ROOT_BUILD_DIR",        _ROOT_BUILD_DIR)
-      env("_TERRALIB_BUILD_BASE",   _TERRALIB_BUILD_BASE)
-      env("_TERRALIB_3RDPARTY_DIR", _TERRALIB_3RDPARTY_DIR)
-      env("_TERRALIB_GIT_DIR",      _TERRALIB_GIT_DIR)
-      env("_TERRALIB_OUT_DIR",      _TERRALIB_OUT_DIR)
-      env("_TERRALIB_INSTALL_PATH", _TERRALIB_INSTALL_PATH)
-      env("_TERRAME_BUILD_BASE",    _TERRAME_BUILD_BASE)
-      env("_TERRAME_GIT_DIR",       _TERRAME_GIT_DIR)
-      env("_TERRAME_TEST_DIR",      _TERRAME_TEST_DIR)
+      env("_ROOT_BUILD_DIR",           _ROOT_BUILD_DIR)
+      env("_TERRALIB_BUILD_BASE",      _TERRALIB_BUILD_BASE)
+      env("_TERRALIB_3RDPARTY_DIR",    _TERRALIB_3RDPARTY_DIR)
+      env("_TERRALIB_GIT_DIR",         _TERRALIB_GIT_DIR)
+      env("_TERRALIB_OUT_DIR",         _TERRALIB_OUT_DIR)
+      env("_TERRALIB_INSTALL_PATH",    _TERRALIB_INSTALL_PATH)
+      env("_TERRALIB_MODULES_DIR",     _TERRALIB_MODULES_DIR)
+      env("_TERRAME_BUILD_BASE",       _TERRAME_BUILD_BASE)
+      env("_TERRAME_INSTALL_PATH",     _TERRAME_INSTALL_PATH)
+      env("_TERRAME_OUT_DIR",          _TERRAME_OUT_DIR)
+      env("_TERRAME_GIT_DIR",          _TERRAME_GIT_DIR)
+      env("_TERRAME_TEST_DIR",         _TERRAME_TEST_DIR)
+      env("_TERRAME_DEPENDS_DIR",      _TERRAME_DEPENDS_DIR)
+      env("_TERRAME_CREATE_INSTALLER", _TERRAME_CREATE_INSTALLER)
+      env("_TERRAME_BUILD_AS_BUNDLE",  _TERRAME_BUILD_AS_BUNDLE)
+      env("PATH",                      PATH)
     }
     shell("build/scripts/unix/unittest.sh terralib")
   }
@@ -276,15 +330,22 @@ job(prefix + "test-execution") {
 
   steps {
     environmentVariables {
-      env("_ROOT_BUILD_DIR",        _ROOT_BUILD_DIR)
-      env("_TERRALIB_BUILD_BASE",   _TERRALIB_BUILD_BASE)
-      env("_TERRALIB_3RDPARTY_DIR", _TERRALIB_3RDPARTY_DIR)
-      env("_TERRALIB_GIT_DIR",      _TERRALIB_GIT_DIR)
-      env("_TERRALIB_OUT_DIR",      _TERRALIB_OUT_DIR)
-      env("_TERRALIB_INSTALL_PATH", _TERRALIB_INSTALL_PATH)
-      env("_TERRAME_BUILD_BASE",    _TERRAME_BUILD_BASE)
-      env("_TERRAME_GIT_DIR",       _TERRAME_GIT_DIR)
-      env("_TERRAME_TEST_DIR",      _TERRAME_TEST_DIR)
+      env("_ROOT_BUILD_DIR",           _ROOT_BUILD_DIR)
+      env("_TERRALIB_BUILD_BASE",      _TERRALIB_BUILD_BASE)
+      env("_TERRALIB_3RDPARTY_DIR",    _TERRALIB_3RDPARTY_DIR)
+      env("_TERRALIB_GIT_DIR",         _TERRALIB_GIT_DIR)
+      env("_TERRALIB_OUT_DIR",         _TERRALIB_OUT_DIR)
+      env("_TERRALIB_INSTALL_PATH",    _TERRALIB_INSTALL_PATH)
+      env("_TERRALIB_MODULES_DIR",     _TERRALIB_MODULES_DIR)
+      env("_TERRAME_BUILD_BASE",       _TERRAME_BUILD_BASE)
+      env("_TERRAME_INSTALL_PATH",     _TERRAME_INSTALL_PATH)
+      env("_TERRAME_OUT_DIR",          _TERRAME_OUT_DIR)
+      env("_TERRAME_GIT_DIR",          _TERRAME_GIT_DIR)
+      env("_TERRAME_TEST_DIR",         _TERRAME_TEST_DIR)
+      env("_TERRAME_DEPENDS_DIR",      _TERRAME_DEPENDS_DIR)
+      env("_TERRAME_CREATE_INSTALLER", _TERRAME_CREATE_INSTALLER)
+      env("_TERRAME_BUILD_AS_BUNDLE",  _TERRAME_BUILD_AS_BUNDLE)
+      env("PATH",                      PATH)
     }
     shell(readFileFromWorkspace("build/scripts/unix/test-execution.sh"))
   }
