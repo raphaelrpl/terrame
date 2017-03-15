@@ -115,7 +115,7 @@ job(prefix + "terralib-build" + environment) {
   publishers {
     downstreamParameterized {
       trigger(prefix + "cpp-syntax-check" + environment) {
-        condition("STABLE")
+        condition("SUCCESS")
         parameters {
           predefinedProp("", "") // It is important to set empty values due the wrapper parameters requires a property even blank.
         }
