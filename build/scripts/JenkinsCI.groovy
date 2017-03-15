@@ -66,6 +66,8 @@ job(prefix + "terralib-build" + environment) {
       githubPullRequest {
           cron("H/5 * * * *")
           triggerPhrase("jenkins build")
+          useGitHubHooks()
+          permitAll()
           extensions {
               commitStatus {
                   context("Linux TerraLib Compilation")
