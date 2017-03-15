@@ -101,7 +101,7 @@ job(prefix + "terralib-build" + environment) {
       env("_TERRAME_BUILD_AS_BUNDLE",  _TERRAME_BUILD_AS_BUNDLE)
       env("PATH",                      PATH)
     }
-    shell(readFileFromWorkspace("build/scripts/unix/build-terralib.sh"))
+    shell(readFileFromWorkspace("build/scripts/linux/ci/build-terralib.sh"))
   }
 }
 
@@ -137,7 +137,7 @@ job(prefix + "cpp-syntax-check" + environment) {
       env("_TERRAME_BUILD_AS_BUNDLE",  _TERRAME_BUILD_AS_BUNDLE)
       env("PATH",                      PATH)
     }
-    shell(readFileFromWorkspace("build/scripts/unix/cpp-check.sh"))
+    shell(readFileFromWorkspace("build/scripts/linux/ci/cpp-check.sh"))
   }
 }
 
@@ -172,7 +172,7 @@ job(prefix + "build" + environment) {
       env("_TERRAME_BUILD_AS_BUNDLE",  _TERRAME_BUILD_AS_BUNDLE)
       env("PATH",                      PATH)
     }
-    shell(readFileFromWorkspace("build/scripts/unix/build-terrame.sh"))
+    shell(readFileFromWorkspace("build/scripts/linux/ci/build-terrame.sh"))
   }
 }
 
@@ -207,7 +207,7 @@ job(prefix + "doc-base" + environment) {
       env("_TERRAME_BUILD_AS_BUNDLE",  _TERRAME_BUILD_AS_BUNDLE)
       env("PATH",                      PATH)
     }
-    shell(readFileFromWorkspace("build/scripts/unix/doc.sh"))
+    shell(readFileFromWorkspace("build/scripts/linux/ci/doc.sh"))
   }
 }
 
@@ -242,7 +242,7 @@ job(prefix + "doc-terralib" + environment) {
       env("_TERRAME_BUILD_AS_BUNDLE",  _TERRAME_BUILD_AS_BUNDLE)
       env("PATH",                      PATH)
     }
-    shell("build/scripts/unix/doc.sh terralib")
+    shell("build/scripts/linux/ci/doc.sh terralib")
   }
 }
 job(prefix + "unittest-base") {
@@ -277,7 +277,7 @@ job(prefix + "unittest-base") {
       env("_TERRAME_BUILD_AS_BUNDLE",  _TERRAME_BUILD_AS_BUNDLE)
       env("PATH",                      PATH)
     }
-    shell(readFileFromWorkspace("build/scripts/unix/unittest.sh"))
+    shell(readFileFromWorkspace("build/scripts/linux/ci/unittest.sh"))
   }
 }
 job(prefix + "unittest-terralib") {
@@ -311,7 +311,7 @@ job(prefix + "unittest-terralib") {
       env("_TERRAME_BUILD_AS_BUNDLE",  _TERRAME_BUILD_AS_BUNDLE)
       env("PATH",                      PATH)
     }
-    shell("build/scripts/unix/unittest.sh terralib")
+    shell("build/scripts/linux/ci/unittest.sh terralib")
   }
 }
 
@@ -347,6 +347,6 @@ job(prefix + "test-execution") {
       env("_TERRAME_BUILD_AS_BUNDLE",  _TERRAME_BUILD_AS_BUNDLE)
       env("PATH",                      PATH)
     }
-    shell(readFileFromWorkspace("build/scripts/unix/test-execution.sh"))
+    shell(readFileFromWorkspace("build/scripts/linux/ci/test-execution.sh"))
   }
 }
