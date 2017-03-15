@@ -103,6 +103,25 @@ job(prefix + "terralib-build" + environment) {
     }
     shell(readFileFromWorkspace("build/scripts/linux/ci/build-terralib.sh"))
   }
+
+  wrappers {
+    xvfb('Xvfb') {
+      screen('1280x1080x24')
+    }
+
+    colorizeOutput()
+  }
+
+  publishers {
+    downstreamParameterized {
+      trigger(prefix + "cpp-syntax-check" + environment) {
+        condition("STABLE")
+        parameters {
+          predefinedProp("", "") // It is important to set empty values due the wrapper parameters requires a property even blank.
+        }
+      }
+    } // end downstreamParameterized
+  }   // end publishers
 }
 
 job(prefix + "cpp-syntax-check" + environment) {
@@ -139,6 +158,17 @@ job(prefix + "cpp-syntax-check" + environment) {
     }
     shell(readFileFromWorkspace("build/scripts/linux/ci/cpp-check.sh"))
   }
+
+  publishers {
+    downstreamParameterized {
+      trigger(prefix + "build" + environment) {
+        condition("ALWAYS")
+        parameters {
+          predefinedProp("", "") // It is important to set empty values due the wrapper parameters requires a property even blank.
+        }
+      }
+    } // end downstreamParameterized
+  }
 }
 
 job(prefix + "build" + environment) {
@@ -173,6 +203,17 @@ job(prefix + "build" + environment) {
       env("PATH",                      PATH)
     }
     shell(readFileFromWorkspace("build/scripts/linux/ci/build-terrame.sh"))
+  }
+
+  publishers {
+    downstreamParameterized {
+      trigger(prefix + "doc-base" + environment) {
+        condition("ALWAYS")
+        parameters {
+          predefinedProp("", "") // It is important to set empty values due the wrapper parameters requires a property even blank.
+        }
+      }
+    } // end downstreamParameterized
   }
 }
 
@@ -209,6 +250,25 @@ job(prefix + "doc-base" + environment) {
     }
     shell(readFileFromWorkspace("build/scripts/linux/ci/doc.sh"))
   }
+
+  wrappers {
+    xvfb('Xvfb') {
+      screen('1280x1080x24')
+    }
+
+    colorizeOutput()
+  }
+
+  publishers {
+    downstreamParameterized {
+      trigger(prefix + "doc-terralib" + environment) {
+        condition("ALWAYS")
+        parameters {
+          predefinedProp("", "") // It is important to set empty values due the wrapper parameters requires a property even blank.
+        }
+      }
+    } // end downstreamParameterized
+  }
 }
 
 job(prefix + "doc-terralib" + environment) {
@@ -243,6 +303,25 @@ job(prefix + "doc-terralib" + environment) {
       env("PATH",                      PATH)
     }
     shell("build/scripts/linux/ci/doc.sh terralib")
+  }
+
+  wrappers {
+    xvfb('Xvfb') {
+      screen('1280x1080x24')
+    }
+
+    colorizeOutput()
+  }
+
+  publishers {
+    downstreamParameterized {
+      trigger(prefix + "unittest-base" + environment) {
+        condition("ALWAYS")
+        parameters {
+          predefinedProp("", "") // It is important to set empty values due the wrapper parameters requires a property even blank.
+        }
+      }
+    } // end downstreamParameterized
   }
 }
 job(prefix + "unittest-base") {
@@ -279,6 +358,25 @@ job(prefix + "unittest-base") {
     }
     shell(readFileFromWorkspace("build/scripts/linux/ci/unittest.sh"))
   }
+
+  wrappers {
+    xvfb('Xvfb') {
+      screen('1280x1080x24')
+    }
+
+    colorizeOutput()
+  }
+
+  publishers {
+    downstreamParameterized {
+      trigger(prefix + "unittest-terralib" + environment) {
+        condition("ALWAYS")
+        parameters {
+          predefinedProp("", "") // It is important to set empty values due the wrapper parameters requires a property even blank.
+        }
+      }
+    } // end downstreamParameterized
+  }
 }
 job(prefix + "unittest-terralib") {
   wrappers {
@@ -312,6 +410,25 @@ job(prefix + "unittest-terralib") {
       env("PATH",                      PATH)
     }
     shell("build/scripts/linux/ci/unittest.sh terralib")
+  }
+
+  wrappers {
+    xvfb('Xvfb') {
+      screen('1280x1080x24')
+    }
+
+    colorizeOutput()
+  }
+
+  publishers {
+    downstreamParameterized {
+      trigger(prefix + "test-execution" + environment) {
+        condition("ALWAYS")
+        parameters {
+          predefinedProp("", "") // It is important to set empty values due the wrapper parameters requires a property even blank.
+        }
+      }
+    } // end downstreamParameterized
   }
 }
 
