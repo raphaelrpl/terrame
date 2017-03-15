@@ -52,6 +52,7 @@ String PATH =                      "/opt/cmake-3.5.2/bin:\$PATH"
 
 
 job(prefix + "terralib-build" + environment) {
+  label("ubuntu-14.04")
   scm {
       git {
           remote {
@@ -74,7 +75,7 @@ job(prefix + "terralib-build" + environment) {
                   triggeredStatus("Triggered...")
                   startedStatus("Building...")
                   addTestResults(true)
-                  statusUrl("$BUILD_URL/consoleFull")
+                  statusUrl("\$BUILD_URL/consoleFull")
                   completedStatus("SUCCESS", "All is well")
                   completedStatus("FAILURE", "Something went wrong. Investigate!")
                   completedStatus("PENDING", "still in progress...")
@@ -106,14 +107,6 @@ job(prefix + "terralib-build" + environment) {
     shell(readFileFromWorkspace("build/scripts/linux/ci/build-terralib.sh"))
   }
 
-  wrappers {
-    xvfb('Xvfb') {
-      screen('1280x1080x24')
-    }
-
-    colorizeOutput()
-  }
-
   publishers {
     downstreamParameterized {
       trigger(prefix + "cpp-syntax-check" + environment) {
@@ -132,7 +125,7 @@ job(prefix + "cpp-syntax-check" + environment) {
           context("C++ Syntax")
           triggeredStatus("The job has triggered")
           startedStatus("The job has started")
-          statusUrl("$BUILD_URL/consoleFull")
+          statusUrl("\$BUILD_URL/consoleFull")
           completedStatus("SUCCESS", "The job has passed")
           completedStatus("FAILURE", "The job has failed")
           completedStatus("ERROR", "The job has resulted in an error")
@@ -179,7 +172,7 @@ job(prefix + "build" + environment) {
       context("Linux Compilation")
       triggeredStatus("The job has triggered")
       startedStatus("The job has started")
-      statusUrl("$BUILD_URL/consoleFull")
+      statusUrl("\$BUILD_URL/consoleFull")
       completedStatus("SUCCESS", "The job has passed")
       completedStatus("FAILURE", "The job has failed")
       completedStatus("ERROR", "The job has resulted in an error")
@@ -225,7 +218,7 @@ job(prefix + "doc-base" + environment) {
       context("Documentation of package base")
       triggeredStatus("The job has triggered")
       startedStatus("The job has started")
-      statusUrl("$BUILD_URL/consoleFull")
+      statusUrl("\$BUILD_URL/consoleFull")
       completedStatus("SUCCESS", "The job has passed")
       completedStatus("FAILURE", "The job has failed")
       completedStatus("ERROR", "The job has resulted in an error")
@@ -279,7 +272,7 @@ job(prefix + "doc-terralib" + environment) {
       context("Documentation of package terralib")
       triggeredStatus("The job has triggered")
       startedStatus("The job has started")
-      statusUrl("$BUILD_URL/consoleFull")
+      statusUrl("\$BUILD_URL/consoleFull")
       completedStatus("SUCCESS", "The job has passed")
       completedStatus("FAILURE", "The job has failed")
       completedStatus("ERROR", "The job has resulted in an error")
@@ -332,7 +325,7 @@ job(prefix + "unittest-base" + environment) {
         context("Functional test of package base")
         triggeredStatus("The job has triggered")
         startedStatus("The job has started")
-        statusUrl("$BUILD_URL/consoleFull")
+        statusUrl("\$BUILD_URL/consoleFull")
         completedStatus("SUCCESS", "The job has passed")
         completedStatus("FAILURE", "The job has failed")
         completedStatus("ERROR", "The job has resulted in an error")
@@ -386,7 +379,7 @@ job(prefix + "unittest-terralib" + environment) {
       context("Functional test of package terralib")
       triggeredStatus("The job has triggered")
       startedStatus("The job has started")
-      statusUrl("$BUILD_URL/consoleFull")
+      statusUrl("\$BUILD_URL/consoleFull")
       completedStatus("SUCCESS", "The job has passed")
       completedStatus("FAILURE", "The job has failed")
       completedStatus("ERROR", "The job has resulted in an error")
@@ -440,7 +433,7 @@ job(prefix + "test-execution" + environment) {
       context("Execution Test")
       triggeredStatus("The job has triggered")
       startedStatus("The job has started")
-      statusUrl("$BUILD_URL/consoleFull")
+      statusUrl("\$BUILD_URL/consoleFull")
       completedStatus("SUCCESS", "The job has passed")
       completedStatus("FAILURE", "The job has failed")
       completedStatus("ERROR", "The job has resulted in an error")
