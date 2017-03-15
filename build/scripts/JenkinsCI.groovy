@@ -50,7 +50,6 @@ String _TERRAME_CREATE_INSTALLER = "OFF";
 String _TERRAME_BUILD_AS_BUNDLE =  "OFF";
 String PATH =                      "/opt/cmake-3.5.2/bin:\$PATH"
 
-
 job(prefix + "terralib-build" + environment) {
   label("ubuntu-14.04")
   scm {
@@ -68,6 +67,7 @@ job(prefix + "terralib-build" + environment) {
           cron("H/5 * * * *")
           triggerPhrase("jenkins build")
           useGitHubHooks()
+          credentials("Jenkins Temp")
           permitAll()
           extensions {
               commitStatus {
