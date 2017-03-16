@@ -26,7 +26,10 @@
 #
 ## Global Variables
 # _ROOT_BUILD_DIR - Path to TerraME common folder structure. See more in https://github.com/terrame/terrame/wiki
+# _TERRALIB_GIT_DIR - Path to TerraLib Git Codebase
 # _TERRAME_BUILD_BASE - Base Path of TerraME structure. $_ROOT_BUILD_DIR/terrame
+# _TERRAME_GIT_DIR - Path To TerraME Git codebase
+# _TERRAME_TEST_DIR - Path where tests run. It will contains a "run.lua" that will be used for all TerraME tests
 # ghprbActualCommit - Current GitHub Pull Request (Injected by Jenkins GitHub Pull Request Plugin. See more in https://wiki.jenkins-ci.org/display/JENKINS/GitHub+pull+request+builder+plugin)
 #
 
@@ -63,6 +66,11 @@ cp $_TERRAME_GIT_DIR/build/scripts/linux/terralib-conf.* .
 cp /home/jenkins/MyDevel/terrame/tests/files/config.lua $_TERRAME_TEST_DIR
 
 ./terralib-conf.sh
+RES=$?
+
+if [ $RES -ne 0 -a "$ghprbActualCommit" != "" ]; then
+  rm -rf $_TERRAME_BUILD_BASE
+fi
 
 # Returning execution code in order to help jenkins to identify stable/unstable builds
-exit $?
+exit $RES

@@ -159,9 +159,8 @@ class JobCommons {
           publishOverSsh {
             server('Jenkins Slave Linux (Public)') {
               transferSet {
-                // Relative to Workspace (daily/terrame/git)
-                sourceFiles("../solution/build/terrame*.tar.gz")
-                removePrefix("../solution/build")
+                sourceFiles("$_TERRAME_OUT_DIR/terrame*.tar.gz")
+                removePrefix("$_TERRAME_OUT_DIR")
                 remoteDirectory("Public/terrame/installers")
               }
             }

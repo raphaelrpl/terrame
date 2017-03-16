@@ -13,8 +13,7 @@
         * git
         * solution
           * build
-          * install
-        * git
+          * installW
         * test (With test.lua. The file will be created during TerraLib compilation and should be kept during TerraME lifecycle)
       - 3rdparty (TODO: change it in order to follow TerraLib style)
         - build
@@ -43,7 +42,7 @@ String _TERRALIB_MODULES_DIR =     "$_TERRALIB_INSTALL_PATH"
 String _TERRAME_BUILD_BASE =       "$_ROOT_BUILD_DIR/terrame/\${ghprbActualCommit}";
 String _TERRAME_GIT_DIR =          "$_TERRAME_BUILD_BASE/git";
 String _TERRAME_TEST_DIR =         "$_TERRAME_BUILD_BASE/test"
-String _TERRAME_DEPENDS_DIR =      "$_TERRAME_BUILD_BASE/3rdparty/install";
+String _TERRAME_DEPENDS_DIR =      "$_ROOT_BUILD_DIR/terrame/3rdparty/install";
 String _TERRAME_OUT_DIR =          "$_TERRAME_BUILD_BASE/solution/build";
 String _TERRAME_INSTALL_PATH =     "$_TERRAME_BUILD_BASE/solution/install";
 String _TERRAME_CREATE_INSTALLER = "OFF";
@@ -51,7 +50,7 @@ String _TERRAME_BUILD_AS_BUNDLE =  "OFF";
 String PATH =                      "/opt/cmake-3.5.2/bin:\$PATH"
 
 job(prefix + "terralib-build" + environment) {
-  label("ubuntu-14.04")
+  label("ubuntu-14.04-terrame")
   scm {
       git {
           remote {
