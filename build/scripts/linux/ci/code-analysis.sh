@@ -28,14 +28,10 @@
 ## Note: For base package, do not pass PACKAGE_NAME
 #
 
-export TME_PATH=$_TERRAME_INSTALL_PATH/bin
-export PATH=$PATH:$TME_PATH
-export LD_LIBRARY_PATH=$TME_PATH
-
 terrame -version
 
 _TERRAME_PACKAGE=""
-if [ $1 != "" || $1 != "base" ]; then
+if [ $1 != "" -o $1 != "base" ]; then
   _TERRAME_PACKAGE="-package $1"
   terrame $_TERRAME_PACKAGE -uninstall
 fi

@@ -100,7 +100,12 @@ cp /home/jenkins/MyDevel/terrame/tests/files/config.lua $_TERRAME_TEST_DIR
 RES=$?
 
 if [ $RES -ne 0 -a "$ghprbActualCommit" != "" ]; then
-  rm -rf $_TERRAME_BUILD_BASE # Removing TerraME PR folder
+  # Removing TerraME directories except 3rdparty
+  for dir in $_TERRAME_BUILD_BASE/*; do
+    [ "$dir" = "3rdparty" ] && continue
+    set -- "$@" "$dir"
+  done
+  rm -rf "$@"
 fi
 
 # Returning execution code in order to help jenkins to identify stable/unstable builds

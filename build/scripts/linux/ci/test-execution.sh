@@ -28,10 +28,6 @@
 ## Note: For base package, do not pass PACKAGE_NAME
 #
 
-export TME_PATH=$_TERRAME_INSTALL_PATH/bin
-export PATH=$PATH:$TME_PATH
-export LD_LIBRARY_PATH=$TME_PATH
-
 cd $_TERRAME_GIT_DIR/test
 
 terrame -version

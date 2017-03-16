@@ -28,10 +28,6 @@
 ## Note: For base package, do not pass PACKAGE_NAME
 #
 
-export TME_PATH=$_TERRAME_INSTALL_PATH/bin
-export PATH=$PATH:$TME_PATH
-export LD_LIBRARY_PATH=$TME_PATH
-
 terrame -version
 # Checking to Test Dir due docs generations that require DB connection will use same config.lua file
 cd $_TERRAME_TEST_DIR

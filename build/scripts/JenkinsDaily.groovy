@@ -130,7 +130,7 @@ class JobCommons {
         }
       } else {
         // Setting default jenkins Workspace
-        customWorkspace(_TERRAME_GIT_DIR)
+        customWorkspace(_TERRAME_OUT_DIR)
       }
       /*
         It defines Build Steps. First, inject required variables and then execute bash script to compile/execute/ etc.
