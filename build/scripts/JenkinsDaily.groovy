@@ -85,12 +85,14 @@ class JobSpec {
   It defines common operations for JobDSL
 */
 class JobCommons {
+  public static int c = 0;
   /*
     It creates a new job from JobSpec.
 
     @param jobSpec - Job Definition
   */
   def build(def dsl, JobSpec jobSpec) {
+    c += 1
     String prefix = "terrame-daily-";
     String environment = "-linux-ubuntu-14.04";
     String _ROOT_BUILD_DIR =           "/home/jenkins/MyDevel/terrame/daily";
@@ -150,7 +152,14 @@ class JobCommons {
           env("_TERRAME_DEPENDS_DIR",      _TERRAME_DEPENDS_DIR)
           env("_TERRAME_CREATE_INSTALLER", _TERRAME_CREATE_INSTALLER)
           env("_TERRAME_BUILD_AS_BUNDLE",  _TERRAME_BUILD_AS_BUNDLE)
-          env("PATH",                      PATH)
+
+          if (c > 3 && c <= 11) {
+            String TME_PATH = "$_TERRAME_INSTALL_PATH/bin";
+            env("TME_PATH",        TME_PATH);
+            env("LD_LIBRARY_PATH", TME_PATH);
+            PATH += ":$TME_PATH";
+          }
+          env("PATH", PATH)
         }
 
         shell(jobSpec.bashSpec.script)

@@ -21,7 +21,7 @@
 # of this software and its documentation.
 ###########################################################################################
 #
-## This script defines how to compile TerraME.
+## This script defines how to compile TerraME and generate installer
 ## Remember that it runs after "build-terralib.sh" that compiles terralib and prepare terrame environment.
 #
 
@@ -38,5 +38,6 @@ $_TERRAME_GIT_DIR/build/scripts/linux/ci/build-terrame.sh
 cd $_TERRAME_OUT_DIR
 # Once compiled, call cpack to generate TerraME installer
 cpack -G TGZ -C Release --config ./CPackConfig.cmake
+RESULT=$?
 
 exit $RESULT

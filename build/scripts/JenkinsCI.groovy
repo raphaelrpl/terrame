@@ -26,7 +26,6 @@
     "+" represents grouped folder based on GitHub Commmit Hash. As GitHub Pull Requests
         are made from N forks from N branches, it is necessary to group TerraME
         compilation|installation using hash in to avoid artifacts overwriting.
-
 */
 
 String prefix = "terrame-testing-ci-";

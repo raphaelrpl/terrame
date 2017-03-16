@@ -21,7 +21,7 @@
 # of this software and its documentation.
 ###########################################################################################
 #
-## This script defines how to run TerraME packages doc generator
+## This script defines how to run TerraME code analysis of specific package
 ##
 ## Usage:
 ## ./build/scripts/ci/doc-base.sh PACKAGE_NAME

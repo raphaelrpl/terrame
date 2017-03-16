@@ -21,13 +21,13 @@
 # of this software and its documentation.
 ###########################################################################################
 #
-## This script defines how to run TerraME packages doc generator
+## This script defines how to run TerraME C++ code linter
 ##
 ## Usage:
 ## ./build/scripts/ci/doc-base.sh PACKAGE_NAME
 ## Note: For base package, do not pass PACKAGE_NAME
 #
 
-python /home/jenkins/Programs/cpplint/cpplint.py --filter=-whitespace/comments,-whitespace/tab,-whitespace/indent,-whitespace/braces,-build/namespaces,-build/header_guard,-whitespace/line_length,-readability/casting,-runtime/references,-build/include,-runtime/printf,-whitespace/newline,-runtime/explicit,-whitespace/parens,-runtime/int,-runtime/threadsafe --extensions=c,h,cpp `find "$WORKSPACE/src/" -name *.h -o -name *.c*`
+python /home/jenkins/Programs/cpplint/cpplint.py --filter=-whitespace/comments,-whitespace/tab,-whitespace/indent,-whitespace/braces,-build/namespaces,-build/header_guard,-whitespace/line_length,-readability/casting,-runtime/references,-build/include,-runtime/printf,-whitespace/newline,-runtime/explicit,-whitespace/parens,-runtime/int,-runtime/threadsafe --extensions=c,h,cpp `find "$_TERRAME_GIT_DIR/src/" -name *.h -o -name *.c*`
 
 exit $?
