@@ -162,7 +162,12 @@ class JobCommons {
           env("PATH", PATH)
         }
 
-        shell(_TERRAME_GIT_DIR + "/" + jobSpec.bashSpec.script)
+        if (c == 1) {
+          shell(jobSpec.bashSpec.script)
+        } else {
+          shell(_TERRAME_GIT_DIR + "/" + jobSpec.bashSpec.script)
+        }
+
         // If it is job generates a installer, make it available in website, sending through SSH
         if (jobSpec.installer) {
           publishOverSsh {
