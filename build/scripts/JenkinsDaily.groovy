@@ -162,7 +162,7 @@ class JobCommons {
           env("PATH", PATH)
         }
 
-        shell(jobSpec.bashSpec.script)
+        shell($_TERRAME_GIT_DIR + "/" + jobSpec.bashSpec.script)
         // If it is job generates a installer, make it available in website, sending through SSH
         if (jobSpec.installer) {
           publishOverSsh {
@@ -212,65 +212,65 @@ new JobCommons().build(this, terralib);
 
 JobSpec syntaxCpp = new JobSpec("cpp-syntax-check");
 syntaxCpp.downstreamJob = "build";
-syntaxCpp.bashSpec = new BashSpec("$_TERRAME_GIT_DIR/build/scripts/linux/ci/cpp-check.sh");
+syntaxCpp.bashSpec = new BashSpec("build/scripts/linux/ci/cpp-check.sh");
 syntaxCpp.conditionName = "ALWAYS";
 new JobCommons().build(this, syntaxCpp);
 
 JobSpec terrame = new JobSpec("build");
 terrame.downstreamJob = "code-analysis-base";
-terrame.bashSpec = new BashSpec("$_TERRAME_GIT_DIR/build/scripts/linux/ci/build-terrame.sh");
+terrame.bashSpec = new BashSpec("build/scripts/linux/ci/build-terrame.sh");
 terrame.conditionName = "SUCCESS";
 new JobCommons().build(this, terrame);
 
 JobSpec codeAnalysisBase = new JobSpec("code-analysis-base");
 codeAnalysisBase.downstreamJob = "code-analysis-terralib";
-codeAnalysisBase.bashSpec = new BashSpec("$_TERRAME_GIT_DIR/build/scripts/linux/ci/code-analysis.sh");
+codeAnalysisBase.bashSpec = new BashSpec("build/scripts/linux/ci/code-analysis.sh");
 codeAnalysisBase.conditionName = "ALWAYS";
 new JobCommons().build(this, codeAnalysisBase);
 
 JobSpec codeAnalysisTerralib = new JobSpec("code-analysis-terralib");
 codeAnalysisTerralib.downstreamJob = "doc-base";
-codeAnalysisTerralib.bashSpec = new BashSpec("$_TERRAME_GIT_DIR/build/scripts/linux/ci/code-analysis.sh \"terralib\"");
+codeAnalysisTerralib.bashSpec = new BashSpec("build/scripts/linux/ci/code-analysis.sh \"terralib\"");
 codeAnalysisTerralib.conditionName = "ALWAYS";
 new JobCommons().build(this, codeAnalysisTerralib);
 
 JobSpec docBase = new JobSpec("doc-base");
 docBase.downstreamJob = "doc-terralib";
-docBase.bashSpec = new BashSpec("$_TERRAME_GIT_DIR/build/scripts/linux/ci/doc.sh");
+docBase.bashSpec = new BashSpec("build/scripts/linux/ci/doc.sh");
 docBase.conditionName = "ALWAYS";
 new JobCommons().build(this, docBase);
 
 JobSpec docTerralib = new JobSpec("doc-terralib");
 docTerralib.downstreamJob = "unittest-base";
-docTerralib.bashSpec = new BashSpec("$_TERRAME_GIT_DIR/build/scripts/linux/ci/doc.sh \"terralib\"");
+docTerralib.bashSpec = new BashSpec("build/scripts/linux/ci/doc.sh \"terralib\"");
 docTerralib.conditionName = "ALWAYS";
 new JobCommons().build(this, docTerralib);
 
 JobSpec unittestBase = new JobSpec("unittest-base");
 unittestBase.downstreamJob = "unittest-terralib";
-unittestBase.bashSpec = new BashSpec("$_TERRAME_GIT_DIR/build/scripts/linux/ci/unittest.sh");
+unittestBase.bashSpec = new BashSpec("build/scripts/linux/ci/unittest.sh");
 unittestBase.conditionName = "ALWAYS";
 new JobCommons().build(this, unittestBase);
 
 JobSpec unittestTerralib = new JobSpec("unittest-terralib");
 unittestTerralib.downstreamJob = "test-execution";
-unittestTerralib.bashSpec = new BashSpec("$_TERRAME_GIT_DIR/build/scripts/linux/ci/unittest.sh \"terralib\"");
+unittestTerralib.bashSpec = new BashSpec("build/scripts/linux/ci/unittest.sh \"terralib\"");
 unittestTerralib.conditionName = "ALWAYS";
 new JobCommons().build(this, unittestTerralib);
 
 JobSpec testExecution = new JobSpec("test-execution");
 testExecution.downstreamJob = "repository-test";
-testExecution.bashSpec = new BashSpec("$_TERRAME_GIT_DIR/build/scripts/linux/ci/test-execution.sh");
+testExecution.bashSpec = new BashSpec("build/scripts/linux/ci/test-execution.sh");
 testExecution.conditionName = "ALWAYS";
 new JobCommons().build(this, testExecution);
 
 JobSpec repositoryTest = new JobSpec("repository-test");
 repositoryTest.downstreamJob = "installer";
-repositoryTest.bashSpec = new BashSpec("$_TERRAME_GIT_DIR/build/scripts/linux/ci/repository-test.sh");
+repositoryTest.bashSpec = new BashSpec("build/scripts/linux/ci/repository-test.sh");
 repositoryTest.conditionName = "ALWAYS";
 new JobCommons().build(this, repositoryTest);
 
 JobSpec installer = new JobSpec("installer", true);
-installer.bashSpec = new BashSpec("$_TERRAME_GIT_DIR/build/scripts/linux/ci/installer.sh");
+installer.bashSpec = new BashSpec("build/scripts/linux/ci/installer.sh");
 installer.publishOverSSH = true;
 new JobCommons().build(this, installer);
